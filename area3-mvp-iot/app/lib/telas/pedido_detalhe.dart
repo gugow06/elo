@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import '../api.dart';
 import '../tema.dart';
 import '../widgets/comum.dart';
+import '../widgets/itens.dart';
 
 /// Tela 4 do mockup: pedido de ajuda e "Quero ajudar".
 /// Sem botão de compartilhar e sem fotos de voluntários (privacidade, PRD §8.2).
@@ -16,11 +17,15 @@ class PedidoDetalhe extends StatefulWidget {
 class _PedidoDetalheState extends State<PedidoDetalhe> {
   bool _enviando = false;
   Map<String, dynamic>? _assumido;
+  late final List<ItemPedido> _itens = ItemPedido.daLista(widget.pedido['itens']);
+  // Começa com todos os itens abertos escolhidos; a pessoa desmarca o que não vai levar
+  late final Set<String> _escolhidos = {for (final i in _itens) if (i.aberto) i.id};
+  bool get _movel => widget.pedido['categoria'] == 'movel';
 
   Future<void> _quero() async {
     setState(() => _enviando = true);
     try {
-      final r = await Api.i.quero(widget.pedido['id']);
+      final r = await Api.i.quero(widget.pedido['id'], itens: _itens.isEmpty || _movel ? null : _escolhidos.toList());
       setState(() => _assumido = r);
     } on ErroApi catch (e) {
       if (mounted) avisar(context, e.mensagem, erro: true);
@@ -33,7 +38,8 @@ class _PedidoDetalheState extends State<PedidoDetalhe> {
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final p = widget.pedido;
-    final itens = itensPorCategoria[p['categoria']] ?? const <String>[];
+    // API antiga (sem itens): cai na lista fixa da categoria, só para leitura
+    final fixos = _itens.isEmpty ? (itensPorCategoria[p['categoria']] ?? const <String>[]) : const <String>[];
     return Scaffold(
       appBar: AppBar(title: const Text('Pedido de ajuda', style: TextStyle(fontWeight: FontWeight.w800))),
       body: ListView(padding: const EdgeInsets.fromLTRB(20, 8, 20, 120), children: [
@@ -71,14 +77,32 @@ class _PedidoDetalheState extends State<PedidoDetalhe> {
             Expanded(child: Text('Pedido verificado pela triagem do ELO e acompanhado pelo CRAS do município.', style: t.bodyMedium)),
           ]),
         ),
-        if (itens.isNotEmpty) ...[
+        const SizedBox(height: 12),
+        PessoasAjudando((p['pessoas_ajudando'] as num?)?.toInt() ?? 0),
+        if (_itens.isNotEmpty && _assumido == null) ...[
+          const SizedBox(height: 20),
+          Text('O que é necessário?', style: t.titleMedium),
+          const SizedBox(height: 4),
+          Text(_movel ? 'Pedido de móvel: uma pessoa leva tudo.' : 'Marque o que você vai levar. Outras pessoas podem levar o resto.', style: t.bodyMedium),
+          const SizedBox(height: 8),
+          Cartao(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: EscolhaItens(
+              itens: _itens,
+              escolhidos: _escolhidos,
+              travado: _movel,
+              aoMudar: (id, marcado) => setState(() => marcado ? _escolhidos.add(id) : _escolhidos.remove(id)),
+            ),
+          ),
+        ],
+        if (fixos.isNotEmpty) ...[
           const SizedBox(height: 20),
           Text('O que é necessário?', style: t.titleMedium),
           const SizedBox(height: 8),
           Cartao(
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Column(children: [
-              for (final item in itens)
+              for (final item in fixos)
                 ListTile(
                   leading: const Icon(Icons.check_circle_outline, color: EloCores.brand600),
                   title: Text(item, style: const TextStyle(fontSize: 16)),
@@ -112,7 +136,11 @@ class _PedidoDetalheState extends State<PedidoDetalhe> {
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(color: EloCores.sucessoClaro, borderRadius: BorderRadius.circular(EloRaio.lg)),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Obrigado! O pedido é seu. 💚', style: t.titleMedium?.copyWith(color: EloCores.sucesso)),
+                Text('Obrigado! Você vai ajudar. 💚', style: t.titleMedium?.copyWith(color: EloCores.sucesso)),
+                if ((_assumido!['itens'] as List?)?.isNotEmpty ?? false) ...[
+                  const SizedBox(height: 6),
+                  Text('Você vai levar: ${(_assumido!['itens'] as List).join(', ')}.', style: t.bodyLarge?.copyWith(fontWeight: FontWeight.w700)),
+                ],
                 const SizedBox(height: 8),
                 Text('Protocolo para digitar no ponto de coleta:', style: t.bodyLarge),
                 Semantics(
@@ -132,9 +160,15 @@ class _PedidoDetalheState extends State<PedidoDetalhe> {
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
           child: _assumido == null
               ? FilledButton.icon(
-                  onPressed: _enviando ? null : _quero,
+                  onPressed: _enviando || (_itens.isNotEmpty && !_movel && _escolhidos.isEmpty) ? null : _quero,
                   icon: const Icon(Icons.volunteer_activism),
-                  label: Text(_enviando ? 'Enviando…' : 'Quero ajudar'),
+                  label: Text(_enviando
+                      ? 'Enviando…'
+                      : _itens.isEmpty || _movel
+                          ? 'Quero ajudar'
+                          : _escolhidos.isEmpty
+                              ? 'Escolha o que vai levar'
+                              : 'Quero ajudar com ${_escolhidos.length} ${_escolhidos.length == 1 ? 'item' : 'itens'}'),
                 )
               : OutlinedButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Voltar')),
         ),

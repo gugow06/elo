@@ -70,6 +70,7 @@ class Api {
     try {
       r = switch (metodo) {
         'POST' => await http.post(uri, headers: cab, body: jsonEncode(corpo ?? {})).timeout(const Duration(seconds: 20)),
+        'PATCH' => await http.patch(uri, headers: cab, body: jsonEncode(corpo ?? {})).timeout(const Duration(seconds: 20)),
         _ => await http.get(uri, headers: cab).timeout(const Duration(seconds: 20)),
       };
     } catch (_) {
@@ -191,7 +192,13 @@ class Api {
   Future<List<dynamic>> localidades(String q) async =>
       await _req('GET', Uri(path: '/localidades', queryParameters: {'q': q}).toString()) as List;
   Future<List<dynamic>> muralPorBairro() async => await _req('GET', '/mural/bairros') as List;
-  Future<Map<String, dynamic>> quero(String id) async => Map<String, dynamic>.from(await _req('POST', '/mural/$id/ofertas'));
+  /// Ajudar com um pedido. [itens] = ids escolhidos; sem lista, leva todos os itens abertos.
+  Future<Map<String, dynamic>> quero(String id, {List<String>? itens}) async =>
+      Map<String, dynamic>.from(await _req('POST', '/mural/$id/ofertas', {'itens': ?itens}));
+
+  /// Quem pediu marca (ou desmarca) um item como recebido. Devolve itens e status atualizados.
+  Future<Map<String, dynamic>> marcarItem(String pedidoId, String itemId, bool obtido) async =>
+      Map<String, dynamic>.from(await _req('PATCH', '/solicitacoes/$pedidoId/itens/$itemId', {'obtido': obtido}));
   Future<List<dynamic>> minhasOfertas() async => await _req('GET', '/voluntario/ofertas') as List;
 
   // ---------- comum
