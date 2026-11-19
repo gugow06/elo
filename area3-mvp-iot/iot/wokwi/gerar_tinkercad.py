@@ -37,8 +37,8 @@ rep("""const float BETA_NTC = 3950;           // coeficiente do NTC do Wokwi
 """, "")
 rep("""LiquidCrystal_I2C lcd(0x27, 16, 2);""", """Adafruit_LiquidCrystal lcd(0);""")
 rep("""float lerTemperaturaC() {
-  int v = analogRead(PINO_TEMP);
-  if (v <= 0 || v >= 1023) return NAN;
+  // Nos extremos (0 ou 1023) a fórmula daria infinito e o JSON sairia inválido: limita a faixa
+  int v = constrain(analogRead(PINO_TEMP), 1, 1022);
   return 1 / (log(1 / (1023. / v - 1)) / BETA_NTC + 1.0 / 298.15) - 273.15;
 }""", """float lerTemperaturaC() {
   float volts = analogRead(PINO_TEMP) * (5.0 / 1024.0);
