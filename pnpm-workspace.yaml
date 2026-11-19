@@ -1,0 +1,4 @@
+packages:
+  - area1-ia/triagem
+  - area3-mvp-iot/api
+  - area3-mvp-iot/painel

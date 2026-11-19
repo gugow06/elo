@@ -1,0 +1,43 @@
+name: elo
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-elo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-elo_dev_local}
+      POSTGRES_DB: ${POSTGRES_DB:-elo}
+    ports:
+      - "5432:5432"
+    volumes:
+      - elo-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-elo} -d ${POSTGRES_DB:-elo}"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: area3-mvp-iot/api/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-elo}:${POSTGRES_PASSWORD:-elo_dev_local}@db:5432/${POSTGRES_DB:-elo}
+      PORT: 3333
+      JWT_SECRET: ${JWT_SECRET:-troque-este-segredo-em-qualquer-ambiente-real}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODELO: ${LLM_MODELO:-}
+      LLM_LIMIAR_CONFIANCA: ${LLM_LIMIAR_CONFIANCA:-0.75}
+    ports:
+      - "3333:3333"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3333/saude || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  elo-db:
