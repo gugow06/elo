@@ -33,7 +33,7 @@ Ligação dos sensores analógicos:
 
 Mesma lógica, com as peças que o Wokwi tem (potenciômetro como balança, sensor NTC como temperatura): veja [`wokwi/README.md`](wokwi/README.md). O projeto já vem montado (`diagram.json`) e tem teste automático pelo Wokwi CLI. O sketch do Tinkercad é gerado a partir do sketch do Wokwi (`python iot/wokwi/gerar_tinkercad.py`), para os dois não se separarem.
 
-Para a entrega: print do circuito e o link público da simulação vão no PDF.
+Para a entrega: a foto do circuito está em [`wokwi/circuito.png`](wokwi/circuito.png), e as telas do LCD, em [`wokwi/telas`](wokwi/telas/). O link público da simulação vai no PDF.
 
 ## Integração com a API
 

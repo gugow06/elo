@@ -11,6 +11,10 @@ Simulação do Ponto de Coleta Inteligente no [Wokwi](https://wokwi.com): Arduin
 | LED vermelho + 220 Ω | Alerta | 10 | igual |
 | Buzzer | Bipe | 11 | igual |
 
+![Circuito do Ponto de Coleta no Wokwi](circuito.png)
+
+[`circuito.png`](circuito.png) é o circuito montado, desenhado a partir do [`diagram.json`](diagram.json) com as mesmas peças do Wokwi.
+
 ## Abrir no wokwi.com
 
 1. Em [wokwi.com](https://wokwi.com) → **New Project** → **Arduino Uno**.
