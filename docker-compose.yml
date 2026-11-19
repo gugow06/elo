@@ -25,9 +25,14 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-elo}:${POSTGRES_PASSWORD:-elo_dev_local}@db:5432/${POSTGRES_DB:-elo}
       PORT: 3333
       JWT_SECRET: ${JWT_SECRET:-troque-este-segredo-em-qualquer-ambiente-real}
+      LLM_URL: ${LLM_URL:-}
       LLM_API_KEY: ${LLM_API_KEY:-}
       LLM_MODELO: ${LLM_MODELO:-}
       LLM_LIMIAR_CONFIANCA: ${LLM_LIMIAR_CONFIANCA:-0.75}
+      LLM_ESFORCO_RACIOCINIO: ${LLM_ESFORCO_RACIOCINIO:-}
+      LLM_TIMEOUT_MS: ${LLM_TIMEOUT_MS:-20000}
+      DATABASE_URL_OURO: postgresql://elo_leitura_ouro:elo_leitura_ouro_dev@db:5432/${POSTGRES_DB:-elo}
+      SLA_MURAL_HORAS: ${SLA_MURAL_HORAS:-48}
     ports:
       - "3333:3333"
     depends_on:
@@ -38,6 +43,17 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+
+  pipeline:
+    build:
+      context: .
+      dockerfile: area2-dados/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-elo}:${POSTGRES_PASSWORD:-elo_dev_local}@db:5432/${POSTGRES_DB:-elo}
+      PIPELINE_SAL_HASH: ${PIPELINE_SAL_HASH:-elo-pipeline-sal-demo}
+    depends_on:
+      api:
+        condition: service_healthy
 
 volumes:
   elo-db:
