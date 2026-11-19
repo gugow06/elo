@@ -4,6 +4,7 @@ import '../api.dart';
 import '../tema.dart';
 import '../widgets/comum.dart';
 import '../widgets/itens.dart';
+import 'conversa.dart';
 import 'detalhe_ajuda.dart';
 
 /// "Meus pedidos": status em linguagem simples e confirmação de retirada.
@@ -147,6 +148,14 @@ class _CartaoMeuPedido extends StatelessWidget {
         if (itens.isNotEmpty && status != 'na_fila_tecnica' && status != 'recebida') ...[
           const SizedBox(height: 10),
           PessoasAjudando.doPedido(p),
+          if (((p['pessoas_ajudando'] as num?) ?? 0) > 0) ...[
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () => conversarSobrePedido(context, p['id'] as String, souQuemAjuda: false),
+              icon: const Icon(Icons.chat_bubble_outline),
+              label: Text(((p['pessoas_ajudando'] as num?) ?? 0) > 1 ? 'Conversar com quem está ajudando' : 'Conversar com quem vai ajudar'),
+            ),
+          ],
           const SizedBox(height: 10),
           Text('Marque o que você já recebeu', style: t.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
           ChecklistRecebido(

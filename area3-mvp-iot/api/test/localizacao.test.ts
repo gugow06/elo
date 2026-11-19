@@ -62,7 +62,7 @@ describe('localização do aparelho (com a permissão da pessoa)', () => {
     const campinas = (await pool.query("SELECT id FROM municipio WHERE codigo_ibge = '3509502'")).rows[0].id;
     const r = await app.inject({
       method: 'POST', url: '/auth/cadastro',
-      payload: { nome: 'Pessoa GPS', email: 'pessoa.gps@example.com', telefone: '+5519990003333', municipio_id: campinas, bairro_nome: 'Jardim Boa Esperança', posicao: { latitude: -22.87654, longitude: -47.12345 } },
+      payload: { aceite_termos: true, nome: 'Pessoa GPS', email: 'pessoa.gps@example.com', telefone: '+5519990003333', municipio_id: campinas, bairro_nome: 'Jardim Boa Esperança', posicao: { latitude: -22.87654, longitude: -47.12345 } },
     });
     expect(r.statusCode).toBe(201);
     const b = (await pool.query("SELECT latitude::float AS latitude, longitude::float AS longitude, posicao_origem FROM bairro WHERE municipio_id = $1 AND slug = 'jardim-boa-esperanca'", [campinas])).rows[0];
@@ -77,7 +77,7 @@ describe('localização do aparelho (com a permissão da pessoa)', () => {
     const campinas = (await pool.query("SELECT id FROM municipio WHERE codigo_ibge = '3509502'")).rows[0].id;
     await app.inject({
       method: 'POST', url: '/auth/cadastro',
-      payload: { nome: 'Pessoa Longe', email: 'pessoa.longe@example.com', telefone: '+5519990004444', municipio_id: campinas, bairro_nome: 'Vila Distante', posicao: { latitude: -3.1, longitude: -60.0 } },
+      payload: { aceite_termos: true, nome: 'Pessoa Longe', email: 'pessoa.longe@example.com', telefone: '+5519990004444', municipio_id: campinas, bairro_nome: 'Vila Distante', posicao: { latitude: -3.1, longitude: -60.0 } },
     });
     const b = (await pool.query("SELECT latitude FROM bairro WHERE municipio_id = $1 AND slug = 'vila-distante'", [campinas])).rows[0];
     expect(b.latitude).toBeNull();

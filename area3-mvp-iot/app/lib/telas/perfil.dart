@@ -8,6 +8,8 @@ import '../widgets/comum.dart';
 import 'acompanhar.dart';
 import 'boas_vindas.dart';
 import 'codigo_email.dart';
+import 'documento_legal.dart';
+import 'excluir_conta.dart';
 
 class Perfil extends StatefulWidget {
   const Perfil({super.key});
@@ -174,6 +176,8 @@ class _PerfilState extends State<Perfil> {
               ),
             ]),
           ),
+          const SizedBox(height: 12),
+          SecaoPrivacidade(perfil: p),
           const SizedBox(height: 24),
           OutlinedButton.icon(
             onPressed: () async {
@@ -279,6 +283,42 @@ class _ItemVerificacao extends StatelessWidget {
           acao!
         else if (feito == true)
           const Icon(Icons.check_circle, color: EloCores.sucesso, semanticLabel: 'Feito'),
+      ]),
+    );
+  }
+}
+
+/// Privacidade e termos: os dois documentos, quando a pessoa aceitou e a exclusão da conta.
+class SecaoPrivacidade extends StatelessWidget {
+  const SecaoPrivacidade({super.key, this.perfil});
+  final Map<String, dynamic>? perfil;
+
+  static String? _data(dynamic iso) {
+    if (iso is! String) return null;
+    final d = DateTime.parse(iso).toLocal();
+    return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final aceitos = _data((perfil?['termos'] as Map?)?['aceitos_em']);
+    Widget linha(IconData icone, String rotulo, VoidCallback aoTocar, {Color? cor}) => ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: Icon(icone, color: cor ?? EloCores.brand700),
+          title: Text(rotulo, style: TextStyle(fontWeight: FontWeight.w700, color: cor)),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: aoTocar,
+        );
+    return Cartao(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('Privacidade e termos', style: t.titleMedium),
+        if (aceitos != null) ...[const SizedBox(height: 4), Text('Você aceitou os termos em $aceitos.', style: t.bodyMedium)],
+        linha(Icons.shield_outlined, 'Política de privacidade', () => abrirPolitica(context)),
+        linha(Icons.description_outlined, 'Termos de uso', () => abrirTermos(context)),
+        const Divider(),
+        linha(Icons.delete_forever_outlined, 'Excluir minha conta',
+            () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ExcluirConta())), cor: EloCores.erro),
       ]),
     );
   }

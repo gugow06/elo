@@ -92,7 +92,7 @@ describe('autenticação: e-mail + código e Google', () => {
 
     const cad = await app.inject({
       method: 'POST', url: '/auth/cadastro',
-      payload: { nome: 'Nova Pessoa', email: 'outro@example.com', telefone: '11990001111', bairro_id: bairroId, social: { provedor: 'google', id_token } },
+      payload: { aceite_termos: true, nome: 'Nova Pessoa', email: 'outro@example.com', telefone: '11990001111', bairro_id: bairroId, social: { provedor: 'google', id_token } },
     });
     expect(cad.statusCode).toBe(201);
     expect(cad.json().usuario).toEqual(expect.objectContaining({ nome: 'Nova Pessoa', perfil: 'cidadao' }));
@@ -128,7 +128,7 @@ describe('autenticação: e-mail + código e Google', () => {
   it('cadastro sem conta social confirma o e-mail por código', async () => {
     const cad = await app.inject({
       method: 'POST', url: '/auth/cadastro',
-      payload: { nome: 'Pessoa Email', email: 'pessoa.email@example.com', telefone: '+5511990002222', bairro_id: bairroId, },
+      payload: { aceite_termos: true, nome: 'Pessoa Email', email: 'pessoa.email@example.com', telefone: '+5511990002222', bairro_id: bairroId, },
     });
     expect(cad.statusCode).toBe(201);
     expect(cad.json().token).toBeUndefined();
@@ -144,24 +144,24 @@ describe('autenticação: e-mail + código e Google', () => {
     const feira = loc.json().find((l: { tipo: string }) => l.tipo === 'municipio');
     expect(feira).toEqual(expect.objectContaining({ nome: 'Feira de Santana', uf: 'BA' }));
     const base = { telefone: '+5575990001111', municipio_id: feira.id, bairro_nome: '  Centro  ' };
-    const r1 = await app.inject({ method: 'POST', url: '/auth/cadastro', payload: { ...base, nome: 'Pessoa Feira', email: 'pessoa.feira@example.com' } });
+    const r1 = await app.inject({ method: 'POST', url: '/auth/cadastro', payload: { aceite_termos: true, ...base, nome: 'Pessoa Feira', email: 'pessoa.feira@example.com' } });
     expect(r1.statusCode).toBe(201);
-    const r2 = await app.inject({ method: 'POST', url: '/auth/cadastro', payload: { ...base, nome: 'Outra Feira', email: 'outra.feira@example.com', telefone: '+5575990002222', bairro_nome: 'centro' } });
+    const r2 = await app.inject({ method: 'POST', url: '/auth/cadastro', payload: { aceite_termos: true, ...base, nome: 'Outra Feira', email: 'outra.feira@example.com', telefone: '+5575990002222', bairro_nome: 'centro' } });
     expect(r2.statusCode).toBe(201);
     const bairros = await app.inject({ method: 'GET', url: `/auth/bairros?municipio=${feira.id}` });
     expect(bairros.json()).toEqual([expect.objectContaining({ nome: 'Centro', municipio: 'Feira de Santana', uf: 'BA' })]);
   });
 
   it('cadastro exige bairro da lista ou cidade + bairro', async () => {
-    const r = await app.inject({ method: 'POST', url: '/auth/cadastro', payload: { nome: 'Sem Bairro', email: 'sem.bairro@example.com', telefone: '+5511990005555' } });
+    const r = await app.inject({ method: 'POST', url: '/auth/cadastro', payload: { aceite_termos: true, nome: 'Sem Bairro', email: 'sem.bairro@example.com', telefone: '+5511990005555' } });
     expect(r.statusCode).toBe(400);
   });
 
   it('não cria conta com e-mail ou telefone já cadastrados', async () => {
     const base = { nome: 'Outra Ana', bairro_id: bairroId };
-    const porEmail = await app.inject({ method: 'POST', url: '/auth/cadastro', payload: { ...base, email: 'ANA.RIBEIRO@example.com', telefone: '+5511990004444' } });
+    const porEmail = await app.inject({ method: 'POST', url: '/auth/cadastro', payload: { aceite_termos: true, ...base, email: 'ANA.RIBEIRO@example.com', telefone: '+5511990004444' } });
     expect(porEmail.statusCode).toBe(409);
-    const porTel = await app.inject({ method: 'POST', url: '/auth/cadastro', payload: { ...base, email: 'nova.ana@example.com', telefone: '+5511990000001' } });
+    const porTel = await app.inject({ method: 'POST', url: '/auth/cadastro', payload: { aceite_termos: true, ...base, email: 'nova.ana@example.com', telefone: '+5511990000001' } });
     expect(porTel.statusCode).toBe(409);
   });
 
@@ -175,7 +175,7 @@ describe('autenticação: e-mail + código e Google', () => {
   it('cadastro ignora perfil enviado pelo app: toda conta é do app, nunca de equipe', async () => {
     const r = await app.inject({
       method: 'POST', url: '/auth/cadastro',
-      payload: { nome: 'Alguém', email: 'alguem@example.com', telefone: '+5511990003333', bairro_id: bairroId, perfil: 'gestor' },
+      payload: { aceite_termos: true, nome: 'Alguém', email: 'alguem@example.com', telefone: '+5511990003333', bairro_id: bairroId, perfil: 'gestor' },
     });
     expect(r.statusCode).toBe(201);
     const e = await app.inject({ method: 'POST', url: '/auth/entrar', payload: { email: 'alguem@example.com', codigo: r.json().codigo_demo } });

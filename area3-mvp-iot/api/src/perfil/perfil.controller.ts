@@ -1,4 +1,7 @@
 import { BadRequestException, Body, Controller, Delete, Get, HttpCode, Inject, PayloadTooLargeException, Post, Put, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { notificar } from '../infra/notificacoes';
+import { excluirConta } from './exclusao';
+import { TERMOS_VERSAO } from './termos';
 import { Pool } from 'pg';
 import { z } from 'zod';
 import { AuthGuard, SessaoAtual } from '../auth/auth.guard';
@@ -11,6 +14,7 @@ import { FOTO_MAX_BYTES, sqlUrlFoto, tipoDaImagem } from './fotos';
 
 const ComFoto = z.object({ imagem: z.string().min(1, 'Envie a imagem') });
 const ComCodigo = z.object({ codigo: z.string().regex(/^\d{6}$/, 'O código tem 6 dígitos') });
+const AceiteTermos = z.object({ versao: z.literal(TERMOS_VERSAO, 'Atualize o app para ver a versão atual dos termos.') });
 
 type LinhaPerfil = {
   nome: string;
@@ -25,6 +29,8 @@ type LinhaPerfil = {
   latitude: number | null;
   longitude: number | null;
   foto: string | null;
+  termos_versao: string | null;
+  termos_aceitos_em: Date | null;
 };
 
 /**
@@ -56,6 +62,8 @@ export class PerfilController {
       email_confirmado: !!u.email_confirmado_em,
       dois_fatores: !!u.dois_fatores_em,
       verificado: !!u.email_confirmado_em && !!u.dois_fatores_em,
+      // Termos de uso e política de privacidade: o app pede o aceite quando a versão mudou
+      termos: { versao_aceita: u.termos_versao, aceitos_em: u.termos_aceitos_em, versao_atual: TERMOS_VERSAO },
     };
   }
 
@@ -118,11 +126,44 @@ export class PerfilController {
     return this.perfil(sessao);
   }
 
+  /** Aceite da versão atual dos Termos de uso e da Política de privacidade (contas antigas ou termos novos). */
+  @Post('termos')
+  @HttpCode(200)
+  async aceitarTermos(@SessaoAtual() sessao: Sessao, @Body() corpo: unknown) {
+    validar(AceiteTermos, corpo);
+    await this.pool.query('UPDATE usuario SET termos_versao = $2, termos_aceitos_em = now() WHERE id = $1', [sessao.usuarioId, TERMOS_VERSAO]);
+    await auditar(this.pool, { usuarioId: sessao.usuarioId, acao: 'aceitar_termos', entidade: 'usuario', entidadeId: sessao.usuarioId, detalhe: { versao: TERMOS_VERSAO } });
+    return this.perfil(sessao);
+  }
+
+  /** Exclusão de conta, passo 1: código no e-mail, para confirmar que é a própria pessoa. */
+  @Post('excluir/codigo')
+  @HttpCode(200)
+  async codigoExclusao(@SessaoAtual() sessao: Sessao) {
+    const u = await this.carregar(sessao.usuarioId);
+    if (!u.email) throw new BadRequestException('Esta conta não tem e-mail. Fale com a equipe do CRAS para excluir.');
+    return { email: mascararEmail(u.email), ...(await gerarCodigo(this.pool, sessao.usuarioId, { email: u.email })) };
+  }
+
+  /**
+   * Exclusão de conta, passo 2 (LGPD, art. 18): apaga os dados pessoais e encerra a sessão.
+   * O que acontece está em `excluirConta` e na Política de privacidade.
+   */
+  @Post('excluir')
+  @HttpCode(200)
+  async excluir(@SessaoAtual() sessao: Sessao, @Body() corpo: unknown) {
+    const { codigo } = validar(ComCodigo, corpo);
+    if (!(await consumirCodigo(this.pool, sessao.usuarioId, codigo))) throw new UnauthorizedException('Código inválido ou expirado.');
+    const resumo = await excluirConta(this.pool, sessao.usuarioId);
+    for (const n of resumo.avisos) await notificar(this.pool, n).catch(() => undefined);
+    return { ok: true, pedidos_encerrados: resumo.pedidosEncerrados, ajudas_canceladas: resumo.ajudasCanceladas };
+  }
+
   private async carregar(usuarioId: string): Promise<LinhaPerfil> {
     const { rows } = await this.pool.query<LinhaPerfil>(
       `SELECT u.nome, u.email, u.telefone, b.nome AS bairro, m.nome AS municipio, m.uf,
               coalesce(b.latitude, m.latitude)::float AS latitude, coalesce(b.longitude, m.longitude)::float AS longitude,
-              u.email_confirmado_em, u.dois_fatores_em, ${sqlUrlFoto('f.id')} AS foto,
+              u.email_confirmado_em, u.dois_fatores_em, ${sqlUrlFoto('f.id')} AS foto, u.termos_versao, u.termos_aceitos_em,
               EXISTS (SELECT 1 FROM conta_social cs WHERE cs.usuario_id = u.id AND cs.provedor = 'google') AS google
        FROM usuario u
        JOIN municipio m ON m.id = u.municipio_id

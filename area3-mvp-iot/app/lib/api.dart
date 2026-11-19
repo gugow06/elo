@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'textos_legais.dart';
+
 /// URL da API definida no build: flutter run --dart-define=API_URL=https://...
 /// Padrão: emulador Android acessando o computador (10.0.2.2).
 const apiUrl = String.fromEnvironment('API_URL', defaultValue: 'http://10.0.2.2:3333');
@@ -170,6 +172,9 @@ class Api {
       'municipio_id': ?municipioId,
       'bairro_nome': ?bairroNome,
       'social': ?google?.toJson(),
+      // A tela só deixa criar a conta com o aceite marcado
+      'aceite_termos': true,
+      'termos_versao': termosVersao,
     });
     if (r['token'] == null) {
       aoPedirCodigo?.call(r['codigo_demo'] as String?);
@@ -257,6 +262,36 @@ class Api {
 
   // ---------- comum
   Future<List<dynamic>> notificacoes() async => await _req('GET', '/notificacoes') as List;
+
+  // ---------- conversas entre quem pediu e quem ajuda
+  /// Minhas conversas; com [pedido], só as daquele pedido.
+  Future<List<dynamic>> conversas({String? pedido}) async =>
+      await _req('GET', pedido == null ? '/conversas' : '/conversas?solicitacao_id=$pedido') as List;
+  /// Quem ajuda abre (ou reabre) a conversa com quem pediu. Devolve o id da conversa.
+  Future<String> abrirConversa(String pedidoId) async =>
+      (await _req('POST', '/conversas', {'solicitacao_id': pedidoId}))['id'] as String;
+  Future<List<dynamic>> mensagens(String conversaId, {String? depois}) async => await _req(
+      'GET', depois == null ? '/conversas/$conversaId/mensagens' : Uri(path: '/conversas/$conversaId/mensagens', queryParameters: {'depois': depois}).toString()) as List;
+  Future<Map<String, dynamic>> enviarMensagem(String conversaId, String texto) async =>
+      Map<String, dynamic>.from(await _req('POST', '/conversas/$conversaId/mensagens', {'texto': texto}));
+  /// Não lidas: mensagens das conversas e notificações do sistema (o número na aba Mensagens).
+  Future<({int mensagens, int notificacoes})> naoLidas() async {
+    final r = await _req('GET', '/conversas/nao-lidas');
+    return (mensagens: (r['mensagens'] as num).toInt(), notificacoes: (r['notificacoes'] as num).toInt());
+  }
+
+  // ---------- termos e exclusão de conta
+  Future<Map<String, dynamic>> aceitarTermos() async =>
+      Map<String, dynamic>.from(await _req('POST', '/perfil/termos', {'versao': termosVersao}));
+  Future<({String email, String? codigoDemo})> codigoExclusao() async {
+    final r = await _req('POST', '/perfil/excluir/codigo');
+    return (email: r['email'] as String, codigoDemo: r['codigo_demo'] as String?);
+  }
+  /// Exclui a conta (com o código do e-mail) e apaga a sessão do aparelho.
+  Future<void> excluirConta(String codigo) async {
+    await _req('POST', '/perfil/excluir', {'codigo': codigo});
+    await sair();
+  }
   Future<void> marcarLidas() async => _req('POST', '/notificacoes/lidas');
   Future<List<dynamic>> pontos() async => await _req('GET', '/pontos') as List;
   Future<List<dynamic>> bairros() async => await _req('GET', '/bairros') as List;

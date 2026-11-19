@@ -6,6 +6,7 @@ import '../geo.dart';
 import '../tema.dart';
 import '../widgets/comum.dart';
 import '../widgets/itens.dart';
+import 'conversa.dart';
 
 /// "Minhas ajudas" → detalhe: onde entregar (endereço, horário, telefone e mapa), o que levar
 /// e o protocolo para digitar no ponto de coleta. [o] é um item de GET /voluntario/ofertas.
@@ -48,6 +49,14 @@ class DetalheAjuda extends StatelessWidget {
           ]),
         ),
         const SizedBox(height: 12),
+        if (o['solicitacao_id'] != null) ...[
+          OutlinedButton.icon(
+            onPressed: () => conversarSobrePedido(context, o['solicitacao_id'] as String, souQuemAjuda: true),
+            icon: const Icon(Icons.chat_bubble_outline),
+            label: const Text('Conversar com quem pediu'),
+          ),
+          const SizedBox(height: 12),
+        ],
 
         Cartao(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

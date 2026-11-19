@@ -162,6 +162,11 @@ export class RedeController {
         'INSERT INTO oferta_item (oferta_id, item_id) SELECT $1, unnest($2::uuid[]) ON CONFLICT DO NOTHING',
         [oferta, escolhidos],
       );
+      // Abre a conversa entre quem pediu e quem vai ajudar (aba Mensagens)
+      await cliente.query(
+        'INSERT INTO conversa (solicitacao_id, cidadao_id, voluntario_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
+        [id, s.cidadao_id, sessao.usuarioId],
+      );
       const restantes = await this.itensAbertos(cliente, id);
       await cliente.query(
         `UPDATE solicitacao SET status = CASE WHEN $2 = 0 THEN 'em_atendimento'::status_pedido ELSE status END,

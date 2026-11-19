@@ -7,6 +7,7 @@ import '../localizacao.dart';
 import '../tema.dart';
 import '../widgets/comum.dart';
 import '../widgets/login.dart';
+import 'documento_legal.dart';
 import 'entrar.dart';
 import 'shell.dart';
 
@@ -31,6 +32,8 @@ class _CriarContaState extends State<CriarConta> {
   List<dynamic>? _bairros;
   String? _bairroId; // _outro = digitar o bairro
   bool _enviando = false;
+  /// Aceite dos Termos de uso e da Política de privacidade (obrigatório).
+  bool _aceite = false;
   bool _localizando = false;
   String? _erro;
   /// Posição do aparelho, se a pessoa aceitou compartilhar (só para a posição aproximada do bairro).
@@ -123,6 +126,10 @@ class _CriarContaState extends State<CriarConta> {
     final digitado = _bairroId == _outro;
     if (_bairroId == null || (digitado && _bairroNome.text.trim().length < 2)) {
       setState(() => _erro = 'Informe o seu bairro.');
+      return;
+    }
+    if (!_aceite) {
+      setState(() => _erro = 'Para criar a conta, aceite os Termos de uso e a Política de privacidade.');
       return;
     }
     setState(() { _enviando = true; _erro = null; });
@@ -258,8 +265,10 @@ class _CriarContaState extends State<CriarConta> {
               ),
             ],
           ],
-          const SizedBox(height: 24),
-          FilledButton(onPressed: _enviando ? null : _criar, child: Text(_enviando ? 'Criando…' : 'Criar conta')),
+          const SizedBox(height: 16),
+          CaixaAceite(aceito: _aceite, aoMudar: (v) => setState(() => _aceite = v)),
+          const SizedBox(height: 16),
+          FilledButton(onPressed: _enviando || !_aceite ? null : _criar, child: Text(_enviando ? 'Criando…' : 'Criar conta')),
           if (google == null) ...[
             const SizedBox(height: 12),
             Text('Vamos enviar um código para confirmar o seu e-mail. Não precisa de senha.', textAlign: TextAlign.center, style: t.bodyMedium),

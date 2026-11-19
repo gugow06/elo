@@ -6,6 +6,8 @@ import 'package:elo_app/telas/boas_vindas.dart';
 import 'package:elo_app/geo.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:elo_app/telas/perfil.dart';
+import 'package:elo_app/telas/documento_legal.dart';
+import 'package:elo_app/textos_legais.dart';
 import 'package:elo_app/widgets/comum.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -122,6 +124,24 @@ void main() {
     expect(Api.caminhoMural(brasil: true, perto: (latitude: -22.89, longitude: -47.05), raioKm: 30),
         '/mural?abrangencia=brasil&lat=-22.89&lon=-47.05&raio_km=30');
     expect(Api.caminhoMural(raioKm: 30), '/mural');
+  });
+
+  testWidgets('aceite dos termos: caixa marca e desmarca; os documentos têm seções', (tester) async {
+    var aceito = false;
+    await tester.pumpWidget(MaterialApp(
+      theme: temaElo(fontesGoogle: false),
+      home: Scaffold(body: StatefulBuilder(builder: (_, set) => CaixaAceite(aceito: aceito, aoMudar: (v) => set(() => aceito = v)))),
+    ));
+    expect(find.textContaining('Termos de uso', findRichText: true), findsOneWidget);
+    await tester.tap(find.byType(Checkbox));
+    await tester.pump();
+    expect(aceito, isTrue);
+
+    await tester.pumpWidget(MaterialApp(theme: temaElo(fontesGoogle: false), home: const DocumentoLegal(titulo: 'Política de privacidade', secoes: politicaPrivacidade)));
+    expect(find.text('1. Quem somos'), findsOneWidget);
+    expect(find.textContaining('LGPD'), findsWidgets);
+    expect(termosUso.any((s) => s.titulo == 'Excluir a conta'), isTrue);
+    expect(politicaPrivacidade.any((s) => s.paragrafos.any((p) => p.contains('Excluir minha conta'))), isTrue);
   });
 
   test('distância do pedido em texto', () {

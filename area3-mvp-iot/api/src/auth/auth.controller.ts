@@ -23,6 +23,7 @@ import { completarBairro, posicaoAproximadaDoBairro } from '../geo/bairros';
 import { consumirCodigo, gerarCodigo, mascararEmail } from './codigos';
 import { GoogleNaoConfigurado, IdentidadeGoogle, verificarTokenGoogle } from './google';
 import { emitirDesafio, emitirToken, lerDesafio, Perfil, Sessao } from './sessao';
+import { TERMOS_VERSAO } from '../perfil/termos';
 
 const telefone = z
   .string()
@@ -54,6 +55,9 @@ const Cadastro = z.object({
   // (arredondada a ~1 km). Não é guardada na conta.
   posicao: z.object({ latitude: z.number().min(-34).max(6), longitude: z.number().min(-74).max(-34) }).optional(),
   social: social.optional(),
+  // Aceite dos Termos de uso e da Política de privacidade (obrigatório para criar a conta)
+  aceite_termos: z.literal(true, 'Para criar a conta, aceite os Termos de uso e a Política de privacidade.'),
+  termos_versao: z.string().max(20).optional(),
 }).refine((d) => d.bairro_id || (d.municipio_id && d.bairro_nome), { message: 'Escolha a sua cidade e o seu bairro.', path: ['bairro_id'] });
 
 type LinhaUsuario = {
@@ -188,12 +192,12 @@ export class AuthController {
       }
 
       const { rows } = await c.query<LinhaUsuario>(
-        `INSERT INTO usuario (municipio_id, bairro_id, perfil, nome, telefone, email, email_confirmado_em)
-         VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING ${COLUNAS}`,
-        [bairro.rows[0].municipio_id, bairro.rows[0].id, 'cidadao', dados.nome, tel, emailConta, id ? new Date() : null],
+        `INSERT INTO usuario (municipio_id, bairro_id, perfil, nome, telefone, email, email_confirmado_em, termos_versao, termos_aceitos_em)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,now()) RETURNING ${COLUNAS}`,
+        [bairro.rows[0].municipio_id, bairro.rows[0].id, 'cidadao', dados.nome, tel, emailConta, id ? new Date() : null, TERMOS_VERSAO],
       );
       const u = rows[0];
-      await auditar(c, { usuarioId: u.id, acao: 'cadastro', entidade: 'usuario', entidadeId: u.id, detalhe: { via: id ? 'google' : 'email' } });
+      await auditar(c, { usuarioId: u.id, acao: 'cadastro', entidade: 'usuario', entidadeId: u.id, detalhe: { via: id ? 'google' : 'email', termos: TERMOS_VERSAO } });
 
       let resposta: Record<string, unknown>;
       if (id) {
