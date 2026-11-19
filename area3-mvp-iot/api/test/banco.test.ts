@@ -28,7 +28,7 @@ describe.skipIf(!url)('banco', () => {
 
   it('seed cria 2 municípios com bairros, pontos de coleta e todos os perfis', async () => {
     const { rows } = await pool.query(`
-      SELECT (SELECT count(*) FROM municipio)::int AS municipios,
+      SELECT (SELECT count(*) FROM municipio WHERE codigo_ibge IS NULL)::int AS municipios,
              (SELECT count(*) FROM bairro)::int AS bairros,
              (SELECT count(*) FROM ponto_coleta)::int AS pontos,
              (SELECT count(DISTINCT perfil) FROM usuario)::int AS perfis`);

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AuthController } from './auth/auth.controller';
 import { BancoModule } from './infra/banco.module';
 import { EventosService } from './infra/eventos.service';
+import { GeoController } from './geo/geo.controller';
 import { GestaoController, PoolOuro } from './gestao/gestao.controller';
 import { IotController, PontosController } from './iot/iot.controller';
 import { PerfilController } from './perfil/perfil.controller';
@@ -25,6 +26,7 @@ import { TecnicoController } from './tecnico/tecnico.controller';
     PontosController,
     GestaoController,
     PerfilController,
+    GeoController,
   ],
   providers: [EventosService, classificadorProvider, SolicitacoesService, SlaService, PoolOuro],
 })

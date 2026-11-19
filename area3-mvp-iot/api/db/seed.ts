@@ -4,6 +4,7 @@
  * Pode ser executado várias vezes: limpa o que criou antes.
  */
 import { criarPool } from './conexao';
+import { importarIbge } from './importar-ibge';
 import { sha256 } from '../src/infra/hash';
 
 /** Gera um CPF fictício com dígitos verificadores válidos a partir de 9 dígitos base. */
@@ -106,6 +107,8 @@ export async function seed(url?: string): Promise<void> {
     await usr(m2, campoCentro, 'tecnico', 'Patrícia Gomes', '912345678', '+5511990000009', '1983-12-12');
 
     await c.query('COMMIT');
+    // O TRUNCATE em municipio apagou também os municípios reais: importa de novo
+    await importarIbge(pool);
   } catch (erro) {
     await c.query('ROLLBACK');
     throw erro;

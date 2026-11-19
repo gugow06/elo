@@ -12,7 +12,8 @@
     "lint": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "db:migrate": "tsx db/migrar.ts",
-    "db:seed": "tsx db/seed.ts"
+    "db:seed": "tsx db/seed.ts",
+    "db:ibge": "tsx db/importar-ibge.ts"
   },
   "dependencies": {
     "@elo/triagem": "workspace:^",
