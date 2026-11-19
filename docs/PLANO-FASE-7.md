@@ -20,15 +20,15 @@ Planejamento das próximas entregas do app e do painel. A partir desta fase o EL
 
 | # | Decisão | Opções | Recomendação |
 | --- | --- | --- | --- |
-| F7-D1 | Provedor de mapa e de busca de endereço | **(a)** Google Maps SDK + Geocoding/Places (já existe projeto no Google Cloud; exige conta de faturamento, com cota gratuita mensal) · **(b)** `flutter_map` + tiles e geocodificação de um provedor OSM (MapTiler, Stadia ou LocationIQ, com chave e cota gratuita) · **(c)** OSM público (tile.openstreetmap.org + Nominatim) | **(b)**: sem cartão de crédito no protótipo, troca de provedor sem reescrever o app. **(c)** não serve para produção: a política de uso do OSM proíbe app com tráfego real e autocomplete no Nominatim público |
+| F7-D1 | Provedor de mapa e de busca de endereço | ✅ **Decidido: `flutter_map`, só com serviços gratuitos** | Tiles raster do OpenStreetMap com atribuição e User-Agent do ELO (uso baixo, permitido pela política do OSM). Busca de endereço pelo Photon/Nominatim públicos, sempre pelo proxy da API (cache e no máximo 1 consulta por segundo). URL dos tiles e do geocodificador em variável de ambiente, para trocar por um servidor próprio ou plano gratuito com chave (MapTiler) quando houver tráfego real |
 | F7-D2 | Base de municípios e bairros | Municípios fictícios do seed · lista real | **Lista real**: os 27 estados e 5.570 municípios da API pública do IBGE, com coordenadas. Bairro: lista cadastrada pelo gestor do município; onde não houver, o bairro vem do endereço (geocodificação reversa). Nenhum local ou pessoa fictícia em produção |
 | F7-D3 | Tipos de local | Ver seção 3.1 | Lista da seção 3.1 |
 | F7-D4 | Quem marca "item obtido" | Quem pediu · quem ajuda · os dois | **Quem pediu** marca "recebi"; quem ajuda marca "vou levar" e "levei". O check de quem pediu é o que conta |
 | F7-D5 | Quem vê a foto de perfil | Todo mundo · só a própria pessoa e a equipe do CRAS | **Só a própria pessoa e a equipe.** O plano proíbe foto de voluntário no pedido e no mural (expõe identidade); no pedido aparece só a contagem ("4 pessoas ajudando") |
-| F7-D6 | O que dá o selo "verificado" | Foto + SMS · gov.br | Dois níveis: **"Perfil completo"** (e-mail + telefone por SMS + foto) agora; **"Verificado"** só com gov.br (PRD §8.3), marcado como futuro junto com o MFA |
-| F7-D7 | Provedor de SMS | Twilio · Zenvia · AWS SNS · outro | Escolher por custo no Brasil. Até contratar, a verificação por SMS fica como "em breve" |
+| F7-D6 | O que torna o usuário "verificado" | ✅ **Decidido: verificação em duas etapas por e-mail ativada** | E-mail confirmado + verificação em duas etapas por e-mail ativa = selo "Verificado". SMS fora. MFA por aplicativo (TOTP) e gov.br ficam como "em breve" |
+| F7-D7 | Provedor de SMS | ✅ **Decidido: sem SMS** | Telefone fica só como contato, sem verificação. Nenhum provedor de SMS é contratado |
 | F7-D8 | Onde guardar as fotos | Disco da API · storage compatível com S3 (MinIO local, Cloudflare R2/S3 em produção) | **S3 compatível**: MinIO no `docker-compose` para desenvolvimento, R2/S3 em produção, com a mesma interface |
-| F7-D9 | Hospedagem | Computador da equipe · VPS (ex.: Hetzner, DigitalOcean, Oracle Free Tier) · PaaS (Railway, Render, Fly.io) | **VPS ou PaaS com domínio próprio e HTTPS** (Caddy ou Traefik). O mesmo domínio resolve o Resend (domínio verificado) e as origens do Google |
+| F7-D9 | Hospedagem | ✅ **Decidido: local por enquanto, código pronto para produção** | Roda no Docker Compose local. Tudo configurável por variável de ambiente (URLs, chaves, domínio), sem nenhum atalho de demonstração; HTTPS e domínio entram quando houver servidor |
 | F7-D10 | Município sem equipe do CRAS no ELO | Bloquear pedidos · aceitar só pedidos verdes · aceitar tudo | Aceitar o pedido, mas: verde vai ao mural; amarelo/vermelho mostram ao cidadão o contato do CRAS/CREAS do município e o Disque 100/188, porque não há técnico para triar |
 | F7-D11 | O que é "prioridade" na lista | Faixa de risco · tempo esperando | **Tempo esperando** ("aguardando há mais tempo"). A faixa de risco nunca é mostrada ao cidadão, e o mural só tem pedidos verdes |
 
@@ -119,18 +119,19 @@ Campos comuns: nome, tipo, endereço, latitude/longitude, bairro, horário, tele
 | Camada | Tarefa |
 | --- | --- |
 | App | Remover o texto "Pede e oferece ajuda no seu bairro" |
-| App | Editar perfil: nome, telefone (confirmação de novo por SMS), bairro |
+| App | Editar perfil: nome, telefone (só contato, sem verificação), bairro |
 | App | Foto: câmera ou galeria (`image_picker`), recorte quadrado e compressão no aparelho |
 | API | `POST /perfil/foto`: aceita só JPEG/PNG até 5 MB, **remove metadados EXIF (inclusive GPS)**, gera 512 px, guarda no storage (F7-D8) e serve por URL assinada de curta duração |
-| API | `POST /perfil/telefone/codigo` e `/confirmar`: confirmação por SMS (F7-D7); `telefone_verificado_em` no usuário |
-| App | Seção **Verificação da conta** no Perfil, como checklist: E-mail ✓ · Telefone por SMS · Foto de perfil · Autenticação em duas etapas (**em breve**) · gov.br (**em breve**) |
-| App | Selo "Perfil completo" quando os três primeiros estiverem feitos; o texto deixa claro que "Verificado" depende do gov.br (F7-D6) |
+| API | Verificação em duas etapas por e-mail: `POST /perfil/2fa/ativar` (confirma com um código enviado por e-mail) e `/desativar`; `dois_fatores_em` no usuário. Com ela ativa, todo login com Google pede também o código do e-mail; no login por e-mail o código já é o segundo passo, e a conta ganha o selo |
+| App | Seção **Verificação da conta** no Perfil, como checklist: E-mail confirmado ✓ · **Verificação em duas etapas por e-mail** (ativar) · Foto de perfil · Aplicativo autenticador (**em breve**) · gov.br (**em breve**) |
+| App | Selo **"Verificado"** no perfil quando a verificação em duas etapas por e-mail estiver ativa (F7-D6) |
 | Painel | O técnico vê a foto e o nível de verificação na ficha (apoio à triagem de voluntários) |
 
 ### Pronto quando
 - A foto aparece no perfil da própria pessoa e na ficha do técnico, e em nenhum outro lugar.
 - Uma foto tirada com GPS não guarda a localização no servidor; há teste para isso.
-- MFA e gov.br aparecem como "em breve" e não fazem nada ao tocar, além de explicar.
+- Ativar a verificação em duas etapas pede um código no e-mail e, depois disso, o perfil mostra "Verificado".
+- Aplicativo autenticador e gov.br aparecem como "em breve" e, ao tocar, só explicam.
 
 ## 6. Épico E: lista de pedidos com busca e filtros
 
@@ -166,15 +167,15 @@ Campos comuns: nome, tipo, endereço, latitude/longitude, bairro, horário, tele
 | App | Cadastro com cidade real (busca IBGE) e bairro (lista do município ou vindo do endereço) |
 | Painel | Remover as contas de demonstração da tela de entrar |
 | Dados (área 2) | Pipeline lê as tabelas reais; o gerador de dados sintéticos fica só para teste; dashboard com estado vazio quando ainda não há dados |
-| Infra | Hospedagem (F7-D9) com HTTPS, backup diário do banco, segredos fora do repositório; APK aponta para `https://`; remover `usesCleartextTraffic` |
+| Infra | Hospedagem local (F7-D9) com configuração de produção: tudo por variável de ambiente, segredos fora do repositório, backup do banco por script. HTTPS, domínio e `usesCleartextTraffic` desligado entram quando houver servidor |
 | E-mail | Domínio verificado no Resend (SPF/DKIM) e remetente do domínio |
 | Google | Publicar o app OAuth (sai do modo teste e da lista de usuários de teste); cliente Android com o SHA-1 da chave de release definitiva |
 | LGPD | Política de privacidade e termos de uso (o Google exige o link para publicar), consentimento no cadastro, exclusão de conta pelo app, logs sem dado pessoal |
 
 ### Pronto quando
 - Nenhuma tela ou resposta da API mostra código de acesso, conta de demonstração ou dado fictício.
-- Um usuário novo, de qualquer cidade do Brasil, cria conta com e-mail ou Google e recebe o código no próprio e-mail.
-- O app instalado fora da rede da equipe funciona (HTTPS público).
+- Um usuário novo, de qualquer cidade do Brasil, cria conta com e-mail ou Google e recebe o código no próprio e-mail (com o Resend em domínio verificado; sem domínio, só o e-mail dono da conta Resend recebe).
+- Trocar de ambiente (local → servidor) exige só mudar variáveis de ambiente, sem mexer no código.
 
 ## 8. Ordem e entregas
 
@@ -185,15 +186,15 @@ Cada linha é um PR.
 | Ordem | PR | Depende de | Tamanho |
 | --- | --- | --- | --- |
 | 1 | Perfil: tirar o texto e criar a seção "Verificação da conta" (só a interface, itens "em breve") | — | P |
-| 2 | Hospedagem com HTTPS e domínio; Resend com domínio verificado | F7-D9 | M |
+| 2 | Configuração de produção local: variáveis de ambiente, perfil do Docker Compose sem atalhos de demonstração, backup do banco | F7-D9 | P |
 | 3 | Base geográfica real: estados e municípios do IBGE, coordenadas, `local_rede`, `/geo/buscar` | F7-D1, F7-D2 | M |
 | 4 | Sair do modo demonstração: fixtures só de teste, cadastro com cidade real, primeiro gestor por comando, painel por e-mail | 2, 3 | G |
 | 5 | Painel: cadastro de locais | 3, F7-D3 | M |
 | 6 | App: mapa real, localização, busca e alcance entre municípios | 3 | G |
 | 7 | Lista de pedidos com busca por estado/cidade e ordenação | 3, F7-D11 | M |
 | 8 | Pedido com itens, vários ajudantes e checklist | F7-D4 | G |
-| 9 | Foto de perfil (storage) e confirmação de telefone por SMS | F7-D5, F7-D7, F7-D8 | M |
-| 10 | LGPD (política, termos, consentimento, exclusão de conta) e publicação do app OAuth no Google | 2 | M |
+| 9 | Foto de perfil (storage) e verificação em duas etapas por e-mail | F7-D5, F7-D8 | M |
+| 10 | LGPD (política, termos, consentimento, exclusão de conta); publicação do app OAuth no Google quando houver domínio | — | M |
 
 P: até 1 dia · M: 2 a 3 dias · G: 4 a 5 dias.
 
@@ -201,11 +202,10 @@ P: até 1 dia · M: 2 a 3 dias · G: 4 a 5 dias.
 
 | Risco | Efeito | Mitigação |
 | --- | --- | --- |
-| Custo e cota do provedor de mapa/geocodificação | Mapa para de carregar | Proxy com cache na API; provedor trocável (F7-D1) |
 | Ajudar outro município muda o isolamento entre municípios | Vazamento de dado entre prefeituras | Abrir só leitura pública do mural e a oferta; fila, ficha e painel continuam presos ao município, com teste |
 | Foto de perfil expõe identidade e localização | Risco LGPD | Visibilidade restrita (F7-D5), remoção de EXIF, URL assinada, exclusão junto com a conta |
 | Pedido aparecer em ponto exato por erro | Fere P3/RS-01 | Pedido não tem coordenada no banco; só o bairro. Teste que varre a resposta do `/mapa` |
-| SMS sem provedor contratado | Telefone não verifica em produção | Interface pronta; o item fica "em breve" até contratar (sem código no log em produção) |
+| Uso dos serviços gratuitos de mapa além da cota ou da política | Tiles ou busca bloqueados | Proxy com cache na API, limite de 1 busca/s, User-Agent do ELO; trocar a URL por servidor próprio ou plano gratuito com chave |
 | Dados reais sem base legal e sem política de privacidade | Risco LGPD e bloqueio do Google OAuth | PR 10 antes de divulgar o app; até lá, uso restrito ao grupo |
 | Município sem equipe do CRAS recebendo pedido urgente | Pedido grave sem ninguém olhando | F7-D10: orientação com contato do CRAS e Disque 100/188 |
 | Mudanças da fase 7 quebrarem a versão entregue à FIAP | Avaliação usa versão diferente | Tag `entrega-fiap` antes de qualquer merge |
