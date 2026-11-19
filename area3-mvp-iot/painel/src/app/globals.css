@@ -1,0 +1,81 @@
+@import "tailwindcss";
+
+/*
+ * ELO Design System — tokens (ver docs/PLANO-IMPLEMENTACAO.md, seção 3)
+ * Cores da marca vêm dos SVGs do logo. Pares texto/fundo escolhidos para contraste ≥ 4,5:1.
+ */
+@theme {
+  --font-sans: var(--font-nunito), ui-sans-serif, system-ui, sans-serif;
+
+  --color-brand-900: #003b2e; /* logo, títulos, botão primário (~13:1 no branco) */
+  --color-brand-700: #006b52; /* links e texto verde (~6,5:1) */
+  --color-brand-600: #078d6c; /* ícones e preenchimentos (só gráfico ou texto grande) */
+  --color-brand-100: #dff3ea; /* fundo "Pedir ajuda", status em andamento */
+  --color-brand-50: #f1f9f5;
+  --color-accent-500: #ffb000; /* pingo do logo, tag de categoria (nunca texto branco em cima) */
+  --color-accent-100: #fff1cc;
+
+  --color-fundo: #f6f8f5; /* fundo da tela, levemente quente */
+  --color-superficie: #ffffff;
+  --color-borda: #e3e8e4;
+  --color-texto: #14231d;
+  --color-texto-2: #4a5a53; /* secundário, ≥ 4,5:1 no branco */
+
+  --color-tipo-pedido: #078d6c;
+  --color-tipo-pedido-claro: #dff3ea;
+  --color-tipo-voluntario: #1d5fbf;
+  --color-tipo-voluntario-claro: #e3eefc;
+  --color-tipo-servico: #6b3fb5;
+  --color-tipo-servico-claro: #efe7fb;
+  --color-tipo-oportunidade: #b4560a;
+  --color-tipo-oportunidade-claro: #fdebd6;
+
+  --color-risco-verde: #0f6b3d;
+  --color-risco-verde-claro: #ddf3e6;
+  --color-risco-amarela: #7a5200;
+  --color-risco-amarela-claro: #fff1cc;
+  --color-risco-vermelha: #a3171c;
+  --color-risco-vermelha-claro: #fde4e4;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+
+  --shadow-e1: 0 1px 2px rgb(0 59 46 / 0.06), 0 2px 8px rgb(0 59 46 / 0.06);
+  --shadow-e2: 0 4px 16px rgb(0 59 46 / 0.12);
+}
+
+html {
+  font-size: 100%; /* respeita a preferência do usuário; tudo em rem */
+}
+
+body {
+  background: var(--color-fundo);
+  color: var(--color-texto);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+}
+
+/* Foco sempre visível (WCAG 2.4.7) */
+:focus-visible {
+  outline: 3px solid var(--color-brand-700);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.sr-only-focusable:not(:focus) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

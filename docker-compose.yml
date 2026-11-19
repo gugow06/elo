@@ -44,6 +44,18 @@ services:
       timeout: 3s
       retries: 20
 
+  painel:
+    build:
+      context: .
+      dockerfile: area3-mvp-iot/painel/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3333}
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+
   pipeline:
     build:
       context: .
