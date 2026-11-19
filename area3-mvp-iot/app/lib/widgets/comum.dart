@@ -95,9 +95,12 @@ class CartaoPedido extends StatelessWidget {
     final bairro = pedido['bairro'] as String;
     // Na lista de todos os pedidos, que pode misturar cidades, mostra também cidade e UF
     final onde = mostrarCidade && pedido['municipio'] != null ? 'Bairro $bairro · ${pedido['municipio']} - ${pedido['uf']}' : 'Bairro $bairro';
+    // Distância até o bairro do pedido, quando a lista veio pela localização do aparelho
+    final km = pedido['distancia_km'] as num?;
+    final quando = km == null ? tempoRelativo(pedido['criado_em']) : '${distanciaTexto(km)} · ${tempoRelativo(pedido['criado_em'])}';
     return Cartao(
       onTap: onTap,
-      rotulo: '${categorias[cat]}. ${pedido['titulo']}. $onde. Publicado ${tempoRelativo(pedido['criado_em'])}. Aguardando voluntário.',
+      rotulo: '${categorias[cat]}. ${pedido['titulo']}. $onde.${km == null ? '' : ' ${distanciaTexto(km)} de você.'} Publicado ${tempoRelativo(pedido['criado_em'])}. Aguardando voluntário.',
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           TagCategoria(cat),
@@ -117,11 +120,18 @@ class CartaoPedido extends StatelessWidget {
         Row(children: [
           const Selo('Aguardando voluntário'),
           const Spacer(),
-          Text(tempoRelativo(pedido['criado_em']), style: t.bodyMedium?.copyWith(fontSize: 13)),
+          Text(quando, style: t.bodyMedium?.copyWith(fontSize: 13)),
         ]),
       ]),
     );
   }
+}
+
+/// "a 800 m", "a 2,4 km", "a 35 km" (distância aproximada até o bairro do pedido).
+String distanciaTexto(num km) {
+  if (km < 1) return 'a ${((km * 1000) / 100).round().clamp(1, 9) * 100} m';
+  if (km < 10) return 'a ${km.toStringAsFixed(1).replaceAll('.', ',')} km';
+  return 'a ${km.round()} km';
 }
 
 void avisar(BuildContext context, String mensagem, {bool erro = false}) {

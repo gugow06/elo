@@ -208,8 +208,8 @@ class Api {
 
   // ---------- rede cidadã
   Future<List<dynamic>> mural({String? bairro, String? uf, String? municipio, String? categoria, String? ordem, int? pagina, bool brasil = false,
-          ({double latitude, double longitude})? perto}) async =>
-      await _req('GET', caminhoMural(bairro: bairro, uf: uf, municipio: municipio, categoria: categoria, ordem: ordem, pagina: pagina, brasil: brasil, perto: perto)) as List;
+          ({double latitude, double longitude})? perto, int? raioKm}) async =>
+      await _req('GET', caminhoMural(bairro: bairro, uf: uf, municipio: municipio, categoria: categoria, ordem: ordem, pagina: pagina, brasil: brasil, perto: perto, raioKm: raioKm)) as List;
 
   /// Posição do aparelho → cidade do IBGE e bairro (criação de conta). A API não guarda a posição.
   Future<Map<String, dynamic>> ondeEstou(double latitude, double longitude) async => Map<String, dynamic>.from(
@@ -217,8 +217,9 @@ class Api {
 
   /// Monta /mural com os filtros (sem filtro: o município de quem consulta; [brasil]: todo o Brasil).
   /// [perto]: localização aproximada do aparelho, só para ordenar "mais perto de mim".
+  /// [raioKm]: com [perto], só pedidos até essa distância.
   static String caminhoMural({String? bairro, String? uf, String? municipio, String? categoria, String? ordem, int? pagina, bool brasil = false,
-      ({double latitude, double longitude})? perto}) {
+      ({double latitude, double longitude})? perto, int? raioKm}) {
     final q = {
       if (brasil && uf == null && municipio == null) 'abrangencia': 'brasil',
       'bairro': ?bairro,
@@ -229,6 +230,7 @@ class Api {
       if (pagina != null && pagina > 0) 'pagina': '$pagina',
       if (perto != null) 'lat': '${perto.latitude}',
       if (perto != null) 'lon': '${perto.longitude}',
+      if (perto != null && raioKm != null) 'raio_km': '$raioKm',
     };
     return q.isEmpty ? '/mural' : Uri(path: '/mural', queryParameters: q).toString();
   }

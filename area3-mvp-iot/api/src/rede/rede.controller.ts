@@ -25,6 +25,8 @@ const FiltroMural = z.object({
   // Localização do aparelho (aproximada), só para ordenar por distância; não é guardada
   lat: z.coerce.number().min(-34).max(6).optional(),
   lon: z.coerce.number().min(-74).max(-34).optional(),
+  // Com lat/lon: só pedidos até essa distância (Início: "perto de você")
+  raio_km: z.coerce.number().min(1).max(500).optional(),
   pagina: z.coerce.number().int().min(0).max(1000).default(0),
   limite: z.coerce.number().int().min(1).max(50).default(30),
 });
@@ -39,9 +41,11 @@ const ORDENS = {
   aguardando: 's.criado_em ASC',
 } as const;
 
-/** Mais perto de onde o aparelho está: distância até o bairro (ou o centro da cidade) do pedido. */
-const ORDEM_DISTANCIA =
-  '(coalesce(b.latitude, m.latitude) - $10::float) ^ 2 + ((coalesce(b.longitude, m.longitude) - $11::float) * cos(radians($10::float))) ^ 2 NULLS LAST, s.criado_em';
+/** Distância (km, aproximada) de onde o aparelho está até o bairro (ou o centro da cidade) do pedido. */
+const SQL_DISTANCIA =
+  '(111.32 * sqrt((coalesce(b.latitude, m.latitude) - $10::float) ^ 2 + ((coalesce(b.longitude, m.longitude) - $11::float) * cos(radians($10::float))) ^ 2))';
+/** Mais perto de onde o aparelho está. */
+const ORDEM_DISTANCIA = `${SQL_DISTANCIA} NULLS LAST, s.criado_em`;
 
 /**
  * Rede cidadã: mural do bairro, oferta de ajuda e devolutiva.
@@ -66,11 +70,13 @@ export class RedeController {
   async mural(@SessaoAtual() sessao: Sessao, @Query() query: unknown) {
     const f = validar(FiltroMural, query);
     const municipio = f.municipio ?? (f.uf || f.abrangencia === 'brasil' ? null : sessao.municipioId);
+    const perto = f.lat != null && f.lon != null;
     const { rows } = await this.pool.query(
       `SELECT s.id, s.titulo, s.categoria, s.criado_em, s.status,
               b.nome AS bairro, b.slug AS bairro_slug, m.nome AS municipio, m.uf,
               p.nome AS ponto_coleta, p.endereco AS ponto_coleta_endereco,
-              round(extract(epoch FROM now() - s.criado_em) / 3600, 1) AS horas_no_mural, ${sqlItens('$4')}
+              round(extract(epoch FROM now() - s.criado_em) / 3600, 1) AS horas_no_mural, ${sqlItens('$4')},
+              ${perto ? `round(${SQL_DISTANCIA}::numeric, 1)::float` : 'NULL::float'} AS distancia_km
        FROM solicitacao s
        JOIN bairro b ON b.id = s.bairro_id
        JOIN municipio m ON m.id = s.municipio_id
@@ -82,10 +88,11 @@ export class RedeController {
          AND ($6::categoria_pedido IS NULL OR s.categoria = $6)
          AND s.cidadao_id <> $4 AND ($3::uuid IS NULL OR true) AND ($9::uuid IS NULL OR true)
          AND ($10::float IS NULL OR true) AND ($11::float IS NULL OR true)
-       ORDER BY ${f.ordem === 'bairro' && f.lat != null && f.lon != null ? ORDEM_DISTANCIA : ORDENS[f.ordem]}
+         AND ${perto && f.raio_km != null ? `${SQL_DISTANCIA} <= $12::float` : '($12::float IS NULL OR true)'}
+       ORDER BY ${f.ordem === 'bairro' && perto ? ORDEM_DISTANCIA : ORDENS[f.ordem]}
        LIMIT $7 OFFSET $8`,
       [municipio, f.bairro ?? null, sessao.bairroId, sessao.usuarioId, f.uf ?? null, f.categoria ?? null, f.limite, f.pagina * f.limite, sessao.municipioId,
-        f.lat ?? null, f.lon ?? null],
+        f.lat ?? null, f.lon ?? null, f.raio_km ?? null],
     );
     return rows;
   }

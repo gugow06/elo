@@ -16,8 +16,16 @@ class Localizacao {
   /// Última posição obtida nesta sessão do app.
   ({double latitude, double longitude})? get ultima => _ultima;
 
+  Future<({double latitude, double longitude})?>? _emAndamento;
+
   /// [pedir]: mostra o pedido de permissão do sistema, se ainda não foi respondido.
-  Future<({double latitude, double longitude})?> obter({required bool pedir}) async {
+  /// Telas que pedem ao mesmo tempo (Início e Mapa) recebem a mesma resposta.
+  Future<({double latitude, double longitude})?> obter({required bool pedir}) {
+    final f = _emAndamento ??= _obter(pedir).whenComplete(() => _emAndamento = null);
+    return f;
+  }
+
+  Future<({double latitude, double longitude})?> _obter(bool pedir) async {
     try {
       if (!await Geolocator.isLocationServiceEnabled()) return null;
       var perm = await Geolocator.checkPermission();

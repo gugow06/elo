@@ -96,5 +96,13 @@ describe('localização do aparelho (com a permissão da pessoa)', () => {
     expect(perto[0].id).toBe(p.id);
     const semLocal = (await app.inject({ method: 'GET', url: '/mural?abrangencia=brasil', headers: auth(ana) })).json() as { id: string; municipio: string }[];
     expect(semLocal[0].municipio).toBe('São Bento do Vale'); // sem localização: a cidade da conta primeiro
+
+    // Início: distância de cada pedido e só os que estão no raio
+    const comDistancia = perto as unknown as { id: string; distancia_km: number }[];
+    expect(comDistancia[0].distancia_km).toBeLessThan(1);
+    const noRaio = (await app.inject({ method: 'GET', url: `/mural?abrangencia=brasil&lat=${CAMBUI.lat}&lon=${CAMBUI.lon}&raio_km=30`, headers: auth(ana) })).json() as { id: string; distancia_km: number }[];
+    expect(noRaio.map((x) => x.id)).toContain(p.id);
+    expect(noRaio.every((x) => x.distancia_km <= 30)).toBe(true);
+    expect(semLocal.every((x) => (x as unknown as { distancia_km: null }).distancia_km === null)).toBe(true);
   });
 });

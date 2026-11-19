@@ -118,6 +118,17 @@ void main() {
     expect(Api.caminhoMural(uf: 'BA', ordem: 'aguardando'), '/mural?uf=BA&ordem=aguardando');
     expect(Api.caminhoMural(municipio: 'abc', categoria: 'roupa', pagina: 2), '/mural?municipio=abc&categoria=roupa&pagina=2');
     expect(Api.caminhoMural(pagina: 0), '/mural');
+    // Início: só pedidos no raio, e o raio só vale com a localização
+    expect(Api.caminhoMural(brasil: true, perto: (latitude: -22.89, longitude: -47.05), raioKm: 30),
+        '/mural?abrangencia=brasil&lat=-22.89&lon=-47.05&raio_km=30');
+    expect(Api.caminhoMural(raioKm: 30), '/mural');
+  });
+
+  test('distância do pedido em texto', () {
+    expect(distanciaTexto(0.04), 'a 100 m');
+    expect(distanciaTexto(0.8), 'a 800 m');
+    expect(distanciaTexto(2.44), 'a 2,4 km');
+    expect(distanciaTexto(35.4), 'a 35 km');
   });
 
   testWidgets('cartão mostra a cidade só na lista de todos os pedidos', (tester) async {

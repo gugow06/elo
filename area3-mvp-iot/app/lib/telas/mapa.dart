@@ -108,7 +108,7 @@ class _MapaRedeState extends State<MapaRede> {
     if (eu != null) {
       _eu = eu;
       _inicio = eu;
-      _zoomInicio = 14;
+      _zoomInicio = 15;
     }
     if (!mounted) return;
     setState(() {});
@@ -348,16 +348,7 @@ class _MapaRedeState extends State<MapaRede> {
                           alignment: Alignment.topCenter,
                           child: _Pino(marca: m, selecionado: identical(m, _selecionado), aoTocar: () => setState(() => _selecionado = m)),
                         ),
-                      if (_eu != null)
-                        Marker(
-                          point: _eu!,
-                          width: 22,
-                          height: 22,
-                          child: Semantics(
-                            label: 'Você está aqui',
-                            child: Container(decoration: BoxDecoration(color: EloCores.voluntario, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 3))),
-                          ),
-                        ),
+                      if (_eu != null) Marker(point: _eu!, width: 140, height: 120, child: const _VoceEstaAqui()),
                     ]),
                     RichAttributionWidget(
                       attributions: [TextSourceAttribution('© colaboradores do OpenStreetMap')],
@@ -397,6 +388,42 @@ class _MapaRedeState extends State<MapaRede> {
       _mapa.move(m.ponto, 16);
     }
   }
+}
+
+/// Onde o aparelho está: ponto azul com halo e o rótulo "Você está aqui" (o ponto fica no centro do marcador).
+class _VoceEstaAqui extends StatelessWidget {
+  const _VoceEstaAqui();
+  static const azul = Color(0xFF1A73E8);
+  @override
+  Widget build(BuildContext context) => Semantics(
+        label: 'Você está aqui',
+        excludeSemantics: true,
+        child: Stack(alignment: Alignment.center, clipBehavior: Clip.none, children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(color: azul.withValues(alpha: 0.18), shape: BoxShape.circle, border: Border.all(color: azul.withValues(alpha: 0.35))),
+          ),
+          Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              color: azul,
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 3),
+              boxShadow: const [BoxShadow(color: Color(0x55000000), blurRadius: 4)],
+            ),
+          ),
+          Positioned(
+            top: 0,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(999), boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 4)]),
+              child: const Text('Você está aqui', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: azul)),
+            ),
+          ),
+        ]),
+      );
 }
 
 class _Pino extends StatelessWidget {
