@@ -71,6 +71,10 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>O ELO usa uma foto da sua galeria só se você escolher uma foto de perfil.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>O ELO usa a câmera só se você quiser tirar uma foto de perfil.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>O ELO usa a sua localização só no celular, para abrir o mapa perto de você e mostrar a distância até os locais. Ela não é enviada nem guardada.</string>
 </dict>

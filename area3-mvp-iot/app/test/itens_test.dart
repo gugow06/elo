@@ -1,5 +1,6 @@
 // Componentes do pedido com itens: escolher o que levar, checklist de quem pediu e contagem de ajudantes.
 import 'package:elo_app/tema.dart';
+import 'package:elo_app/widgets/avatares.dart';
 import 'package:elo_app/widgets/itens.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -47,10 +48,26 @@ void main() {
     semantica.dispose();
   });
 
-  testWidgets('contagem de quem ajuda, sem nomes', (tester) async {
+  testWidgets('contagem de quem ajuda, sem lista de pessoas', (tester) async {
     await tester.pumpWidget(_app(const Column(children: [PessoasAjudando(0), PessoasAjudando(1), PessoasAjudando(4)])));
     expect(find.text('Ninguém ajudando ainda'), findsOneWidget);
     expect(find.text('1 pessoa ajudando'), findsOneWidget);
     expect(find.text('4 pessoas ajudando'), findsOneWidget);
+  });
+
+  testWidgets('quem ajuda aparece em fotos sobrepostas, com iniciais sem foto e "+N" para o resto', (tester) async {
+    const ajudantes = <Ajudante>[(nome: 'Cláudia', foto: null), (nome: 'Roberto', foto: null)];
+    await tester.pumpWidget(_app(const PessoasAjudando(7, ajudantes: ajudantes)));
+    expect(find.text('7 pessoas ajudando'), findsOneWidget);
+    expect(find.text('C'), findsOneWidget);
+    expect(find.text('R'), findsOneWidget);
+    expect(find.text('+5'), findsOneWidget);
+    expect(find.bySemanticsLabel('7 pessoas ajudando: Cláudia, Roberto e outras'), findsOneWidget);
+  });
+
+  test('iniciais do nome', () {
+    expect(iniciais('Ana Paula Ribeiro'), 'AR');
+    expect(iniciais('cláudia'), 'C');
+    expect(iniciais('  '), '?');
   });
 }

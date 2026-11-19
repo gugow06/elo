@@ -41,11 +41,11 @@ Tudo está na branch **`feat/fase-7`**, só em commits locais: **sem push e sem 
 
 ## Pendente: precisa de você
 
-1. **Foto de perfil (F7-D5 e F7-D8).** Quem vê a foto (recomendo: só a pessoa e a equipe do CRAS) e onde guardar (recomendo: storage compatível com S3, MinIO no local). Não implementei sem isso.
+1. ~~Foto de perfil~~ **Feito na manhã de 19/11** com a sua decisão: todos veem a foto; o pedido mostra quem ajuda em fotos sobrepostas com "+N" (primeiro nome + foto). A foto fica no Postgres (tabela `foto_usuario`), reduzida para 512 px no celular.
 2. **Município sem equipe do CRAS (F7-D10).** O que fazer com pedido amarelo/vermelho de cidade onde ninguém usa o painel.
 3. **Dados de desenvolvimento no mapa.** Os bairros do seed são fictícios e **não têm coordenadas**, então **o mapa abre vazio** com os dados de teste. Para ver marcadores, cadastre um local no painel (gestor) perto de você. Não inventei posição real para dado fictício.
 4. **LGPD e Google.** Política de privacidade, termos, consentimento e exclusão de conta precisam de texto; publicar o app OAuth no Google precisa disso e de domínio.
-5. **Domínio para o Resend.** Sem domínio verificado, o código só chega no e-mail dono da conta Resend.
+5. ~~Domínio para o Resend~~: fora da fase de testes (decisão sua). Sem domínio, o código só chega no e-mail dono da conta Resend.
 6. **Revisar e aprovar** antes de push/PR. O PR #9 continua aberto e a fase 7 está empilhada sobre ele.
 
 ## Como testar

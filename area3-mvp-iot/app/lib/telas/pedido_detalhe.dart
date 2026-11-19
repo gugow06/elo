@@ -78,7 +78,7 @@ class _PedidoDetalheState extends State<PedidoDetalhe> {
           ]),
         ),
         const SizedBox(height: 12),
-        PessoasAjudando((p['pessoas_ajudando'] as num?)?.toInt() ?? 0),
+        PessoasAjudando.doPedido(p),
         if (_itens.isNotEmpty && _assumido == null) ...[
           const SizedBox(height: 20),
           Text('O que é necessário?', style: t.titleMedium),

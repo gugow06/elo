@@ -70,7 +70,7 @@ void main() {
     await tester.pumpWidget(secao({'email_confirmado': true, 'dois_fatores': false, 'verificado': false}));
     expect(find.text('Verificação em duas etapas por e-mail'), findsOneWidget);
     expect(find.text('Ativar'), findsOneWidget);
-    expect(find.text('Em breve'), findsNWidgets(3));
+    expect(find.text('Em breve'), findsNWidgets(2)); // aplicativo autenticador e gov.br (a foto já existe, no topo do Perfil)
     expect(find.textContaining('SMS'), findsNothing);
     await tester.tap(find.text('Ativar'));
     expect(toques, 1);

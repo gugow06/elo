@@ -7,12 +7,12 @@ O app segue o mockup oficial ([`images/representacao das telas elo.png`](../../i
 | 1 | Boas-vindas e login | Tela 1 | "Entrar na minha conta" (e-mail + código enviado pelo Resend, sem senha), "Criar uma conta" e "Ou continue com" Google |
 | 2 | Início: saudação, busca, 4 atalhos, pedidos próximos | Tela 2 | Atalho "Oportunidades" marcado como "em breve" (fase 3) |
 | 3 | Mapa da rede com alternativa em lista | Tela 3 | Mapa real (OpenStreetMap, `flutter_map`), aberto onde a pessoa está ou no bairro do cadastro; busca de cidade, estado ou endereço para ajudar em qualquer lugar. Locais da rede no endereço; pedidos **agregados por bairro**, nunca pino na casa. Lista com distância e direção por extenso; lista é o padrão com leitor de tela |
-| 4 | Pedido de ajuda + "Quero ajudar" | Tela 4 | Itens do pedido: cada pessoa escolhe o que vai levar; "N pessoas ajudando" sem nomes nem fotos. Mostra o protocolo para digitar no ponto de coleta |
+| 4 | Pedido de ajuda + "Quero ajudar" | Tela 4 | Itens do pedido: cada pessoa escolhe o que vai levar; quem está ajudando em fotos sobrepostas com "+N" (primeiro nome e foto; sem foto, as iniciais). Mostra o protocolo para digitar no ponto de coleta |
 | 4b | Todos os pedidos | — | Busca por estado ou cidade, categoria e ordem (meu bairro primeiro, mais recentes, aguardando há mais tempo) |
 | 5 | Pedir ajuda + confirmação com protocolo | — | O cidadão nunca vê a faixa de risco |
 | 6 | Meus pedidos / Minhas ajudas (no Perfil) | — | Etapas do pedido, checklist "Marque o que você já recebeu" e a devolutiva "Sua ajuda chegou" para cada pessoa que ajudou. Qualquer usuário pede e oferece ajuda (não assume o próprio pedido) |
 | 7 | Mensagens (aba da barra inferior) | — | — |
-| 8 | Perfil | — | Verificação da conta: duas etapas por e-mail = selo "Verificado"; foto, aplicativo autenticador e gov.br "em breve". Explica o uso dos dados (LGPD) |
+| 8 | Perfil | — | Verificação da conta: duas etapas por e-mail = selo "Verificado"; foto de perfil (galeria ou câmera, todos veem); aplicativo autenticador e gov.br "em breve". Explica o uso dos dados (LGPD) |
 
 ## Acessibilidade
 

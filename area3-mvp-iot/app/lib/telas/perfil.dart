@@ -1,7 +1,9 @@
+import 'package:image_picker/image_picker.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../api.dart';
 import '../tema.dart';
+import '../widgets/avatares.dart';
 import '../widgets/comum.dart';
 import 'acompanhar.dart';
 import 'boas_vindas.dart';
@@ -15,6 +17,7 @@ class Perfil extends StatefulWidget {
 
 class _PerfilState extends State<Perfil> {
   Map<String, dynamic>? _perfil;
+  bool _enviandoFoto = false;
 
   @override
   void initState() {
@@ -28,6 +31,53 @@ class _PerfilState extends State<Perfil> {
       if (mounted) setState(() => _perfil = p);
     } on ErroApi catch (e) {
       if (mounted) avisar(context, e.mensagem, erro: true);
+    }
+  }
+
+  /// Escolhe a foto (galeria ou câmera), reduz para 512 px no aparelho e envia. Também permite remover.
+  Future<void> _trocarFoto() async {
+    final temFoto = _perfil?['foto'] != null;
+    final escolha = await showModalBottomSheet<String>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 16, 20, 4),
+            child: Text('Todas as pessoas do ELO veem a sua foto, inclusive nos pedidos em que você ajuda.'),
+          ),
+          ListTile(leading: const Icon(Icons.photo_library_outlined), title: const Text('Escolher da galeria'), onTap: () => Navigator.pop(ctx, 'galeria')),
+          ListTile(leading: const Icon(Icons.photo_camera_outlined), title: const Text('Tirar uma foto'), onTap: () => Navigator.pop(ctx, 'camera')),
+          if (temFoto)
+            ListTile(leading: const Icon(Icons.delete_outline, color: EloCores.erro), title: const Text('Remover foto'), onTap: () => Navigator.pop(ctx, 'remover')),
+        ]),
+      ),
+    );
+    if (escolha == null || !mounted) return;
+    try {
+      Map<String, dynamic> p;
+      if (escolha == 'remover') {
+        setState(() => _enviandoFoto = true);
+        p = await Api.i.removerFoto();
+      } else {
+        final img = await ImagePicker().pickImage(
+          source: escolha == 'camera' ? ImageSource.camera : ImageSource.gallery,
+          maxWidth: 512,
+          maxHeight: 512,
+          imageQuality: 80,
+          preferredCameraDevice: CameraDevice.front,
+        );
+        if (img == null || !mounted) return;
+        setState(() => _enviandoFoto = true);
+        p = await Api.i.enviarFoto(await img.readAsBytes());
+      }
+      if (mounted) setState(() => _perfil = p);
+      if (mounted) avisar(context, escolha == 'remover' ? 'Foto removida.' : 'Foto de perfil atualizada.');
+    } on ErroApi catch (e) {
+      if (mounted) avisar(context, e.mensagem, erro: true);
+    } catch (_) {
+      if (mounted) avisar(context, 'Não foi possível abrir a foto. Tente outra imagem.', erro: true);
+    } finally {
+      if (mounted) setState(() => _enviandoFoto = false);
     }
   }
 
@@ -69,7 +119,29 @@ class _PerfilState extends State<Perfil> {
         child: ListView(padding: const EdgeInsets.all(20), children: [
           Cartao(
             child: Row(children: [
-              const CircleAvatar(radius: 30, backgroundColor: EloCores.brand100, child: Icon(Icons.person, color: EloCores.brand700, size: 32)),
+              Semantics(
+                button: true,
+                label: p?['foto'] == null ? 'Adicionar foto de perfil' : 'Trocar foto de perfil',
+                excludeSemantics: true,
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: p == null || _enviandoFoto ? null : _trocarFoto,
+                  child: Stack(children: [
+                    AvatarPessoa(nome: u.nome, foto: p?['foto'] as String?, raio: 34),
+                    if (_enviandoFoto)
+                      const Positioned.fill(child: CircularProgressIndicator(strokeWidth: 3)),
+                    Positioned(
+                      right: 0,
+                      bottom: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(color: EloCores.brand700, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 2)),
+                        child: const Icon(Icons.photo_camera, size: 14, color: Colors.white),
+                      ),
+                    ),
+                  ]),
+                ),
+              ),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -171,7 +243,6 @@ class SecaoVerificacao extends StatelessWidget {
           feito: dois,
           acao: TextButton(onPressed: aoAlternarDoisFatores, child: Text(dois ? 'Desativar' : 'Ativar')),
         ),
-        const _ItemVerificacao(icone: Icons.photo_camera_outlined, titulo: 'Foto de perfil', detalhe: 'Em breve'),
         const _ItemVerificacao(icone: Icons.phonelink_lock_outlined, titulo: 'Aplicativo autenticador', detalhe: 'Em breve'),
         const _ItemVerificacao(icone: Icons.account_balance_outlined, titulo: 'Conta gov.br', detalhe: 'Em breve'),
       ]),

@@ -1,4 +1,5 @@
 import { Pool, PoolClient } from 'pg';
+import { sqlUrlFoto } from '../perfil/fotos';
 
 /** Itens sugeridos pela categoria da triagem. Categorias "inteiras" viram um item só (o título). */
 export const ITENS_POR_CATEGORIA: Record<string, string[]> = {
@@ -24,6 +25,8 @@ export async function gerarItens(db: Pool | PoolClient, solicitacaoId: string, c
  * Itens do pedido com a situação de cada um, sem dizer quem leva:
  * aberto (ninguém leva), comprometido (alguém vai levar), obtido (quem pediu já recebeu).
  * `meu` = este usuário está levando o item.
+ * `ajudantes` = primeiro nome e foto de quem está ajudando (até 5; o total vem em `pessoas_ajudando`).
+ * Decisão F7-D5: a foto de perfil é pública e o pedido mostra quem ajuda.
  */
 export const SQL_ITENS = `
   coalesce((
@@ -36,7 +39,16 @@ export const SQL_ITENS = `
     ) ORDER BY i.ordem)
     FROM item_solicitacao i WHERE i.solicitacao_id = s.id
   ), '[]'::json) AS itens,
-  (SELECT count(*)::int FROM oferta o WHERE o.solicitacao_id = s.id AND o.ativa) AS pessoas_ajudando`;
+  (SELECT count(*)::int FROM oferta o WHERE o.solicitacao_id = s.id AND o.ativa) AS pessoas_ajudando,
+  coalesce((
+    SELECT json_agg(json_build_object('nome', a.nome, 'foto', a.foto) ORDER BY a.criado_em)
+    FROM (
+      SELECT split_part(u.nome, ' ', 1) AS nome, ${sqlUrlFoto('f.id')} AS foto, o.criado_em
+      FROM oferta o JOIN usuario u ON u.id = o.voluntario_id LEFT JOIN foto_usuario f ON f.usuario_id = u.id
+      WHERE o.solicitacao_id = s.id AND o.ativa
+      ORDER BY o.criado_em LIMIT 5
+    ) a
+  ), '[]'::json) AS ajudantes`;
 
 /** SQL_ITENS com o parâmetro do usuário no lugar de $USUARIO. */
 export const sqlItens = (parametroUsuario: string) => SQL_ITENS.replaceAll('$USUARIO', parametroUsuario);

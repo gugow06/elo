@@ -78,12 +78,16 @@ class Api {
 
   Future<dynamic> _req(String metodo, String caminho, [Map<String, dynamic>? corpo]) async {
     final uri = Uri.parse('$apiUrl$caminho');
-    final cab = {'content-type': 'application/json', if (_token != null) 'authorization': 'Bearer $_token'};
+    // Sem corpo (GET/DELETE), sem content-type: o Fastify recusa JSON vazio
+    final temCorpo = metodo == 'POST' || metodo == 'PATCH' || metodo == 'PUT';
+    final cab = {if (temCorpo) 'content-type': 'application/json', if (_token != null) 'authorization': 'Bearer $_token'};
     late http.Response r;
     try {
       r = switch (metodo) {
         'POST' => await http.post(uri, headers: cab, body: jsonEncode(corpo ?? {})).timeout(const Duration(seconds: 20)),
         'PATCH' => await http.patch(uri, headers: cab, body: jsonEncode(corpo ?? {})).timeout(const Duration(seconds: 20)),
+        'PUT' => await http.put(uri, headers: cab, body: jsonEncode(corpo ?? {})).timeout(const Duration(seconds: 40)),
+        'DELETE' => await http.delete(uri, headers: cab).timeout(const Duration(seconds: 20)),
         _ => await http.get(uri, headers: cab).timeout(const Duration(seconds: 20)),
       };
     } catch (_) {
@@ -128,6 +132,12 @@ class Api {
 
   // ---------- perfil e verificação da conta
   Future<Map<String, dynamic>> perfil() async => Map<String, dynamic>.from(await _req('GET', '/perfil'));
+
+  /// Envia a foto de perfil (já reduzida no aparelho). Todos veem a foto (F7-D5).
+  Future<Map<String, dynamic>> enviarFoto(List<int> bytes) async =>
+      Map<String, dynamic>.from(await _req('PUT', '/perfil/foto', {'imagem': base64Encode(bytes)}));
+
+  Future<Map<String, dynamic>> removerFoto() async => Map<String, dynamic>.from(await _req('DELETE', '/perfil/foto'));
   /// Envia o código ao e-mail; devolve o e-mail mascarado e, em modo demonstração, o código.
   Future<({String email, String? codigoDemo})> codigoDoisFatores() async {
     final r = await _req('POST', '/perfil/2fa/codigo');

@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { AppModule } from '../src/app.module';
+import { LIMITE_CORPO } from '../src/perfil/fotos';
 import { migrar } from '../db/migrar';
 import { seed } from '../db/seed';
 
@@ -21,7 +22,7 @@ export async function criarApp(): Promise<NestFastifyApplication> {
   delete process.env.RESEND_API_KEY; // testes nunca enviam e-mail de verdade
   await migrar();
   await seed();
-  const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), { logger: false });
+  const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter({ bodyLimit: LIMITE_CORPO }), { logger: false });
   await app.init();
   await app.getHttpAdapter().getInstance().ready();
   return app;

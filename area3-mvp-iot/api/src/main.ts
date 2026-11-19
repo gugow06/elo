@@ -2,9 +2,10 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { AppModule } from './app.module';
+import { LIMITE_CORPO } from './perfil/fotos';
 
 async function iniciar() {
-  const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter({ logger: false }));
+  const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter({ logger: false, bodyLimit: LIMITE_CORPO }));
   app.enableCors({ origin: true });
   app.enableShutdownHooks();
   const porta = Number(process.env.PORT ?? 3333);

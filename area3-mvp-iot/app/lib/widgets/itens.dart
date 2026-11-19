@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../tema.dart';
+import 'avatares.dart';
 
 /// Item de um pedido, como a API devolve: aberto (ninguém leva), comprometido (alguém vai levar),
 /// obtido (quem pediu já recebeu). [meu] = quem está vendo vai levar o item.
@@ -21,10 +22,17 @@ class ItemPedido {
       (itens as List? ?? const []).map((e) => ItemPedido.fromJson(Map<String, dynamic>.from(e))).toList();
 }
 
-/// "N pessoas ajudando" sem nomes nem fotos (privacidade de quem ajuda, D3).
+/// Quem está ajudando no pedido: fotos sobrepostas com "+N" e o texto "N pessoas ajudando".
+/// Decisão F7-D5: a foto de perfil é pública; a API manda só o primeiro nome e a foto.
 class PessoasAjudando extends StatelessWidget {
-  const PessoasAjudando(this.quantidade, {super.key});
+  const PessoasAjudando(this.quantidade, {super.key, this.ajudantes = const []});
   final int quantidade;
+  final List<Ajudante> ajudantes;
+
+  /// A partir do pedido como a API devolve (`pessoas_ajudando` e `ajudantes`).
+  factory PessoasAjudando.doPedido(Map<String, dynamic> p) =>
+      PessoasAjudando((p['pessoas_ajudando'] as num?)?.toInt() ?? 0, ajudantes: ajudantesDe(p['ajudantes']));
+
   @override
   Widget build(BuildContext context) {
     final texto = switch (quantidade) {
@@ -32,13 +40,19 @@ class PessoasAjudando extends StatelessWidget {
       1 => '1 pessoa ajudando',
       _ => '$quantidade pessoas ajudando',
     };
+    final nomes = ajudantes.map((a) => a.nome).where((n) => n.isNotEmpty).toList();
+    final leitura = nomes.isEmpty ? texto : '$texto: ${nomes.join(', ')}${quantidade > nomes.length ? ' e outras' : ''}';
+    final cor = quantidade > 0 ? EloCores.voluntario : EloCores.texto2;
     return Semantics(
-      label: texto,
+      label: leitura,
       excludeSemantics: true,
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.groups_outlined, size: 20, color: quantidade > 0 ? EloCores.voluntario : EloCores.texto2),
-        const SizedBox(width: 6),
-        Text(texto, style: TextStyle(fontWeight: FontWeight.w700, color: quantidade > 0 ? EloCores.voluntario : EloCores.texto2)),
+        if (quantidade > 0 && ajudantes.isNotEmpty)
+          GrupoAvatares(pessoas: ajudantes, total: quantidade)
+        else
+          Icon(Icons.groups_outlined, size: 20, color: cor),
+        const SizedBox(width: 8),
+        Flexible(child: Text(texto, style: TextStyle(fontWeight: FontWeight.w700, color: cor))),
       ]),
     );
   }

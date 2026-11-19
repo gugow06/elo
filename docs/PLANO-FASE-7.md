@@ -15,10 +15,10 @@ Implementado na branch `feat/fase-7` (commits locais, sem push), com testes:
 | Pedido com itens, várias pessoas ajudando, checklist de quem pediu | ✅ Feito |
 | Mapa real (`flutter_map`), localização do aparelho, busca, lista por distância | ✅ Feito |
 | Modo demonstração controlado por `MODO_DEMO`/`SEED_DEMO`; painel por e-mail; cadastro em qualquer cidade; comando do primeiro gestor; gestor convida a equipe | ✅ Feito |
-| Foto de perfil | ⏸️ Aguardando F7-D5 (quem vê) e F7-D8 (onde guardar) |
+| Foto de perfil (pública, F7-D5) guardada no Postgres (F7-D8); o pedido mostra quem ajuda em fotos sobrepostas com "+N" | ✅ Feito (19/11, manhã) |
 | Município sem equipe do CRAS (pedido amarelo/vermelho) | ⏸️ Aguardando F7-D10 |
 | LGPD (política, termos, consentimento, exclusão de conta) e publicação do app no Google | ⏸️ Precisa do texto jurídico e de domínio |
-| Domínio verificado no Resend e HTTPS | ⏸️ Precisa de domínio (hospedagem local por enquanto) |
+| Domínio verificado no Resend e HTTPS | ⏭️ Fora da fase de testes: sem domínio, o código só chega no e-mail dono da conta Resend |
 
 Decisões assumidas por recomendação, para confirmar: F7-D3 (tipos de local), F7-D4 (quem pediu marca o item recebido) e F7-D11 (prioridade = aguardando há mais tempo).
 

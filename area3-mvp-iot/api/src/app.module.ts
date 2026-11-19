@@ -7,6 +7,7 @@ import { GeoController } from './geo/geo.controller';
 import { GestaoController, PoolOuro } from './gestao/gestao.controller';
 import { IotController, PontosController } from './iot/iot.controller';
 import { LocaisController } from './locais/locais.controller';
+import { FotosController } from './perfil/fotos.controller';
 import { PerfilController } from './perfil/perfil.controller';
 import { RedeController } from './rede/rede.controller';
 import { SlaService } from './rede/sla.service';
@@ -30,6 +31,7 @@ import { TecnicoController } from './tecnico/tecnico.controller';
     PontosController,
     GestaoController,
     PerfilController,
+    FotosController,
     GeoController,
     LocaisController,
     EquipeController,

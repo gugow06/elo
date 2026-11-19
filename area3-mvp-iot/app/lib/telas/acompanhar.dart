@@ -117,7 +117,7 @@ class _CartaoMeuPedido extends StatelessWidget {
         Text('Feito ${tempoRelativo(p['criado_em'])}${p['ponto_coleta'] != null ? ' · retirada no ${p['ponto_coleta']}' : ''}', style: t.bodyMedium),
         if (itens.isNotEmpty && status != 'na_fila_tecnica' && status != 'recebida') ...[
           const SizedBox(height: 10),
-          PessoasAjudando((p['pessoas_ajudando'] as num?)?.toInt() ?? 0),
+          PessoasAjudando.doPedido(p),
           const SizedBox(height: 10),
           Text('Marque o que você já recebeu', style: t.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
           ChecklistRecebido(

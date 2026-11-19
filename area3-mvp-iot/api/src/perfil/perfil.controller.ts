@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, HttpCode, Inject, Post, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, HttpCode, Inject, PayloadTooLargeException, Post, Put, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { Pool } from 'pg';
 import { z } from 'zod';
 import { AuthGuard, SessaoAtual } from '../auth/auth.guard';
@@ -7,7 +7,9 @@ import { Sessao } from '../auth/sessao';
 import { auditar } from '../infra/auditoria';
 import { POOL } from '../infra/banco.module';
 import { validar } from '../infra/validacao';
+import { FOTO_MAX_BYTES, sqlUrlFoto, tipoDaImagem } from './fotos';
 
+const ComFoto = z.object({ imagem: z.string().min(1, 'Envie a imagem') });
 const ComCodigo = z.object({ codigo: z.string().regex(/^\d{6}$/, 'O código tem 6 dígitos') });
 
 type LinhaPerfil = {
@@ -22,12 +24,14 @@ type LinhaPerfil = {
   google: boolean;
   latitude: number | null;
   longitude: number | null;
+  foto: string | null;
 };
 
 /**
  * Perfil do usuário logado e verificação da conta.
  * Verificado = e-mail confirmado + verificação em duas etapas por e-mail ativa (decisão F7-D6).
  * Aplicativo autenticador (TOTP) e gov.br ficam para depois.
+ * Foto de perfil: pública (F7-D5), guardada no Postgres (F7-D8).
  */
 @Controller('perfil')
 @UseGuards(AuthGuard)
@@ -44,6 +48,7 @@ export class PerfilController {
       bairro: u.bairro,
       municipio: u.municipio,
       uf: u.uf,
+      foto: u.foto,
       // Onde o mapa abre quando o aparelho não informa a localização (bairro ou município do cadastro)
       latitude: u.latitude,
       longitude: u.longitude,
@@ -89,15 +94,40 @@ export class PerfilController {
     return this.perfil(sessao);
   }
 
+  /** Envia ou troca a foto de perfil (imagem em base64; o app já reduz para 512 px). Todos veem a foto. */
+  @Put('foto')
+  async enviarFoto(@SessaoAtual() sessao: Sessao, @Body() corpo: unknown) {
+    const { imagem } = validar(ComFoto, corpo);
+    const dados = Buffer.from(imagem.replace(/^data:[^,]*,/, ''), 'base64');
+    if (dados.length > FOTO_MAX_BYTES) throw new PayloadTooLargeException('A foto é grande demais. Escolha uma imagem menor.');
+    const tipo = tipoDaImagem(dados);
+    if (!tipo) throw new BadRequestException('Envie uma foto em JPG, PNG ou WebP.');
+    await this.pool.query(
+      `INSERT INTO foto_usuario (usuario_id, tipo, dados) VALUES ($1, $2, $3)
+       ON CONFLICT (usuario_id) DO UPDATE SET id = gen_random_uuid(), tipo = EXCLUDED.tipo, dados = EXCLUDED.dados, criada_em = now()`,
+      [sessao.usuarioId, tipo, dados],
+    );
+    await auditar(this.pool, { usuarioId: sessao.usuarioId, acao: 'enviar_foto', entidade: 'usuario', entidadeId: sessao.usuarioId });
+    return this.perfil(sessao);
+  }
+
+  @Delete('foto')
+  async removerFoto(@SessaoAtual() sessao: Sessao) {
+    await this.pool.query('DELETE FROM foto_usuario WHERE usuario_id = $1', [sessao.usuarioId]);
+    await auditar(this.pool, { usuarioId: sessao.usuarioId, acao: 'remover_foto', entidade: 'usuario', entidadeId: sessao.usuarioId });
+    return this.perfil(sessao);
+  }
+
   private async carregar(usuarioId: string): Promise<LinhaPerfil> {
     const { rows } = await this.pool.query<LinhaPerfil>(
       `SELECT u.nome, u.email, u.telefone, b.nome AS bairro, m.nome AS municipio, m.uf,
               coalesce(b.latitude, m.latitude)::float AS latitude, coalesce(b.longitude, m.longitude)::float AS longitude,
-              u.email_confirmado_em, u.dois_fatores_em,
+              u.email_confirmado_em, u.dois_fatores_em, ${sqlUrlFoto('f.id')} AS foto,
               EXISTS (SELECT 1 FROM conta_social cs WHERE cs.usuario_id = u.id AND cs.provedor = 'google') AS google
        FROM usuario u
        JOIN municipio m ON m.id = u.municipio_id
        LEFT JOIN bairro b ON b.id = u.bairro_id
+       LEFT JOIN foto_usuario f ON f.usuario_id = u.id
        WHERE u.id = $1`,
       [usuarioId],
     );

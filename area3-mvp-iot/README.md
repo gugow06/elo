@@ -59,12 +59,14 @@ O ELO roda local, mas pronto para produção: tudo é configurado por variável 
 | GET | `/localidades?q=` | público | Estados e cidades do IBGE, sem acento |
 | GET | `/geo/buscar?q=` | logado | Endereço ou nome de lugar → coordenadas (Photon/OpenStreetMap, gratuito, com cache e 1 consulta/s) |
 | GET/POST | `/perfil`, `/perfil/2fa/codigo`, `/ativar`, `/desativar` | logado | Perfil e verificação da conta (duas etapas por e-mail = verificado) |
+| PUT/DELETE | `/perfil/foto` | logado | Envia (JPG, PNG ou WebP em base64, até 1,5 MB) ou remove a foto de perfil |
+| GET | `/fotos/{id}` | público | Foto de perfil (todos veem); o id muda a cada troca |
 | POST | `/solicitacoes` | usuário do app | Pedir ajuda (com triagem) |
 | GET | `/solicitacoes/minhas` | usuário do app | Meus pedidos |
 | GET | `/solicitacoes/consulta/{protocolo}?nascimento=` | público | Consulta sem login |
 | POST | `/solicitacoes/{id}/confirmar-recebimento` | usuário do app | Retirada confirmada |
 | PATCH | `/solicitacoes/{id}/itens/{itemId}` | quem pediu | Marca o item como recebido; com tudo marcado, o pedido conclui |
-| GET | `/mural?uf=&municipio=&categoria=&ordem=&pagina=` | usuário do app | Pedidos com itens e "N pessoas ajudando", em qualquer lugar do Brasil (sem dados pessoais, sem faixa de risco, sem os próprios pedidos) |
+| GET | `/mural?uf=&municipio=&categoria=&ordem=&pagina=` | usuário do app | Pedidos com itens, "N pessoas ajudando" e primeiro nome + foto de até 5 delas, em qualquer lugar do Brasil (sem dados pessoais, sem faixa de risco, sem os próprios pedidos) |
 | POST | `/mural/{id}/ofertas` | usuário do app | Quero ajudar com os itens escolhidos (nunca no próprio pedido; móvel: uma pessoa) |
 | GET | `/voluntario/ofertas` | usuário do app | Minhas ajudas, itens que vou levar e desfecho |
 | GET | `/mapa/locais?bbox=`, `/mapa/pedidos?bbox=` | logado | Locais da rede na área do mapa; pedidos só agregados por bairro |
