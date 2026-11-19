@@ -106,7 +106,14 @@ class _EntrarState extends State<Entrar> {
           ] else ...[
             Text('Digite o código de 6 dígitos', style: t.titleLarge),
             const SizedBox(height: 8),
-            Text('Enviamos para ${_email.text.trim()}. Confira também a caixa de spam.', style: t.bodyMedium),
+            Text(
+              'Se ${_email.text.trim()} tiver conta no ELO, o código chega em instantes. Confira também a caixa de spam.',
+              style: t.bodyMedium,
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const CriarConta())),
+              child: const Text('Ainda não tem conta? Criar uma conta'),
+            ),
             if (_codigoDemo != null) ...[
               const SizedBox(height: 12),
               Selo('Modo demonstração: o código é $_codigoDemo'),
