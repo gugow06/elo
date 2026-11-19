@@ -32,7 +32,7 @@ describe.skipIf(!url)('banco', () => {
              (SELECT count(*) FROM bairro)::int AS bairros,
              (SELECT count(*) FROM ponto_coleta)::int AS pontos,
              (SELECT count(DISTINCT perfil) FROM usuario)::int AS perfis`);
-    expect(rows[0]).toEqual({ municipios: 2, bairros: 6, pontos: 3, perfis: 4 });
+    expect(rows[0]).toEqual({ municipios: 2, bairros: 6, pontos: 3, perfis: 5 });
   });
 
   it('protocolo é único por município', async () => {

@@ -12,7 +12,7 @@ const Convite = z.object({
   nome: z.string().trim().min(3, 'Informe o nome').max(80),
   email: z.string().trim().toLowerCase().pipe(z.email('E-mail inválido').max(255)),
   telefone: z.string().transform((t) => t.replace(/[^\d+]/g, '')).pipe(z.string().regex(/^\+?\d{10,13}$/, 'Telefone inválido')),
-  perfil: z.enum(['tecnico', 'gestor']),
+  perfil: z.enum(['tecnico', 'gestor', 'agente']),
 });
 
 /**
@@ -29,7 +29,7 @@ export class EquipeController {
   async listar(@SessaoAtual() sessao: Sessao) {
     const { rows } = await this.pool.query(
       `SELECT id, nome, email, telefone, perfil, criado_em FROM usuario
-       WHERE municipio_id = $1 AND perfil IN ('tecnico', 'gestor')
+       WHERE municipio_id = $1 AND perfil IN ('tecnico', 'gestor', 'agente')
        ORDER BY perfil, nome`,
       [sessao.municipioId],
     );
@@ -48,7 +48,7 @@ export class EquipeController {
     );
     await auditar(this.pool, { usuarioId: sessao.usuarioId, acao: 'convidar_equipe', entidade: 'usuario', entidadeId: rows[0].id, detalhe: { perfil: d.perfil } });
     const painel = process.env.PAINEL_URL || 'http://localhost:3000';
-    const papel = d.perfil === 'tecnico' ? 'técnica(o) do CRAS' : 'gestão';
+    const papel = d.perfil === 'tecnico' ? 'técnica(o) do CRAS' : d.perfil === 'agente' ? 'agente do ponto de coleta' : 'gestão';
     await enviarEmail(
       d.email,
       'Você foi convidada(o) para o painel do ELO',

@@ -72,7 +72,9 @@ O ELO roda local, mas pronto para produção: tudo é configurado por variável 
 | GET | `/voluntario/ofertas` | usuário do app | Minhas ajudas: o que levar, endereço, horário e telefone do ponto, protocolo, instruções e desfecho |
 | GET | `/mapa/locais?bbox=`, `/mapa/pedidos?bbox=` | logado | Locais da rede na área do mapa; pedidos só agregados por bairro |
 | GET/POST/PATCH | `/gestao/locais` | gestor (técnico só lê) | Locais da rede: ponto de coleta, assistência, abrigo, distribuição, saúde |
-| GET/POST | `/gestao/equipe` | gestor | Equipe do painel: convida técnicos e gestores |
+| GET/POST | `/gestao/equipe` | gestor | Equipe do painel: convida técnicos, gestores e agentes dos pontos de coleta |
+| GET | `/agente/pontos`, `/agente/pedidos/{protocolo}` | agente, técnico, gestor | Receber doação: pelo protocolo, o que o pedido precisa e quem combinou levar o quê (só primeiro nome) |
+| POST | `/agente/pedidos/{protocolo}/entregas` | agente, técnico, gestor | Registra o que chegou ao ponto, com quantidade (o mesmo item pode chegar de novo); avisa quem pediu e quem trouxe |
 | GET | `/tecnico/fila`, `/tecnico/solicitacoes/{id}` | técnico | Fila e ficha (leitura auditada) |
 | POST | `/tecnico/solicitacoes/{id}/reclassificar`, `/concluir` | técnico | Reclassificação e desfecho |
 | GET | `/tecnico/eventos` | técnico, gestor | Tempo real (SSE) |

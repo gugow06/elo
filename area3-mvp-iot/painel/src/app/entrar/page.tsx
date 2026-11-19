@@ -4,11 +4,12 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { Alerta, Botao } from "@/components/ui";
-import { api, salvarSessao, useModoDemo, type UsuarioSessao } from "@/lib/api";
+import { INICIO_POR_PERFIL, api, salvarSessao, useModoDemo, type UsuarioSessao } from "@/lib/api";
 
 const CONTAS_DEMO = [
   { rotulo: "Fernanda · Técnica do CRAS", email: "fernanda.costa@example.com" },
   { rotulo: "Secretaria · Gestão", email: "secretaria.social@example.com" },
+  { rotulo: "Joana · Agente do ponto de coleta", email: "joana.pereira@example.com" },
 ];
 
 /** Login sem senha (RF-102): e-mail + código de 6 dígitos enviado pelo Resend. Operadores do painel. */
@@ -43,12 +44,13 @@ export default function Entrar() {
     setEnviando(true);
     try {
       const r = await api<{ token: string; usuario: UsuarioSessao }>("/auth/entrar", { method: "POST", body: JSON.stringify({ email, codigo }) });
-      if (r.usuario.perfil !== "tecnico" && r.usuario.perfil !== "gestor") {
-        setErro("O painel é para a equipe do CRAS e a gestão. Cidadãos e voluntários usam o app do ELO.");
+      const inicio = INICIO_POR_PERFIL[r.usuario.perfil];
+      if (!inicio) {
+        setErro("O painel é para a equipe do CRAS, a gestão e os agentes dos pontos de coleta. Cidadãos e voluntários usam o app do ELO.");
         return;
       }
       salvarSessao(r.token, r.usuario);
-      router.replace(r.usuario.perfil === "tecnico" ? "/fila" : "/gestao");
+      router.replace(inicio);
     } catch (er) {
       setErro((er as Error).message);
     } finally {

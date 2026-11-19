@@ -1,6 +1,6 @@
 import { jwtVerify, SignJWT } from 'jose';
 
-export type Perfil = 'cidadao' | 'voluntario' | 'tecnico' | 'gestor';
+export type Perfil = 'cidadao' | 'voluntario' | 'tecnico' | 'gestor' | 'agente';
 
 export interface Sessao {
   usuarioId: string;

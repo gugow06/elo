@@ -13,6 +13,7 @@ export const TELEFONES = {
   claudia: '+5511990000004',
   fernanda: '+5511990000006',
   gestor: '+5511990000007',
+  agente: '+5511990000010',
   tecnicoOutroMunicipio: '+5511990000009',
 };
 

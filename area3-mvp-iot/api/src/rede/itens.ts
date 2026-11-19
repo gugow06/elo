@@ -23,7 +23,8 @@ export async function gerarItens(db: Pool | PoolClient, solicitacaoId: string, c
 
 /**
  * Itens do pedido com a situação de cada um, sem dizer quem leva:
- * aberto (ninguém leva), comprometido (alguém vai levar), obtido (quem pediu já recebeu).
+ * aberto (ninguém leva), comprometido (alguém vai levar), entregue (chegou ao ponto de coleta;
+ * `quantidade` = quanto chegou), obtido (quem pediu já recebeu).
  * `meu` = este usuário está levando o item.
  * `ajudantes` = primeiro nome e foto de quem está ajudando (até 5; o total vem em `pessoas_ajudando`).
  * Decisão F7-D5: a foto de perfil é pública e o pedido mostra quem ajuda.
@@ -33,8 +34,10 @@ export const SQL_ITENS = `
     SELECT json_agg(json_build_object(
       'id', i.id, 'descricao', i.descricao,
       'status', CASE WHEN i.obtido_em IS NOT NULL THEN 'obtido'
+                     WHEN i.entregue_em IS NOT NULL THEN 'entregue'
                      WHEN EXISTS (SELECT 1 FROM oferta_item oi JOIN oferta o ON o.id = oi.oferta_id WHERE oi.item_id = i.id AND o.ativa) THEN 'comprometido'
                      ELSE 'aberto' END,
+      'quantidade', i.quantidade_entregue,
       'meu', EXISTS (SELECT 1 FROM oferta_item oi JOIN oferta o ON o.id = oi.oferta_id WHERE oi.item_id = i.id AND o.ativa AND o.voluntario_id = $USUARIO)
     ) ORDER BY i.ordem)
     FROM item_solicitacao i WHERE i.solicitacao_id = s.id

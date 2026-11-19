@@ -9,7 +9,7 @@ interface Membro {
   nome: string;
   email: string | null;
   telefone: string;
-  perfil: "tecnico" | "gestor";
+  perfil: "tecnico" | "gestor" | "agente";
 }
 
 const campo = "min-h-12 w-full rounded-md border-2 border-borda bg-superficie px-3 focus:border-brand-700 focus:outline-none";
@@ -65,6 +65,7 @@ export default function Equipe() {
             <label htmlFor="perfil" className="font-bold">Função</label>
             <select id="perfil" className={campo} value={form.perfil} onChange={(e) => setForm({ ...form, perfil: e.target.value as Membro["perfil"] })}>
               <option value="tecnico">Técnica(o) do CRAS: fila e fichas dos pedidos</option>
+              <option value="agente">Agente do ponto de coleta: recebe as doações pelo protocolo</option>
               <option value="gestor">Gestão: indicadores, locais e equipe</option>
             </select>
           </div>
@@ -102,7 +103,7 @@ export default function Equipe() {
                   <td className="py-3 pr-3 font-bold">{m.nome}</td>
                   <td className="py-3 pr-3">{m.email ?? "—"}</td>
                   <td className="py-3 pr-3">{m.telefone}</td>
-                  <td className="py-3">{m.perfil === "tecnico" ? <Tag tom="marca">Técnica(o) do CRAS</Tag> : <Tag tom="acento">Gestão</Tag>}</td>
+                  <td className="py-3">{m.perfil === "tecnico" ? <Tag tom="marca">Técnica(o) do CRAS</Tag> : m.perfil === "agente" ? <Tag tom="neutro">Agente do ponto de coleta</Tag> : <Tag tom="acento">Gestão</Tag>}</td>
                 </tr>
               ))}
             </tbody>

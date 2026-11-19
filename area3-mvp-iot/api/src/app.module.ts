@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AgenteController } from './agente/agente.controller';
 import { AuthController } from './auth/auth.controller';
 import { BancoModule } from './infra/banco.module';
 import { EventosService } from './infra/eventos.service';
@@ -35,6 +36,7 @@ import { TecnicoController } from './tecnico/tecnico.controller';
     GeoController,
     LocaisController,
     EquipeController,
+    AgenteController,
   ],
   providers: [EventosService, classificadorProvider, SolicitacoesService, SlaService, PoolOuro],
 })

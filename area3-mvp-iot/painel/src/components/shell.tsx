@@ -4,9 +4,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
-import { lerSessao, sair, useModoDemo, type UsuarioSessao } from "@/lib/api";
+import { lerSessao, NOME_PERFIL, sair, useModoDemo, type UsuarioSessao } from "@/lib/api";
 
 const MENU = [
+  { href: "/receber", rotulo: "Receber doação", icone: "📦", perfis: ["agente", "tecnico", "gestor"] },
   { href: "/fila", rotulo: "Fila do CRAS", icone: "📋", perfis: ["tecnico"] },
   { href: "/gestao", rotulo: "Gestão da rede", icone: "📊", perfis: ["gestor", "tecnico"] },
   { href: "/locais", rotulo: "Locais da rede", icone: "📍", perfis: ["gestor", "tecnico"] },
@@ -56,7 +57,7 @@ export function Shell({ children }: { children: ReactNode }) {
           <div className="flex items-center gap-3">
             <div className="text-right">
               <p className="font-bold leading-tight">{usuario.nome}</p>
-              <p className="text-sm text-texto-2">{usuario.perfil === "tecnico" ? "Técnica do CRAS" : "Gestão"}</p>
+              <p className="text-sm text-texto-2">{NOME_PERFIL[usuario.perfil] ?? ""}</p>
             </div>
             <button onClick={sair} className="min-h-12 rounded-full border-2 border-borda px-4 font-bold text-brand-900 hover:border-brand-700">
               Sair

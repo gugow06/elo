@@ -70,4 +70,16 @@ void main() {
     expect(iniciais('cláudia'), 'C');
     expect(iniciais('  '), '?');
   });
+
+  testWidgets('item que chegou ao ponto (registrado pelo agente) mostra a quantidade e "pode retirar"', (tester) async {
+    await tester.pumpWidget(_app(ChecklistRecebido(
+      itens: ItemPedido.daLista([
+        {'id': 'a', 'descricao': 'Arroz', 'status': 'entregue', 'quantidade': 3},
+        {'id': 'b', 'descricao': 'Feijão', 'status': 'comprometido'},
+      ]),
+      aoMarcar: (_, _) {},
+    )));
+    expect(find.text('Chegou ao ponto de coleta (3): pode retirar'), findsOneWidget);
+    expect(find.text('Alguém vai levar'), findsOneWidget);
+  });
 }

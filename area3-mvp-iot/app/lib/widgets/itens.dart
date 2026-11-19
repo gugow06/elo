@@ -4,19 +4,30 @@ import '../tema.dart';
 import 'avatares.dart';
 
 /// Item de um pedido, como a API devolve: aberto (ninguém leva), comprometido (alguém vai levar),
-/// obtido (quem pediu já recebeu). [meu] = quem está vendo vai levar o item.
+/// entregue (chegou ao ponto de coleta; [quantidade] = quanto chegou), obtido (quem pediu já recebeu).
+/// [meu] = quem está vendo vai levar o item.
 class ItemPedido {
-  const ItemPedido({required this.id, required this.descricao, required this.status, this.meu = false});
+  const ItemPedido({required this.id, required this.descricao, required this.status, this.meu = false, this.quantidade = 0});
   final String id;
   final String descricao;
   final String status;
   final bool meu;
+  final int quantidade;
 
   bool get aberto => status == 'aberto';
+  bool get entregue => status == 'entregue';
   bool get obtido => status == 'obtido';
 
-  factory ItemPedido.fromJson(Map<String, dynamic> j) =>
-      ItemPedido(id: j['id'], descricao: j['descricao'], status: j['status'], meu: j['meu'] == true);
+  /// "Chegou ao ponto de coleta (3)"
+  String get textoChegou => 'Chegou ao ponto de coleta${quantidade > 1 ? ' ($quantidade)' : ''}';
+
+  factory ItemPedido.fromJson(Map<String, dynamic> j) => ItemPedido(
+        id: j['id'],
+        descricao: j['descricao'],
+        status: j['status'],
+        meu: j['meu'] == true,
+        quantidade: (j['quantidade'] as num?)?.toInt() ?? 0,
+      );
 
   static List<ItemPedido> daLista(dynamic itens) =>
       (itens as List? ?? const []).map((e) => ItemPedido.fromJson(Map<String, dynamic>.from(e))).toList();
@@ -77,7 +88,7 @@ class EscolhaItens extends StatelessWidget {
             title: Text(i.descricao, style: const TextStyle(fontSize: 16)),
             subtitle: i.aberto
                 ? null
-                : Text(i.obtido ? 'Já recebido' : i.meu ? 'Você vai levar' : 'Alguém já vai levar'),
+                : Text(i.obtido ? 'Já recebido' : i.entregue ? 'Já chegou ao ponto de coleta' : i.meu ? 'Você vai levar' : 'Alguém já vai levar'),
             controlAffinity: ListTileControlAffinity.leading,
             activeColor: EloCores.brand600,
           ),
@@ -120,7 +131,10 @@ class ChecklistRecebido extends StatelessWidget {
           value: i.obtido,
           onChanged: habilitado ? (v) => aoMarcar(i, v ?? false) : null,
           title: Text(i.descricao, style: const TextStyle(fontSize: 16)),
-          subtitle: Text(i.obtido ? 'Recebido' : i.aberto ? 'Aguardando alguém para levar' : 'Alguém vai levar'),
+          subtitle: Text(
+            i.obtido ? 'Recebido' : i.entregue ? '${i.textoChegou}: pode retirar' : i.aberto ? 'Aguardando alguém para levar' : 'Alguém vai levar',
+            style: i.entregue ? const TextStyle(color: EloCores.sucesso, fontWeight: FontWeight.w700) : null,
+          ),
           controlAffinity: ListTileControlAffinity.leading,
           activeColor: EloCores.sucesso,
           contentPadding: EdgeInsets.zero,

@@ -154,12 +154,12 @@ export class IotController {
     const cliente = await this.pool.connect();
     try {
       await cliente.query('BEGIN');
-      const { rows } = await cliente.query<{ id: string; cidadao_id: string; voluntario_id: string | null }>(
+      const { rows } = await cliente.query<{ id: string; cidadao_id: string; voluntarios: string[] }>(
         `UPDATE solicitacao s SET status = 'entregue', ponto_coleta_id = $3
          WHERE s.municipio_id = $1 AND s.protocolo = $2 AND s.status = 'em_atendimento'
            AND (s.ponto_coleta_id = $3 OR s.ponto_coleta_id IS NULL)
          RETURNING s.id, s.cidadao_id,
-           (SELECT voluntario_id FROM oferta WHERE solicitacao_id = s.id AND ativa) AS voluntario_id`,
+           coalesce((SELECT array_agg(voluntario_id) FROM oferta WHERE solicitacao_id = s.id AND ativa), '{}') AS voluntarios`,
         [ponto.municipio_id, e.protocolo, ponto.id],
       );
       const s = rows[0];
@@ -177,9 +177,10 @@ export class IotController {
         tipo: 'doacao_disponivel',
         texto: `Sua doação chegou ao ${ponto.nome}. Leve o protocolo ${e.protocolo} para retirar.`,
       });
-      if (s.voluntario_id) {
+      // Pedido com itens pode ter várias pessoas ajudando: avisa todas
+      for (const voluntarioId of s.voluntarios) {
         await notificar(cliente, {
-          usuarioId: s.voluntario_id,
+          usuarioId: voluntarioId,
           solicitacaoId: s.id,
           tipo: 'sua_ajuda_chegou',
           texto: `Sua ajuda chegou ao ${ponto.nome}! A família foi avisada para retirar. Obrigado.`,

@@ -4,7 +4,12 @@ import { useEffect, useState } from "react";
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3333";
 
-export type Perfil = "cidadao" | "voluntario" | "tecnico" | "gestor";
+export type Perfil = "cidadao" | "voluntario" | "tecnico" | "gestor" | "agente";
+
+/** Primeira tela de cada perfil do painel. */
+export const INICIO_POR_PERFIL: Partial<Record<Perfil, string>> = { tecnico: "/fila", gestor: "/gestao", agente: "/receber" };
+
+export const NOME_PERFIL: Partial<Record<Perfil, string>> = { tecnico: "Técnica do CRAS", gestor: "Gestão", agente: "Agente do ponto de coleta" };
 
 export interface UsuarioSessao {
   id: string;

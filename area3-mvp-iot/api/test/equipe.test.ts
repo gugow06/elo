@@ -33,7 +33,7 @@ describe('equipe do painel: gestor convida técnicos', () => {
   it('lista só a equipe do município, sem cidadãos', async () => {
     const r = await app.inject({ method: 'GET', url: '/gestao/equipe', headers: auth(gestor) });
     const perfis = new Set(r.json().map((u: { perfil: string }) => u.perfil));
-    expect([...perfis].sort()).toEqual(['gestor', 'tecnico']);
+    expect([...perfis].sort()).toEqual(['agente', 'gestor', 'tecnico']);
     expect(r.json().some((u: { nome: string }) => u.nome === 'Patrícia Gomes')).toBe(false); // outro município
   });
 

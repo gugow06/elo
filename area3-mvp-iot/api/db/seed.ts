@@ -89,6 +89,7 @@ export async function seed(url?: string): Promise<void> {
 
     await usr(m1, jardim, 'tecnico', 'Fernanda Costa', '678912345', '+5511990000006', '1988-07-17');
     await usr(m1, centro, 'gestor', 'Secretaria de Assistência Social', '789123456', '+5511990000007', '1975-04-01');
+    await usr(m1, vilaNova, 'agente', 'Joana Pereira', '135792468', '+5511990000010', '1990-09-12');
 
     // Pedidos verdes já no mural, para a demonstração não começar vazia
     const pedidoNoMural = async (cidadao: string, bairro: string, ponto: string, protocolo: string, categoria: string, titulo: string, relato: string, horasAtras: number) => {

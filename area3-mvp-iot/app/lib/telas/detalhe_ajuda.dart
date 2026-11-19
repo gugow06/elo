@@ -60,10 +60,15 @@ class DetalheAjuda extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4),
                   child: Row(children: [
-                    Icon(i.obtido ? Icons.check_circle : Icons.inventory_2_outlined, color: i.obtido ? EloCores.sucesso : EloCores.brand700, size: 22),
+                    Icon(i.obtido || i.entregue ? Icons.check_circle : Icons.inventory_2_outlined,
+                        color: i.obtido || i.entregue ? EloCores.sucesso : EloCores.brand700, size: 22),
                     const SizedBox(width: 10),
                     Expanded(child: Text(i.descricao, style: t.bodyLarge)),
-                    if (i.obtido) Text('Já recebido', style: t.bodyMedium?.copyWith(color: EloCores.sucesso, fontWeight: FontWeight.w700)),
+                    if (i.obtido || i.entregue)
+                      Flexible(
+                        child: Text(i.obtido ? 'Já recebido' : i.textoChegou,
+                            textAlign: TextAlign.end, style: t.bodyMedium?.copyWith(color: EloCores.sucesso, fontWeight: FontWeight.w700)),
+                      ),
                   ]),
                 ),
             const SizedBox(height: 10),
