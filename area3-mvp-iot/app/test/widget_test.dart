@@ -111,6 +111,8 @@ void main() {
 
   test('lista de pedidos monta os filtros do mural', () {
     expect(Api.caminhoMural(), '/mural');
+    expect(Api.caminhoMural(brasil: true), '/mural?abrangencia=brasil');
+    expect(Api.caminhoMural(brasil: true, uf: 'BA'), '/mural?uf=BA'); // estado escolhido vale mais
     expect(Api.caminhoMural(uf: 'BA', ordem: 'aguardando'), '/mural?uf=BA&ordem=aguardando');
     expect(Api.caminhoMural(municipio: 'abc', categoria: 'roupa', pagina: 2), '/mural?municipio=abc&categoria=roupa&pagina=2');
     expect(Api.caminhoMural(pagina: 0), '/mural');

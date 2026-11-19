@@ -40,6 +40,17 @@ describe('mural com filtros por estado, cidade e categoria, e ajuda entre cidade
     expect(itens.some((i) => i.id === pedidoOutraCidade)).toBe(false);
   });
 
+  it('"todo o Brasil" mostra realmente todos os pedidos, os da minha cidade primeiro', async () => {
+    const { itens } = await mural(ana, '?abrangencia=brasil');
+    expect(itens.some((i) => i.id === pedidoOutraCidade)).toBe(true);
+    expect(itens.some((i) => i.municipio === 'São Bento do Vale')).toBe(true);
+    // Mais perto primeiro: nenhum pedido da minha cidade depois de um de outra cidade
+    const primeiroDeFora = itens.findIndex((i) => i.municipio !== 'São Bento do Vale');
+    expect(itens.slice(primeiroDeFora).every((i) => i.municipio !== 'São Bento do Vale')).toBe(true);
+    // Estado ou cidade escolhidos continuam valendo
+    expect((await mural(ana, '?abrangencia=brasil&uf=BA')).itens).toEqual([]);
+  });
+
   it('filtro por estado ou por cidade traz pedidos de outros municípios', async () => {
     const porUf = await mural(ana, '?uf=sp');
     expect(porUf.itens.some((i) => i.id === pedidoOutraCidade)).toBe(true);

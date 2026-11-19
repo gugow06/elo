@@ -19,6 +19,8 @@ const FiltroMural = z.object({
   categoria: z.enum(['alimento', 'roupa', 'movel', 'material_escolar', 'apoio_idoso', 'transporte', 'outro']).optional(),
   // "Prioridade" = quem espera há mais tempo (F7-D11): a faixa de risco nunca é mostrada no app
   ordem: z.enum(['bairro', 'recentes', 'aguardando']).default('bairro'),
+  // "brasil": todos os pedidos, de qualquer lugar ("Ver todos" sem estado ou cidade escolhidos)
+  abrangencia: z.enum(['municipio', 'brasil']).default('municipio'),
   pagina: z.coerce.number().int().min(0).max(1000).default(0),
   limite: z.coerce.number().int().min(1).max(50).default(30),
 });
@@ -27,7 +29,8 @@ const Oferta = z.object({ itens: z.array(z.string().uuid()).max(50).optional() }
 const MarcarItem = z.object({ obtido: z.boolean() });
 
 const ORDENS = {
-  bairro: '(s.bairro_id = $3::uuid) DESC, s.criado_em',
+  // Mais perto primeiro: meu bairro, minha cidade, meu estado, depois o resto do Brasil
+  bairro: '(s.bairro_id = $3::uuid) DESC, (s.municipio_id = $9::uuid) DESC, (m.uf = (SELECT uf FROM municipio WHERE id = $9::uuid)) DESC, s.criado_em',
   recentes: 's.criado_em DESC',
   aguardando: 's.criado_em ASC',
 } as const;
@@ -46,14 +49,15 @@ export class RedeController {
 
   /**
    * Mural (RF-401), lista equivalente ao mapa (RF-402). Sem filtro: o município do usuário.
-   * Com `uf` ou `municipio`: pedidos de qualquer lugar do Brasil, para ajudar de longe.
+   * Com `uf` ou `municipio`: pedidos desse estado ou cidade. Com `abrangencia=brasil`: todos os pedidos
+   * do Brasil, os mais perto primeiro.
    * Nunca expõe endereço, nome, relato ou faixa de risco.
    */
   @Get('mural')
   @Perfis('voluntario', 'cidadao')
   async mural(@SessaoAtual() sessao: Sessao, @Query() query: unknown) {
     const f = validar(FiltroMural, query);
-    const municipio = f.municipio ?? (f.uf ? null : sessao.municipioId);
+    const municipio = f.municipio ?? (f.uf || f.abrangencia === 'brasil' ? null : sessao.municipioId);
     const { rows } = await this.pool.query(
       `SELECT s.id, s.titulo, s.categoria, s.criado_em, s.status,
               b.nome AS bairro, b.slug AS bairro_slug, m.nome AS municipio, m.uf,
@@ -68,10 +72,10 @@ export class RedeController {
          AND ($5::text IS NULL OR m.uf = $5)
          AND ($2::text IS NULL OR b.slug = $2)
          AND ($6::categoria_pedido IS NULL OR s.categoria = $6)
-         AND s.cidadao_id <> $4 AND ($3::uuid IS NULL OR true)
+         AND s.cidadao_id <> $4 AND ($3::uuid IS NULL OR true) AND ($9::uuid IS NULL OR true)
        ORDER BY ${ORDENS[f.ordem]}
        LIMIT $7 OFFSET $8`,
-      [municipio, f.bairro ?? null, sessao.bairroId, sessao.usuarioId, f.uf ?? null, f.categoria ?? null, f.limite, f.pagina * f.limite],
+      [municipio, f.bairro ?? null, sessao.bairroId, sessao.usuarioId, f.uf ?? null, f.categoria ?? null, f.limite, f.pagina * f.limite, sessao.municipioId],
     );
     return rows;
   }

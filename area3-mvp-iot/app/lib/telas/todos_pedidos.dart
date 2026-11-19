@@ -25,7 +25,7 @@ class Localidade {
 
 /// Ordens da lista. "Prioridade" = quem espera há mais tempo (a faixa de risco nunca aparece no app).
 const ordens = {
-  'bairro': 'Meu bairro primeiro',
+  'bairro': 'Mais perto de mim primeiro',
   'recentes': 'Mais recentes',
   'aguardando': 'Aguardando há mais tempo',
 };
@@ -98,6 +98,8 @@ class _TodosPedidosState extends State<TodosPedidos> {
       final r = await Api.i.mural(
         uf: _local?.tipo == 'uf' ? _local!.uf : null,
         municipio: _local?.tipo == 'municipio' ? _local!.id : null,
+        // Sem estado ou cidade escolhidos: realmente todos os pedidos, de qualquer lugar
+        brasil: _local == null,
         categoria: _categoria,
         ordem: _ordem,
         pagina: _pagina,
@@ -174,9 +176,9 @@ class _TodosPedidosState extends State<TodosPedidos> {
           Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
             InputChip(
               avatar: const Icon(Icons.place_outlined, size: 18),
-              label: Text(_local?.rotulo ?? 'Minha cidade'),
+              label: Text(_local?.rotulo ?? 'Todo o Brasil'),
               onDeleted: _local == null ? null : () => _escolher(null),
-              deleteButtonTooltipMessage: 'Voltar para a minha cidade',
+              deleteButtonTooltipMessage: 'Ver pedidos de todo o Brasil',
             ),
           ]),
           const SizedBox(height: 12),
@@ -215,7 +217,7 @@ class _TodosPedidosState extends State<TodosPedidos> {
             Padding(padding: const EdgeInsets.only(bottom: 12), child: Text(_erro!, style: const TextStyle(color: EloCores.erro, fontWeight: FontWeight.w700))),
           if (!_carregando && _itens.isEmpty && _erro == null) ...[
             Text(
-              _local == null ? 'Nenhum pedido aguardando ajuda na sua cidade agora.' : 'Nenhum pedido aguardando ajuda em ${_local!.rotulo}.',
+              _local == null ? 'Nenhum pedido aguardando ajuda no Brasil agora.' : 'Nenhum pedido aguardando ajuda em ${_local!.rotulo}.',
               style: t.bodyLarge,
             ),
             if (_local?.tipo == 'municipio')

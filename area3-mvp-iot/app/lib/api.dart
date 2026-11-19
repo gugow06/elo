@@ -205,12 +205,13 @@ class Api {
       Map<String, dynamic>.from(await _req('POST', '/solicitacoes/$id/encerrar'));
 
   // ---------- rede cidadã
-  Future<List<dynamic>> mural({String? bairro, String? uf, String? municipio, String? categoria, String? ordem, int? pagina}) async =>
-      await _req('GET', caminhoMural(bairro: bairro, uf: uf, municipio: municipio, categoria: categoria, ordem: ordem, pagina: pagina)) as List;
+  Future<List<dynamic>> mural({String? bairro, String? uf, String? municipio, String? categoria, String? ordem, int? pagina, bool brasil = false}) async =>
+      await _req('GET', caminhoMural(bairro: bairro, uf: uf, municipio: municipio, categoria: categoria, ordem: ordem, pagina: pagina, brasil: brasil)) as List;
 
-  /// Monta /mural com os filtros (sem filtro: o município de quem consulta).
-  static String caminhoMural({String? bairro, String? uf, String? municipio, String? categoria, String? ordem, int? pagina}) {
+  /// Monta /mural com os filtros (sem filtro: o município de quem consulta; [brasil]: todo o Brasil).
+  static String caminhoMural({String? bairro, String? uf, String? municipio, String? categoria, String? ordem, int? pagina, bool brasil = false}) {
     final q = {
+      if (brasil && uf == null && municipio == null) 'abrangencia': 'brasil',
       'bairro': ?bairro,
       'uf': ?uf,
       'municipio': ?municipio,
