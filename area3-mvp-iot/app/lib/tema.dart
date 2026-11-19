@@ -50,6 +50,7 @@ ThemeData temaElo({bool fontesGoogle = true}) {
       error: EloCores.erro,
     ),
     scaffoldBackgroundColor: EloCores.fundo,
+    splashFactory: InkSparkle.splashFactory,
   );
   final texto = (fontesGoogle ? GoogleFonts.nunitoSansTextTheme(base.textTheme) : base.textTheme).apply(bodyColor: EloCores.texto, displayColor: EloCores.brand900);
   return base.copyWith(
@@ -93,10 +94,73 @@ ThemeData temaElo({bool fontesGoogle = true}) {
       focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(EloRaio.md), borderSide: const BorderSide(color: EloCores.brand700, width: 2)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
     ),
-    chipTheme: base.chipTheme.copyWith(shape: const StadiumBorder(), side: BorderSide.none),
+    chipTheme: base.chipTheme.copyWith(
+      shape: const StadiumBorder(),
+      side: BorderSide.none,
+      labelStyle: const TextStyle(fontWeight: FontWeight.w700, color: EloCores.brand900),
+      selectedColor: EloCores.brand100,
+      checkmarkColor: EloCores.brand700,
+    ),
+    // Transição entre telas: a nova desliza e a anterior esmaece (Android, web e desktop);
+    // no iOS, fica a padrão do sistema
+    pageTransitionsTheme: const PageTransitionsTheme(builders: {
+      TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
+      TargetPlatform.windows: FadeForwardsPageTransitionsBuilder(),
+      TargetPlatform.linux: FadeForwardsPageTransitionsBuilder(),
+    }),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        foregroundColor: EloCores.brand700,
+        minimumSize: const Size(48, 48),
+        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+      ),
+    ),
+    snackBarTheme: SnackBarThemeData(
+      behavior: SnackBarBehavior.floating,
+      backgroundColor: EloCores.brand900,
+      contentTextStyle: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(EloRaio.md)),
+    ),
+    bottomSheetTheme: const BottomSheetThemeData(
+      backgroundColor: EloCores.superficie,
+      surfaceTintColor: Colors.transparent,
+      showDragHandle: true,
+      dragHandleColor: EloCores.borda,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(EloRaio.xl))),
+    ),
+    dialogTheme: DialogThemeData(
+      backgroundColor: EloCores.superficie,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(EloRaio.xl)),
+      titleTextStyle: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: EloCores.brand900),
+    ),
+    tabBarTheme: const TabBarThemeData(
+      labelColor: EloCores.brand900,
+      unselectedLabelColor: EloCores.texto2,
+      indicatorColor: EloCores.brand600,
+      indicatorSize: TabBarIndicatorSize.label,
+      dividerColor: EloCores.borda,
+    ),
+    checkboxTheme: CheckboxThemeData(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+      side: const BorderSide(color: EloCores.texto2, width: 2),
+      fillColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? EloCores.brand600 : Colors.transparent),
+    ),
+    progressIndicatorTheme: const ProgressIndicatorThemeData(color: EloCores.brand600, linearTrackColor: EloCores.brand100),
+    dividerTheme: const DividerThemeData(color: EloCores.borda, thickness: 1, space: 24),
+    listTileTheme: const ListTileThemeData(iconColor: EloCores.brand700, titleTextStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: EloCores.texto)),
+    badgeTheme: const BadgeThemeData(backgroundColor: EloCores.erro, textStyle: TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
+    textSelectionTheme: const TextSelectionThemeData(cursorColor: EloCores.brand700, selectionColor: EloCores.brand100, selectionHandleColor: EloCores.brand600),
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: EloCores.superficie,
+      surfaceTintColor: Colors.transparent,
+      elevation: 8,
+      shadowColor: const Color(0x33003B2E),
+      height: 74,
       indicatorColor: EloCores.brand100,
+      iconTheme: WidgetStateProperty.resolveWith(
+        (s) => IconThemeData(size: 26, color: s.contains(WidgetState.selected) ? EloCores.brand700 : EloCores.texto2),
+      ),
       labelTextStyle: WidgetStateProperty.resolveWith(
         (s) => TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: s.contains(WidgetState.selected) ? EloCores.brand700 : EloCores.texto2),
       ),

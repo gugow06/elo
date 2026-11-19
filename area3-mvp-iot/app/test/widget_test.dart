@@ -8,6 +8,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:elo_app/telas/perfil.dart';
 import 'package:elo_app/telas/documento_legal.dart';
 import 'package:elo_app/textos_legais.dart';
+import 'package:elo_app/widgets/animacoes.dart';
 import 'package:elo_app/widgets/comum.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -142,6 +143,27 @@ void main() {
     expect(find.textContaining('LGPD'), findsWidgets);
     expect(termosUso.any((s) => s.titulo == 'Excluir a conta'), isTrue);
     expect(politicaPrivacidade.any((s) => s.paragrafos.any((p) => p.contains('Excluir minha conta'))), isTrue);
+  });
+
+  testWidgets('saudação aparece digitada; o leitor de tela lê tudo; sem animação, aparece pronta', (tester) async {
+    final semantica = tester.ensureSemantics();
+    var terminou = false;
+    await tester.pumpWidget(_app(Scaffold(body: TextoDigitado('Boa tarde, Ana!', aoTerminar: () => terminou = true))));
+    expect(find.bySemanticsLabel('Boa tarde, Ana!'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 350 + 55 * 4));
+    expect(find.textContaining('Boa ', findRichText: true), findsWidgets);
+    expect(terminou, isFalse);
+    await tester.pump(const Duration(seconds: 2));
+    expect(terminou, isTrue);
+    semantica.dispose();
+
+    var pronta = false;
+    await tester.pumpWidget(MediaQuery(
+      data: const MediaQueryData(disableAnimations: true),
+      child: _app(Scaffold(body: TextoDigitado('Bom dia, José!', aoTerminar: () => pronta = true))),
+    ));
+    await tester.pump();
+    expect(pronta, isTrue);
   });
 
   test('distância do pedido em texto', () {

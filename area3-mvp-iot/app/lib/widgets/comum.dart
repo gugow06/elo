@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../tema.dart';
+import 'animacoes.dart';
 import 'itens.dart';
 
 const categorias = {
@@ -78,8 +79,10 @@ class Cartao extends StatelessWidget {
       ),
       child: conteudo,
     );
-    if (rotulo == null) return caixa;
-    return Semantics(label: rotulo, button: onTap != null, excludeSemantics: true, child: caixa);
+    // Tocável: encolhe de leve enquanto está pressionado
+    final comToque = Pressionavel(ativo: onTap != null, child: caixa);
+    if (rotulo == null) return comToque;
+    return Semantics(label: rotulo, button: onTap != null, excludeSemantics: true, child: comToque);
   }
 }
 

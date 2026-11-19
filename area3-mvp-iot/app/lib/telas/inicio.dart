@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import '../api.dart';
 import '../localizacao.dart';
 import '../tema.dart';
+import '../widgets/animacoes.dart';
 import '../widgets/avatares.dart';
 import '../widgets/banners.dart';
 import '../widgets/comum.dart';
@@ -26,6 +27,11 @@ class _InicioState extends State<Inicio> {
   String _busca = '';
   /// Foto de perfil (caminho na API), para o avatar do cabeçalho.
   String? _foto;
+
+  /// A saudação é digitada e as seções entram em sequência só na primeira vez que o Início
+  /// aparece depois de abrir o app; depois (voltar de outra tela, sair e entrar) aparece pronto.
+  static bool _jaApresentou = false;
+  final bool _apresentar = !_jaApresentou;
   /// Pedidos pela localização do aparelho (true) ou pelo bairro da conta (false).
   bool _pelaLocalizacao = false;
 
@@ -35,6 +41,7 @@ class _InicioState extends State<Inicio> {
   @override
   void initState() {
     super.initState();
+    _jaApresentou = true;
     _carregar();
   }
 
@@ -74,7 +81,7 @@ class _InicioState extends State<Inicio> {
       child: RefreshIndicator(
         onRefresh: () async => _carregar(),
         child: ListView(padding: const EdgeInsets.fromLTRB(20, 12, 20, 110), children: [
-          Row(children: [
+          Entrada(ativa: _apresentar, child: Row(children: [
             Semantics(label: 'ELO', image: true, child: Image.asset('assets/elo-logo-ajustada.png', height: 34)),
             const Spacer(),
             Semantics(
@@ -108,13 +115,23 @@ class _InicioState extends State<Inicio> {
                     : AvatarPessoa(nome: u.nome, foto: _foto, raio: 24),
               ),
             ),
-          ]),
+          ])),
           const SizedBox(height: 14),
-          Text('$_saudacao, ${u.primeiroNome}! 👋', style: t.headlineMedium?.copyWith(fontWeight: FontWeight.w900, color: EloCores.brand900)),
+          // Saudação digitada na primeira vez, com a mãozinha acenando no fim
+          TextoDigitado(
+            '$_saudacao, ${u.primeiroNome}!',
+            digitar: _apresentar,
+            style: t.headlineMedium?.copyWith(fontWeight: FontWeight.w900, color: EloCores.brand900),
+            depois: const MaoAcenando(tamanho: 28),
+          ),
           const SizedBox(height: 2),
-          Text('Como podemos te ajudar hoje?', style: t.titleMedium?.copyWith(fontWeight: FontWeight.w500, color: EloCores.texto2)),
+          Entrada(
+            ativa: _apresentar,
+            ordem: 1,
+            child: Text('Como podemos te ajudar hoje?', style: t.titleMedium?.copyWith(fontWeight: FontWeight.w500, color: EloCores.texto2)),
+          ),
           const SizedBox(height: 16),
-          DecoratedBox(
+          Entrada(ativa: _apresentar, ordem: 2, child: DecoratedBox(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(99),
               boxShadow: const [BoxShadow(color: Color(0x14003B2E), blurRadius: 12, offset: Offset(0, 3))],
@@ -132,11 +149,11 @@ class _InicioState extends State<Inicio> {
                 focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(99), borderSide: const BorderSide(color: EloCores.brand600, width: 2)),
               ),
             ),
-          ),
+          )),
           const SizedBox(height: 16),
-          const CarrosselBanners(),
+          Entrada(ativa: _apresentar, ordem: 3, child: const CarrosselBanners()),
           const SizedBox(height: 16),
-          LayoutBuilder(builder: (context, c) {
+          Entrada(ativa: _apresentar, ordem: 4, child: LayoutBuilder(builder: (context, c) {
             final largura = (c.maxWidth - 12) / 2;
             final atalhos = [
               _Atalho(rotulo: 'Pedir ajuda', detalhe: 'Receba apoio da comunidade', icone: Icons.favorite, cor: EloCores.pedido, fundo: EloCores.pedidoClaro, onTap: widget.aoPedirAjuda),
@@ -151,10 +168,10 @@ class _InicioState extends State<Inicio> {
                 onTap: () => avisar(context, 'Oportunidades de emprego e cursos chegam em breve.'),
               ),
             ];
-            return Wrap(spacing: 12, runSpacing: 12, children: [for (final a in atalhos) SizedBox(width: largura, child: a)]);
-          }),
+            return Wrap(spacing: 12, runSpacing: 12, children: [for (final a in atalhos) SizedBox(width: largura, child: Pressionavel(child: a))]);
+          })),
           const SizedBox(height: 24),
-          Row(children: [
+          Entrada(ativa: _apresentar, ordem: 5, child: Row(children: [
             Expanded(
               child: FittedBox(
                 fit: BoxFit.scaleDown,
@@ -170,12 +187,18 @@ class _InicioState extends State<Inicio> {
                 Icon(Icons.arrow_forward, size: 20, color: EloCores.brand700),
               ]),
             ),
-          ]),
+          ])),
           const SizedBox(height: 8),
           FutureBuilder<List<dynamic>>(
             future: _pedidos,
             builder: (context, snap) {
-              if (snap.connectionState != ConnectionState.done) return const Carregando(texto: 'Carregando pedidos próximos');
+              if (snap.connectionState != ConnectionState.done) {
+                return Semantics(
+                  label: 'Carregando pedidos próximos',
+                  liveRegion: true,
+                  child: const Column(children: [Esqueleto(altura: 158), SizedBox(height: 12), Esqueleto(altura: 158)]),
+                );
+              }
               if (snap.hasError) return Text('${snap.error}', style: const TextStyle(color: EloCores.erro));
               final lista = snap.data!
                   .cast<Map<String, dynamic>>()
@@ -187,8 +210,11 @@ class _InicioState extends State<Inicio> {
                     style: t.bodyLarge);
               }
               return Column(children: [
-                for (final p in lista)
-                  Padding(
+                for (final (i, p) in lista.indexed)
+                  Entrada(
+                    ativa: _apresentar,
+                    ordem: 6 + i,
+                    child: Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: CartaoPedido(
                       pedido: p,
@@ -197,7 +223,7 @@ class _InicioState extends State<Inicio> {
                         _carregar();
                       },
                     ),
-                  ),
+                  )),
               ]);
             },
           ),
