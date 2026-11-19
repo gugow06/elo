@@ -1,5 +1,5 @@
 import { Logger } from '@nestjs/common';
-import { Pool } from 'pg';
+import { Pool, PoolClient } from 'pg';
 import { buscarLugares } from './geocodificador';
 
 /**
@@ -18,6 +18,23 @@ function distanciaKm(a: { lat: number; lon: number }, b: { lat: number; lon: num
   const r = (g: number) => (g * Math.PI) / 180;
   const h = Math.sin(r(b.lat - a.lat) / 2) ** 2 + Math.cos(r(a.lat)) * Math.cos(r(b.lat)) * Math.sin(r(b.lon - a.lon) / 2) ** 2;
   return 2 * 6371 * Math.asin(Math.sqrt(h));
+}
+
+/**
+ * Bairro com esse nome no município (cria se ainda não existir, sem posição: a API completa a
+ * posição depois pelo OpenStreetMap). Devolve o id. Usado no pedido de ajuda e no cadastro.
+ */
+export async function bairroPorNome(db: Pool | PoolClient, municipioId: string, nomeBruto: string): Promise<string | null> {
+  const nome = nomeBruto.trim().replace(/\s+/g, ' ');
+  const slug = nome.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  if (!slug) return null;
+  const r = await db.query<{ id: string }>(
+    `INSERT INTO bairro (municipio_id, nome, slug) VALUES ($1, $2, $3)
+     ON CONFLICT (municipio_id, slug) DO UPDATE SET slug = EXCLUDED.slug
+     RETURNING id`,
+    [municipioId, nome, slug],
+  );
+  return r.rows[0].id;
 }
 
 /** Procura a posição do bairro na cidade. null quando não há resultado confiável. */

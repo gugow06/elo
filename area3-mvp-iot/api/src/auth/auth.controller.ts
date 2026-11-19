@@ -19,7 +19,7 @@ import { auditar } from '../infra/auditoria';
 import { POOL } from '../infra/banco.module';
 import { validar } from '../infra/validacao';
 import { AuthGuard, SessaoAtual } from './auth.guard';
-import { completarBairro, posicaoAproximadaDoBairro } from '../geo/bairros';
+import { bairroPorNome, completarBairro, posicaoAproximadaDoBairro } from '../geo/bairros';
 import { consumirCodigo, gerarCodigo, mascararEmail } from './codigos';
 import { GoogleNaoConfigurado, IdentidadeGoogle, verificarTokenGoogle } from './google';
 import { emitirDesafio, emitirToken, lerDesafio, Perfil, Sessao } from './sessao';
@@ -47,10 +47,11 @@ const Cadastro = z.object({
   nome: z.string().trim().min(2, 'Informe o seu nome').max(80),
   email,
   telefone,
-  // Bairro da lista do município (bairro_id) ou digitado (municipio_id + bairro_nome)
-  bairro_id: z.string().uuid('Escolha o seu bairro').optional(),
+  // Cidade (municipio_id). O bairro é opcional: o app manda o bairro que a localização do
+  // aparelho encontrou (bairro_nome), quando a pessoa usa "Usar minha localização".
+  bairro_id: z.string().uuid('Bairro inválido').optional(),
   municipio_id: z.string().uuid('Escolha a sua cidade').optional(),
-  bairro_nome: z.string().trim().min(2, 'Informe o seu bairro').max(80).optional(),
+  bairro_nome: z.string().trim().min(2, 'Bairro inválido').max(80).optional(),
   // Localização do aparelho, se a pessoa aceitou compartilhar: só para a posição aproximada do bairro
   // (arredondada a ~1 km). Não é guardada na conta.
   posicao: z.object({ latitude: z.number().min(-34).max(6), longitude: z.number().min(-74).max(-34) }).optional(),
@@ -58,7 +59,7 @@ const Cadastro = z.object({
   // Aceite dos Termos de uso e da Política de privacidade (obrigatório para criar a conta)
   aceite_termos: z.literal(true, 'Para criar a conta, aceite os Termos de uso e a Política de privacidade.'),
   termos_versao: z.string().max(20).optional(),
-}).refine((d) => d.bairro_id || (d.municipio_id && d.bairro_nome), { message: 'Escolha a sua cidade e o seu bairro.', path: ['bairro_id'] });
+}).refine((d) => d.bairro_id || d.municipio_id, { message: 'Escolha a sua cidade.', path: ['municipio_id'] });
 
 type LinhaUsuario = {
   id: string;
@@ -209,8 +210,10 @@ export class AuthController {
       await c.query('COMMIT');
       // Bairro sem posição: a do aparelho (aproximada) na hora; o OpenStreetMap em segundo plano, por cima
       const bairroId = bairro.rows[0].id;
-      if (dados.posicao) await posicaoAproximadaDoBairro(this.pool, bairroId, dados.posicao).catch(() => false);
-      void completarBairro(this.pool, bairroId).catch((e) => this.log.warn(`Posição do bairro: ${(e as Error).message}`));
+      if (bairroId) {
+        if (dados.posicao) await posicaoAproximadaDoBairro(this.pool, bairroId, dados.posicao).catch(() => false);
+        void completarBairro(this.pool, bairroId).catch((e) => this.log.warn(`Posição do bairro: ${(e as Error).message}`));
+      }
       return resposta;
     } catch (erro) {
       await c.query('ROLLBACK');
@@ -236,10 +239,11 @@ export class AuthController {
   }
 
   /**
-   * Bairro do cadastro: o escolhido na lista ou, se a pessoa digitou, o bairro com esse nome no
-   * município (cria se ainda não existir, sem posição: o gestor pode completar depois).
+   * Cidade e bairro do cadastro: o bairro escolhido na lista, o bairro com o nome que a localização
+   * encontrou (cria se ainda não existir) ou nenhum: só a cidade. Sem bairro na conta, o bairro é
+   * escolhido em cada pedido de ajuda.
    */
-  private async resolverBairro(c: PoolClient, d: { bairro_id?: string; municipio_id?: string; bairro_nome?: string }) {
+  private async resolverBairro(c: PoolClient, d: { bairro_id?: string; municipio_id?: string; bairro_nome?: string }): Promise<{ id: string | null; municipio_id: string }> {
     if (d.bairro_id) {
       const r = await c.query<{ id: string; municipio_id: string }>('SELECT id, municipio_id FROM bairro WHERE id = $1', [d.bairro_id]);
       if (!r.rows[0]) throw new BadRequestException('Bairro não encontrado.');
@@ -247,16 +251,8 @@ export class AuthController {
     }
     const mun = await c.query('SELECT 1 FROM municipio WHERE id = $1', [d.municipio_id]);
     if (!mun.rowCount) throw new BadRequestException('Cidade não encontrada.');
-    const nome = d.bairro_nome!.replace(/\s+/g, ' ');
-    const slug = nome.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-    if (!slug) throw new BadRequestException('Informe o seu bairro.');
-    const r = await c.query<{ id: string; municipio_id: string }>(
-      `INSERT INTO bairro (municipio_id, nome, slug) VALUES ($1, $2, $3)
-       ON CONFLICT (municipio_id, slug) DO UPDATE SET slug = EXCLUDED.slug
-       RETURNING id, municipio_id`,
-      [d.municipio_id, nome, slug],
-    );
-    return r.rows[0];
+    const id = d.bairro_nome ? await bairroPorNome(c, d.municipio_id!, d.bairro_nome) : null;
+    return { id, municipio_id: d.municipio_id! };
   }
 
   @Get('eu')

@@ -137,4 +137,27 @@ describe('retirada da doação: protocolo + código que só quem pediu tem', () 
     expect(doCras).toBeDefined();
     expect(doCras.texto).not.toContain(p.codigo_retirada); // o código é só de quem pediu
   });
+
+  it('registro (log): entrega, retirada e código errado ficam salvos, com quem registrou e onde', async () => {
+    const p = await publicar();
+    const { itens } = await ver(p.protocolo);
+    expect((await entregar(p.protocolo, [itens[0].id, itens[1].id])).statusCode).toBe(201);
+    expect((await retirar(p.protocolo, errado(p.codigo_retirada))).statusCode).toBe(400);
+    expect((await retirar(p.protocolo, p.codigo_retirada, [itens[0].id])).statusCode).toBe(201);
+
+    type Linha = { tipo: string; protocolo: string; ponto_coleta: string | null; origem: string; registrado_por: string | null; itens: { descricao: string }[] };
+    const log = (await app.inject({ method: 'GET', url: `/agente/registro?protocolo=${p.protocolo}`, headers: auth(agente) })).json() as Linha[];
+    expect(log.map((l) => l.tipo)).toEqual(['retirada', 'codigo_errado', 'entrega']); // mais recente primeiro
+    const [ret, , ent] = log;
+    expect(ent).toMatchObject({ origem: 'painel', registrado_por: 'Joana Pereira' });
+    expect(ent.ponto_coleta).toBeTruthy();
+    expect(ent.itens.map((i) => i.descricao)).toEqual([itens[0].descricao, itens[1].descricao]);
+    expect(ret.itens.map((i) => i.descricao)).toEqual([itens[0].descricao]);
+    expect(log.every((l) => !Object.keys(l).some((k) => k.includes('codigo')))).toBe(true); // o código nunca aparece no registro
+
+    const soRetiradas = (await app.inject({ method: 'GET', url: `/agente/registro?tipo=retirada&protocolo=${p.protocolo}`, headers: auth(agente) })).json() as Linha[];
+    expect(soRetiradas).toHaveLength(1);
+    // Quem pede ou ajuda no app não vê o registro
+    expect((await app.inject({ method: 'GET', url: '/agente/registro', headers: auth(ana) })).statusCode).toBe(403);
+  });
 });

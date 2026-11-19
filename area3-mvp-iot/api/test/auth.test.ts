@@ -1,8 +1,9 @@
 import { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from 'jose';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, onTestFinished } from 'vitest';
 import { definirChavesGoogle } from '../src/auth/google';
-import { criarApp } from './helpers';
+import { Pool } from 'pg';
+import { auth, criarApp } from './helpers';
 
 const CLIENTE_GOOGLE = 'cliente-teste.apps.googleusercontent.com';
 
@@ -152,9 +153,34 @@ describe('autenticação: e-mail + código e Google', () => {
     expect(bairros.json()).toEqual([expect.objectContaining({ nome: 'Centro', municipio: 'Feira de Santana', uf: 'BA' })]);
   });
 
-  it('cadastro exige bairro da lista ou cidade + bairro', async () => {
-    const r = await app.inject({ method: 'POST', url: '/auth/cadastro', payload: { aceite_termos: true, nome: 'Sem Bairro', email: 'sem.bairro@example.com', telefone: '+5511990005555' } });
+  it('cadastro exige a cidade', async () => {
+    const r = await app.inject({ method: 'POST', url: '/auth/cadastro', payload: { aceite_termos: true, nome: 'Sem Cidade', email: 'sem.bairro@example.com', telefone: '+5511990005555' } });
     expect(r.statusCode).toBe(400);
+  });
+
+  it('conta sem bairro: só a cidade; o bairro é escolhido no pedido (pelo nome que a localização encontrou)', async () => {
+    const loc = await app.inject({ method: 'GET', url: '/localidades?q=feira%20de%20santana' });
+    const feira = loc.json().find((l: { tipo: string }) => l.tipo === 'municipio');
+    const cad = await app.inject({
+      method: 'POST', url: '/auth/cadastro',
+      payload: { aceite_termos: true, nome: 'Sem Bairro', email: 'so.cidade@example.com', telefone: '+5575990003333', municipio_id: feira.id },
+    });
+    expect(cad.statusCode).toBe(201);
+    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+    onTestFinished(() => pool.end());
+    const { rows } = await pool.query('SELECT bairro_id FROM usuario WHERE email = $1', ['so.cidade@example.com']);
+    expect(rows[0].bairro_id).toBeNull();
+
+    const cod = (await app.inject({ method: 'POST', url: '/auth/codigo', payload: { email: 'so.cidade@example.com' } })).json().codigo_demo;
+    const token = (await app.inject({ method: 'POST', url: '/auth/entrar', payload: { email: 'so.cidade@example.com', codigo: cod } })).json().token;
+    const relato = 'Preciso de roupas de frio para meus filhos pequenos';
+    const semBairro = await app.inject({ method: 'POST', url: '/solicitacoes', headers: auth(token), payload: { relato } });
+    expect(semBairro.statusCode).toBe(400);
+    expect(semBairro.json().message).toMatch(/bairro/i);
+    const comBairro = await app.inject({ method: 'POST', url: '/solicitacoes', headers: auth(token), payload: { relato, bairro_nome: 'Kalilândia' } });
+    expect(comBairro.statusCode).toBe(201);
+    const b = await pool.query('SELECT b.nome FROM solicitacao s JOIN bairro b ON b.id = s.bairro_id WHERE s.id = $1', [comBairro.json().id]);
+    expect(b.rows[0].nome).toBe('Kalilândia');
   });
 
   it('não cria conta com e-mail ou telefone já cadastrados', async () => {

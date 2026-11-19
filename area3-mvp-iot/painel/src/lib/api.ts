@@ -2,7 +2,26 @@
 
 import { useEffect, useState } from "react";
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3333";
+/**
+ * Endereço da API. O padrão (NEXT_PUBLIC_API_URL) aponta para localhost, que só funciona no próprio
+ * computador. Aberto de outro aparelho ou pelo IP da máquina (ex.: http://192.168.0.10:3000), o
+ * navegador procuraria a API no próprio aparelho e a conexão falharia: nesse caso, usa o mesmo
+ * endereço da página, na porta da API.
+ */
+function resolverApiUrl(): string {
+  const configurada = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3333";
+  if (typeof window === "undefined") return configurada;
+  try {
+    const url = new URL(configurada);
+    const local = (h: string) => h === "localhost" || h === "127.0.0.1" || h === "[::1]";
+    if (local(url.hostname) && !local(window.location.hostname)) url.hostname = window.location.hostname;
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    return configurada;
+  }
+}
+
+export const API_URL = resolverApiUrl();
 
 export type Perfil = "cidadao" | "voluntario" | "tecnico" | "gestor" | "agente";
 

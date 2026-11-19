@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../api.dart';
+import '../localizacao.dart';
 import '../tema.dart';
 import '../widgets/comum.dart';
 
@@ -15,7 +16,16 @@ class PedirAjuda extends StatefulWidget {
 class _PedirAjudaState extends State<PedirAjuda> {
   final _relato = TextEditingController();
   List<Map<String, dynamic>> _bairros = [];
+  /// id de um bairro da lista, [_local] (o da localização), [_outro] (digitado) ou null (o da conta).
   String? _bairroId;
+  /// A conta tem bairro? Sem bairro na conta, escolher o bairro do pedido é obrigatório.
+  bool? _contaTemBairro;
+  /// Bairro que a localização do aparelho encontrou e que ainda não está na lista.
+  String? _bairroLocal;
+  final _bairroDigitado = TextEditingController();
+
+  static const _local = '_local';
+  static const _outro = '_outro';
   bool _enviando = false;
   Map<String, dynamic>? _resposta;
   String? _erro;
@@ -25,13 +35,50 @@ class _PedirAjudaState extends State<PedirAjuda> {
   @override
   void initState() {
     super.initState();
-    Api.i.bairros().then((b) => setState(() => _bairros = b.cast<Map<String, dynamic>>())).catchError((_) {});
+    _carregarBairros();
+  }
+
+  /// Bairros do município e, para conta sem bairro, a sugestão pela localização (se já permitida).
+  Future<void> _carregarBairros() async {
+    try {
+      final lista = (await Api.i.bairros()).cast<Map<String, dynamic>>();
+      final perfil = await Api.i.perfil();
+      if (!mounted) return;
+      final temBairro = perfil['bairro'] != null;
+      setState(() { _bairros = lista; _contaTemBairro = temBairro; });
+      if (temBairro) return;
+      final aqui = await Localizacao.i.obter(pedir: true);
+      if (aqui == null) return;
+      final r = await Api.i.ondeEstou(aqui.latitude, aqui.longitude);
+      final nome = (r['bairro'] as Map?)?['nome'] as String?;
+      if (!mounted || nome == null || _bairroId != null) return;
+      final daLista = lista.where((b) => (b['nome'] as String).toLowerCase() == nome.toLowerCase());
+      setState(() {
+        if (daLista.isNotEmpty) {
+          _bairroId = daLista.first['id'] as String;
+        } else {
+          _bairroLocal = nome;
+          _bairroId = _local;
+        }
+      });
+    } on ErroApi {
+      if (mounted) setState(() => _contaTemBairro ??= false);
+    }
   }
 
   Future<void> _enviar() async {
+    final digitado = _bairroDigitado.text.trim();
+    if (_contaTemBairro == false && (_bairroId == null || (_bairroId == _outro && digitado.length < 2))) {
+      setState(() => _erro = 'Escolha o bairro do pedido.');
+      return;
+    }
     setState(() { _enviando = true; _erro = null; });
     try {
-      final r = await Api.i.pedirAjuda(_relato.text, bairroId: _bairroId);
+      final r = await Api.i.pedirAjuda(
+        _relato.text,
+        bairroId: _bairroId == _local || _bairroId == _outro ? null : _bairroId,
+        bairroNome: _bairroId == _local ? _bairroLocal : (_bairroId == _outro ? digitado : null),
+      );
       setState(() => _resposta = r);
     } on ErroApi catch (e) {
       setState(() => _erro = e.mensagem);
@@ -71,16 +118,33 @@ class _PedirAjudaState extends State<PedirAjuda> {
             ),
         ]),
         const SizedBox(height: 16),
-        if (_bairros.isNotEmpty)
+        if (_contaTemBairro != null)
           DropdownButtonFormField<String>(
+            // A sugestão da localização chega depois: a chave recria o campo com o valor novo
+            key: ValueKey('bairro-$_bairroLocal-${_bairros.length}'),
             initialValue: _bairroId,
-            decoration: const InputDecoration(labelText: 'Seu bairro (opcional)'),
+            isExpanded: true,
+            decoration: InputDecoration(
+              labelText: _contaTemBairro! ? 'Bairro do pedido (opcional)' : 'Bairro do pedido',
+              helperText: _contaTemBairro! ? null : 'Mostramos o pedido para quem está perto desse bairro. Nunca o seu endereço.',
+              helperMaxLines: 2,
+            ),
             items: [
-              const DropdownMenuItem(value: null, child: Text('O bairro do meu cadastro')),
-              for (final b in _bairros) DropdownMenuItem(value: b['id'] as String, child: Text(b['nome'])),
+              if (_contaTemBairro!) const DropdownMenuItem(value: null, child: Text('O bairro do meu cadastro')),
+              if (_bairroLocal != null) DropdownMenuItem(value: _local, child: Text('$_bairroLocal (onde você está)', overflow: TextOverflow.ellipsis)),
+              for (final b in _bairros) DropdownMenuItem(value: b['id'] as String, child: Text(b['nome'], overflow: TextOverflow.ellipsis)),
+              const DropdownMenuItem(value: _outro, child: Text('Meu bairro não está na lista')),
             ],
             onChanged: (v) => setState(() => _bairroId = v),
           ),
+        if (_bairroId == _outro) ...[
+          const SizedBox(height: 12),
+          TextField(
+            controller: _bairroDigitado,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(labelText: 'Bairro', hintText: 'Nome do bairro'),
+          ),
+        ],
         if (_erro != null) ...[
           const SizedBox(height: 12),
           Semantics(liveRegion: true, child: Text(_erro!, style: const TextStyle(color: EloCores.erro, fontWeight: FontWeight.w700))),
