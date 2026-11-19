@@ -9,6 +9,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { classificadorDoAmbiente, Faixa, triar, VERSAO_LEXICO } from '../src';
+import { VERSAO_PROMPT } from '../src/prompt';
 
 export interface CasoRotulado {
   id: number;
@@ -43,8 +44,10 @@ export async function avaliar(casos: CasoRotulado[], limiar = Number(process.env
   let categoriaCerta = 0;
   let categoriaAvaliada = 0;
 
+  const pausaMs = Number(process.env.AVALIACAO_PAUSA_MS ?? 0); // respeita limite de requisições do provedor
   for (const caso of casos) {
     const r = await triar(caso.relato, { modelo, limiarConfianca: limiar });
+    if (pausaMs && r.chamouLlm) await new Promise((ok) => setTimeout(ok, pausaMs));
     matriz[caso.faixa][r.faixa] += 1;
     somaMs += r.duracaoMs;
     if (r.origem === 'regra') porRegra += 1;
@@ -72,6 +75,7 @@ export async function avaliar(casos: CasoRotulado[], limiar = Number(process.env
   return {
     modelo: modelo.nome,
     versao_lexico: VERSAO_LEXICO,
+    versao_prompt: VERSAO_PROMPT,
     limiar_confianca: limiar,
     total,
     acuracia: acertos / total,
@@ -97,7 +101,7 @@ function relatorio(r: Awaited<ReturnType<typeof avaliar>>): string {
     '# Avaliação da triagem de risco',
     '',
     `- Classificador após as regras: \`${r.modelo}\``,
-    `- Versão do léxico: \`${r.versao_lexico}\` · limiar de confiança: ${r.limiar_confianca}`,
+    `- Versão do léxico: \`${r.versao_lexico}\` · prompt: \`${r.versao_prompt}\` · limiar de confiança: ${r.limiar_confianca}`,
     `- Casos: ${r.total}`,
     '',
     '| Métrica | Valor |',
@@ -131,7 +135,7 @@ if (require.main === module) {
   const conjunto = process.argv[2] === 'validacao' ? 'validacao' : 'treino';
   const arquivo = conjunto === 'validacao' ? 'relatos-validacao.csv' : 'relatos.csv';
   avaliar(lerConjunto(join(__dirname, arquivo))).then((r) => {
-    const sufixo = conjunto === 'validacao' ? '-validacao' : '';
+    const sufixo = (conjunto === 'validacao' ? '-validacao' : '') + (r.modelo.startsWith('llm:') ? '-llm' : '');
     writeFileSync(join(__dirname, `resultado${sufixo}.json`), JSON.stringify(r, null, 2));
     writeFileSync(join(__dirname, `resultado${sufixo}.md`), relatorio(r).replace('# Avaliação', `# Avaliação (${conjunto})`));
     console.log(relatorio(r));

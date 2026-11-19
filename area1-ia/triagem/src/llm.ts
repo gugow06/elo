@@ -6,8 +6,17 @@ export interface ConfigLlm {
   url: string;
   apiKey?: string;
   modelo: string;
+  /** Tempo máximo de cada tentativa. Padrão 20 s. */
   timeoutMs?: number;
+  /** Novas tentativas em HTTP 429/5xx ou timeout. Padrão 2. */
+  tentativas?: number;
+  /** Enviado como reasoning_effort quando definido (ex.: "none" para respostas rápidas). */
+  esforcoRaciocinio?: string;
 }
+
+const espera = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+class ErroTransitorio extends Error {}
 
 const FAIXAS: readonly Faixa[] = ['verde', 'amarela', 'vermelha'];
 
@@ -37,25 +46,47 @@ export class ClassificadorLlm implements ClassificadorModelo {
   }
 
   async classificar(relatoMinimizado: string): Promise<RespostaModelo> {
+    const tentativas = this.config.tentativas ?? 2;
+    let ultimoErro: Error = new Error('sem tentativas');
+    for (let i = 0; i <= tentativas; i++) {
+      if (i > 0) await espera(1000 * 2 ** (i - 1)); // 1 s, 2 s...
+      try {
+        return await this.tentar(relatoMinimizado);
+      } catch (erro) {
+        ultimoErro = erro as Error;
+        if (!(erro instanceof ErroTransitorio)) throw erro;
+      }
+    }
+    throw ultimoErro;
+  }
+
+  private async tentar(relatoMinimizado: string): Promise<RespostaModelo> {
     const controle = new AbortController();
-    const timer = setTimeout(() => controle.abort(), this.config.timeoutMs ?? 8000);
+    const timer = setTimeout(() => controle.abort(), this.config.timeoutMs ?? 20000);
     try {
-      const resposta = await fetch(this.config.url, {
-        method: 'POST',
-        signal: controle.signal,
-        headers: {
-          'content-type': 'application/json',
-          ...(this.config.apiKey ? { authorization: `Bearer ${this.config.apiKey}` } : {}),
-        },
-        body: JSON.stringify({
-          model: this.config.modelo,
-          temperature: 0,
-          messages: [
-            { role: 'system', content: PROMPT_SISTEMA },
-            { role: 'user', content: montarMensagemUsuario(relatoMinimizado) },
-          ],
-        }),
-      });
+      let resposta: Response;
+      try {
+        resposta = await fetch(this.config.url, {
+          method: 'POST',
+          signal: controle.signal,
+          headers: {
+            'content-type': 'application/json',
+            ...(this.config.apiKey ? { authorization: `Bearer ${this.config.apiKey}` } : {}),
+          },
+          body: JSON.stringify({
+            model: this.config.modelo,
+            temperature: 0,
+            ...(this.config.esforcoRaciocinio ? { reasoning_effort: this.config.esforcoRaciocinio } : {}),
+            messages: [
+              { role: 'system', content: PROMPT_SISTEMA },
+              { role: 'user', content: montarMensagemUsuario(relatoMinimizado) },
+            ],
+          }),
+        });
+      } catch (erro) {
+        throw new ErroTransitorio(`falha de rede ou timeout (${(erro as Error).message})`);
+      }
+      if (resposta.status === 429 || resposta.status >= 500) throw new ErroTransitorio(`LLM respondeu HTTP ${resposta.status}`);
       if (!resposta.ok) throw new Error(`LLM respondeu HTTP ${resposta.status}`);
       const corpo = (await resposta.json()) as { choices?: Array<{ message?: { content?: string } }> };
       const conteudo = corpo.choices?.[0]?.message?.content;
