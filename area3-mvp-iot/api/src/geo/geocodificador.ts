@@ -26,14 +26,46 @@ let fila: Promise<unknown> = Promise.resolve();
 let ultima = 0;
 let buscador: Buscador = (url, init) => fetch(url, init);
 
-/** Só para testes: troca o fetch e limpa o cache. */
+const filas = new Map<string, { fila: Promise<unknown>; ultima: number }>();
+const ouvintesLimpeza: (() => void)[] = [];
+
+/** Só para testes: troca o fetch e limpa caches e filas. */
 export function definirBuscador(b: Buscador | null): void {
   buscador = b ?? ((url, init) => fetch(url, init));
   cache.clear();
   ultima = 0;
+  filas.clear();
+  for (const f of ouvintesLimpeza) f();
 }
 
-const UFS: Record<string, string> = {
+/** Para outros módulos limparem o próprio cache junto (testes). */
+export function aoLimparCaches(f: () => void): void {
+  ouvintesLimpeza.push(f);
+}
+
+/**
+ * GET de JSON num serviço externo, em fila por serviço: no máximo uma consulta a cada `intervaloMs`
+ * (uso justo dos serviços públicos). O endereço completo nunca vai para o log (pode ter chave).
+ */
+export async function pedirJson<T>(servico: string, url: string, intervaloMs = 0): Promise<T> {
+  const f = filas.get(servico) ?? { fila: Promise.resolve(), ultima: 0 };
+  filas.set(servico, f);
+  const tarefa = f.fila.then(async () => {
+    const espera = f.ultima + intervaloMs - Date.now();
+    if (espera > 0) await new Promise((r) => setTimeout(r, espera));
+    f.ultima = Date.now();
+    const r = await buscador(url, {
+      headers: { 'user-agent': 'ELO-app/1.0 (rede de ajuda; painel de gestao)', accept: 'application/json', 'accept-language': 'pt-BR' },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!r.ok) throw new Error(`${servico} respondeu ${r.status}`);
+    return (await r.json()) as T;
+  });
+  f.fila = tarefa.catch(() => undefined);
+  return tarefa;
+}
+
+export const UFS: Record<string, string> = {
   Acre: 'AC', Alagoas: 'AL', Amapá: 'AP', Amazonas: 'AM', Bahia: 'BA', Ceará: 'CE', 'Distrito Federal': 'DF',
   'Espírito Santo': 'ES', Goiás: 'GO', Maranhão: 'MA', 'Mato Grosso': 'MT', 'Mato Grosso do Sul': 'MS',
   'Minas Gerais': 'MG', Pará: 'PA', Paraíba: 'PB', Paraná: 'PR', Pernambuco: 'PE', Piauí: 'PI',

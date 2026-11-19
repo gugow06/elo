@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Alerta, Botao, Cartao, Carregando, Tag } from "@/components/ui";
+import { MapaAjuste } from "@/components/mapa-ajuste";
 import { api, lerSessao } from "@/lib/api";
 import { CATEGORIA } from "@/lib/formato";
 
@@ -74,17 +75,6 @@ const VAZIO: Form = {
 const campo = "min-h-12 w-full rounded-md border-2 border-borda bg-superficie px-3 focus:border-brand-700 focus:outline-none";
 
 /** Mapa do OpenStreetMap embutido (gratuito, sem chave) para conferir o ponto. */
-function MiniMapa({ lat, lng }: { lat: number; lng: number }) {
-  const d = 0.004;
-  const src = `https://www.openstreetmap.org/export/embed.html?bbox=${lng - d}%2C${lat - d}%2C${lng + d}%2C${lat + d}&layer=mapnik&marker=${lat}%2C${lng}`;
-  return (
-    <div>
-      <iframe title="Mapa com a posição do local" src={src} className="h-64 w-full rounded-md border border-borda" loading="lazy" />
-      <p className="mt-1 text-xs text-texto-2">© colaboradores do OpenStreetMap</p>
-    </div>
-  );
-}
-
 /** Cadastro dos locais da rede pelo gestor: pelo nome do lugar ou pelo endereço. */
 export default function Locais() {
   const gestor = lerSessao()?.usuario.perfil === "gestor";
@@ -161,8 +151,26 @@ export default function Locais() {
   async function salvar(e: FormEvent) {
     e.preventDefault();
     if (!form) return;
-    setSalvando(true);
     setErro(null);
+    // Sem ponto no mapa: busca o endereço digitado e mostra o marcador para conferir antes de gravar
+    if (!temPonto) {
+      setSalvando(true);
+      try {
+        const [l] = await api<Lugar[]>(`/geo/buscar?q=${encodeURIComponent(form.endereco.trim())}`);
+        if (!l) {
+          setErro("Não achamos esse endereço no mapa. Use a busca acima com o nome do lugar, o CEP ou o endereço com a cidade.");
+        } else {
+          setForm({ ...form, latitude: String(l.latitude), longitude: String(l.longitude) });
+          setAviso("Achamos o endereço no mapa. Confira o marcador e clique em salvar de novo.");
+        }
+      } catch (err) {
+        setErro((err as Error).message);
+      } finally {
+        setSalvando(false);
+      }
+      return;
+    }
+    setSalvando(true);
     const num = (v: string) => (v.trim() === "" ? null : Number(v.replace(",", ".")));
     const corpo = {
       ...(editando ? {} : { tipo: form.tipo }),
@@ -249,7 +257,7 @@ export default function Locais() {
             )}
 
             <div className="rounded-md bg-fundo p-4">
-              <label htmlFor="busca" className="font-bold">Buscar pelo nome do lugar ou pelo endereço</label>
+              <label htmlFor="busca" className="font-bold">Buscar pelo nome do lugar, endereço ou CEP</label>
               <div className="mt-2 flex gap-2">
                 <input
                   id="busca"
@@ -257,7 +265,7 @@ export default function Locais() {
                   value={busca}
                   onChange={(e) => setBusca(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") buscar(e); }}
-                  placeholder="Ex.: CRAS Liberdade, Salvador  ou  Rua Lima e Silva, 100, Salvador"
+                  placeholder="Ex.: CRAS Liberdade, Salvador  ·  Rua Lima e Silva, 100, Salvador  ·  40325-000"
                 />
                 <Botao type="button" variante="secundario" onClick={buscar} disabled={buscando}>{buscando ? "Buscando…" : "Buscar"}</Botao>
               </div>
@@ -274,7 +282,7 @@ export default function Locais() {
                   ))}
                 </ul>
               )}
-              <p className="mt-2 text-xs text-texto-2">Busca de endereço: dados © colaboradores do OpenStreetMap.</p>
+              <p className="mt-2 text-xs text-texto-2">Busca de endereço: Google Maps (quando configurado) ou bases abertas (OpenStreetMap e CEP).</p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
@@ -293,20 +301,19 @@ export default function Locais() {
                 <label htmlFor="endereco" className="font-bold">Endereço</label>
                 <input id="endereco" required className={campo} value={form.endereco} onChange={(e) => mudar("endereco", e.target.value)} />
               </div>
-              <div>
-                <label htmlFor="lat" className="font-bold">Latitude</label>
-                <input id="lat" required inputMode="decimal" className={campo} value={form.latitude} onChange={(e) => mudar("latitude", e.target.value)} />
+              <div className="md:col-span-2">
+                {temPonto ? (
+                  <MapaAjuste
+                    lat={lat}
+                    lng={lng}
+                    aoMudar={(la, lo) => setForm((f) => (f ? { ...f, latitude: la.toFixed(6), longitude: lo.toFixed(6) } : f))}
+                  />
+                ) : (
+                  <p className="rounded-md bg-fundo p-3 text-texto-2">
+                    Use a busca acima (nome do lugar, CEP ou endereço) ou só digite o endereço e salve: o ponto aparece no mapa para você conferir.
+                  </p>
+                )}
               </div>
-              <div>
-                <label htmlFor="lng" className="font-bold">Longitude</label>
-                <input id="lng" required inputMode="decimal" className={campo} value={form.longitude} onChange={(e) => mudar("longitude", e.target.value)} />
-              </div>
-              {temPonto && (
-                <div className="md:col-span-2">
-                  <MiniMapa lat={lat} lng={lng} />
-                  <p className="mt-1 text-sm text-texto-2">Confira se o marcador está no lugar certo. Se não estiver, ajuste a latitude e a longitude.</p>
-                </div>
-              )}
               <div>
                 <label htmlFor="tel" className="font-bold">Telefone (opcional)</label>
                 <input id="tel" className={campo} value={form.telefone} onChange={(e) => mudar("telefone", e.target.value)} />

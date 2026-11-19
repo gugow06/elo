@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { AuthGuard } from '../auth/auth.guard';
 import { POOL } from '../infra/banco.module';
 import { validar } from '../infra/validacao';
-import { buscarLugares } from './geocodificador';
+import { buscarEndereco } from './enderecos';
 
 const Busca = z.object({ q: z.string().trim().min(2, 'Digite pelo menos 2 letras').max(120) });
 
@@ -43,13 +43,13 @@ export class GeoController {
     return [...ufs.rows, ...muns.rows];
   }
 
-  /** Endereço ou nome de lugar → candidatos com coordenadas (só Brasil). */
+  /** Endereço, CEP ou nome de lugar → candidatos com coordenadas (só Brasil). Ver enderecos.ts. */
   @Get('geo/buscar')
   @UseGuards(AuthGuard)
   async buscar(@Query() query: unknown) {
     const { q } = validar(Busca, query);
     try {
-      return await buscarLugares(q);
+      return await buscarEndereco(q);
     } catch {
       throw new ServiceUnavailableException('A busca de endereço está indisponível agora. Tente de novo em instantes.');
     }

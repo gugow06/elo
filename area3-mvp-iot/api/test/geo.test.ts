@@ -25,7 +25,9 @@ describe('base geográfica: UFs e municípios do IBGE e busca de endereço', () 
     app = await criarApp();
     pool = new Pool({ connectionString: process.env.DATABASE_URL });
     token = await entrar(app, TELEFONES.ana);
-    definirBuscador(async () => {
+    // Nominatim sem resultado; o Photon acha o CRAS
+    definirBuscador(async (url) => {
+      if (url.includes('nominatim')) return new Response('[]', { status: 200 });
       chamadas++;
       return new Response(JSON.stringify(RESPOSTA_PHOTON), { status: 200 });
     });
