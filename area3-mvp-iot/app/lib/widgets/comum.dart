@@ -84,24 +84,27 @@ class Cartao extends StatelessWidget {
 
 /// Cartão de pedido do mural: categoria, bairro, título e situação. Nunca mostra endereço ou nome.
 class CartaoPedido extends StatelessWidget {
-  const CartaoPedido({super.key, required this.pedido, this.onTap});
+  const CartaoPedido({super.key, required this.pedido, this.onTap, this.mostrarCidade = false});
   final Map<String, dynamic> pedido;
+  final bool mostrarCidade;
   final VoidCallback? onTap;
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final cat = pedido['categoria'] as String;
     final bairro = pedido['bairro'] as String;
+    // Na lista de todos os pedidos, que pode misturar cidades, mostra também cidade e UF
+    final onde = mostrarCidade && pedido['municipio'] != null ? 'Bairro $bairro · ${pedido['municipio']} - ${pedido['uf']}' : 'Bairro $bairro';
     return Cartao(
       onTap: onTap,
-      rotulo: '${categorias[cat]}. ${pedido['titulo']}. Bairro $bairro. Publicado ${tempoRelativo(pedido['criado_em'])}. Aguardando voluntário.',
+      rotulo: '${categorias[cat]}. ${pedido['titulo']}. $onde. Publicado ${tempoRelativo(pedido['criado_em'])}. Aguardando voluntário.',
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           TagCategoria(cat),
           const Spacer(),
           const Icon(Icons.location_on_outlined, size: 18, color: EloCores.texto2),
           const SizedBox(width: 4),
-          Flexible(child: Text('Bairro $bairro', style: t.bodyMedium, overflow: TextOverflow.ellipsis)),
+          Flexible(child: Text(onde, style: t.bodyMedium, overflow: TextOverflow.ellipsis)),
         ]),
         const SizedBox(height: 10),
         Text(pedido['titulo'], style: t.titleMedium),

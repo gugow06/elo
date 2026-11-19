@@ -171,7 +171,25 @@ class Api {
   Future<void> confirmarRecebimento(String id) async => _req('POST', '/solicitacoes/$id/confirmar-recebimento');
 
   // ---------- rede cidadã
-  Future<List<dynamic>> mural({String? bairro}) async => await _req('GET', bairro == null ? '/mural' : '/mural?bairro=$bairro') as List;
+  Future<List<dynamic>> mural({String? bairro, String? uf, String? municipio, String? categoria, String? ordem, int? pagina}) async =>
+      await _req('GET', caminhoMural(bairro: bairro, uf: uf, municipio: municipio, categoria: categoria, ordem: ordem, pagina: pagina)) as List;
+
+  /// Monta /mural com os filtros (sem filtro: o município de quem consulta).
+  static String caminhoMural({String? bairro, String? uf, String? municipio, String? categoria, String? ordem, int? pagina}) {
+    final q = {
+      'bairro': ?bairro,
+      'uf': ?uf,
+      'municipio': ?municipio,
+      'categoria': ?categoria,
+      'ordem': ?ordem,
+      if (pagina != null && pagina > 0) 'pagina': '$pagina',
+    };
+    return q.isEmpty ? '/mural' : Uri(path: '/mural', queryParameters: q).toString();
+  }
+
+  /// Estados e cidades do IBGE, para a busca da lista de pedidos.
+  Future<List<dynamic>> localidades(String q) async =>
+      await _req('GET', Uri(path: '/localidades', queryParameters: {'q': q}).toString()) as List;
   Future<List<dynamic>> muralPorBairro() async => await _req('GET', '/mural/bairros') as List;
   Future<Map<String, dynamic>> quero(String id) async => Map<String, dynamic>.from(await _req('POST', '/mural/$id/ofertas'));
   Future<List<dynamic>> minhasOfertas() async => await _req('GET', '/voluntario/ofertas') as List;

@@ -1,4 +1,5 @@
 // Testes de interface e acessibilidade do app ELO (guidelines nativas do Flutter).
+import 'package:elo_app/api.dart';
 import 'package:elo_app/tema.dart';
 import 'package:elo_app/telas/boas_vindas.dart';
 import 'package:elo_app/telas/mapa.dart';
@@ -105,6 +106,21 @@ void main() {
     await tester.pumpWidget(_app(const Scaffold(body: Center(child: TagCategoria('alimento')))));
     final texto = tester.widget<Text>(find.text('Alimentação'));
     expect(texto.style?.color, EloCores.brand900);
+  });
+
+  test('lista de pedidos monta os filtros do mural', () {
+    expect(Api.caminhoMural(), '/mural');
+    expect(Api.caminhoMural(uf: 'BA', ordem: 'aguardando'), '/mural?uf=BA&ordem=aguardando');
+    expect(Api.caminhoMural(municipio: 'abc', categoria: 'roupa', pagina: 2), '/mural?municipio=abc&categoria=roupa&pagina=2');
+    expect(Api.caminhoMural(pagina: 0), '/mural');
+  });
+
+  testWidgets('cartão mostra a cidade só na lista de todos os pedidos', (tester) async {
+    final p = {..._pedido, 'municipio': 'Salvador', 'uf': 'BA'};
+    await tester.pumpWidget(_app(Scaffold(body: CartaoPedido(pedido: p, onTap: () {}))));
+    expect(find.textContaining('Salvador'), findsNothing);
+    await tester.pumpWidget(_app(Scaffold(body: CartaoPedido(pedido: p, onTap: () {}, mostrarCidade: true))));
+    expect(find.text('Bairro Vila Nova · Salvador - BA'), findsOneWidget);
   });
 
   test('mapa descreve distância e direção por extenso', () {

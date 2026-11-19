@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, Controller, Get, HttpCode, Inject, NotFoundException, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { Pool } from 'pg';
+import { z } from 'zod';
 import { AuthGuard, Perfis, SessaoAtual } from '../auth/auth.guard';
 import { Sessao } from '../auth/sessao';
 import { auditar } from '../infra/auditoria';
@@ -7,6 +8,24 @@ import { POOL } from '../infra/banco.module';
 import { EventosService } from '../infra/eventos.service';
 import { notificar } from '../infra/notificacoes';
 import { STATUS_PARA_CIDADAO } from '../solicitacoes/textos';
+import { validar } from '../infra/validacao';
+
+const FiltroMural = z.object({
+  bairro: z.string().max(80).optional(),
+  uf: z.string().trim().toUpperCase().regex(/^[A-Z]{2}$/, 'UF inválida').optional(),
+  municipio: z.string().uuid('Cidade inválida').optional(),
+  categoria: z.enum(['alimento', 'roupa', 'movel', 'material_escolar', 'apoio_idoso', 'transporte', 'outro']).optional(),
+  // "Prioridade" = quem espera há mais tempo (F7-D11): a faixa de risco nunca é mostrada no app
+  ordem: z.enum(['bairro', 'recentes', 'aguardando']).default('bairro'),
+  pagina: z.coerce.number().int().min(0).max(1000).default(0),
+  limite: z.coerce.number().int().min(1).max(50).default(30),
+});
+
+const ORDENS = {
+  bairro: '(s.bairro_id = $3::uuid) DESC, s.criado_em',
+  recentes: 's.criado_em DESC',
+  aguardando: 's.criado_em ASC',
+} as const;
 
 /**
  * Rede cidadã: mural do bairro, oferta de ajuda e devolutiva.
@@ -20,23 +39,34 @@ export class RedeController {
     @Inject(EventosService) private readonly eventos: EventosService,
   ) {}
 
-  /** Mural do território (RF-401). Lista equivalente ao mapa (RF-402): agrupável por bairro. */
+  /**
+   * Mural (RF-401), lista equivalente ao mapa (RF-402). Sem filtro: o município do usuário.
+   * Com `uf` ou `municipio`: pedidos de qualquer lugar do Brasil, para ajudar de longe.
+   * Nunca expõe endereço, nome, relato ou faixa de risco.
+   */
   @Get('mural')
   @Perfis('voluntario', 'cidadao')
-  async mural(@SessaoAtual() sessao: Sessao, @Query('bairro') bairroSlug?: string) {
+  async mural(@SessaoAtual() sessao: Sessao, @Query() query: unknown) {
+    const f = validar(FiltroMural, query);
+    const municipio = f.municipio ?? (f.uf ? null : sessao.municipioId);
     const { rows } = await this.pool.query(
       `SELECT s.id, s.titulo, s.categoria, s.criado_em,
-              b.nome AS bairro, b.slug AS bairro_slug,
+              b.nome AS bairro, b.slug AS bairro_slug, m.nome AS municipio, m.uf,
               p.nome AS ponto_coleta, p.endereco AS ponto_coleta_endereco,
               round(extract(epoch FROM now() - s.criado_em) / 3600, 1) AS horas_no_mural
        FROM solicitacao s
        JOIN bairro b ON b.id = s.bairro_id
+       JOIN municipio m ON m.id = s.municipio_id
        LEFT JOIN ponto_coleta p ON p.id = s.ponto_coleta_id
-       WHERE s.municipio_id = $1 AND s.status = 'no_mural' AND s.faixa = 'verde'
+       WHERE s.status = 'no_mural' AND s.faixa = 'verde'
+         AND ($1::uuid IS NULL OR s.municipio_id = $1)
+         AND ($5::text IS NULL OR m.uf = $5)
          AND ($2::text IS NULL OR b.slug = $2)
-         AND s.cidadao_id <> $4
-       ORDER BY (s.bairro_id = $3) DESC, s.criado_em`,
-      [sessao.municipioId, bairroSlug ?? null, sessao.bairroId, sessao.usuarioId],
+         AND ($6::categoria_pedido IS NULL OR s.categoria = $6)
+         AND s.cidadao_id <> $4 AND ($3::uuid IS NULL OR true)
+       ORDER BY ${ORDENS[f.ordem]}
+       LIMIT $7 OFFSET $8`,
+      [municipio, f.bairro ?? null, sessao.bairroId, sessao.usuarioId, f.uf ?? null, f.categoria ?? null, f.limite, f.pagina * f.limite],
     );
     return rows;
   }
@@ -63,12 +93,12 @@ export class RedeController {
     const cliente = await this.pool.connect();
     try {
       await cliente.query('BEGIN');
-      const { rows } = await cliente.query<{ id: string; protocolo: string; cidadao_id: string; titulo: string; ponto: string | null; endereco: string | null }>(
-        `SELECT s.id, s.protocolo, s.cidadao_id, s.titulo, p.nome AS ponto, p.endereco
+      const { rows } = await cliente.query<{ id: string; protocolo: string; cidadao_id: string; municipio_id: string; titulo: string; ponto: string | null; endereco: string | null }>(
+        `SELECT s.id, s.protocolo, s.cidadao_id, s.municipio_id, s.titulo, p.nome AS ponto, p.endereco
          FROM solicitacao s LEFT JOIN ponto_coleta p ON p.id = s.ponto_coleta_id
-         WHERE s.id = $1 AND s.municipio_id = $2 AND s.status = 'no_mural' AND s.faixa = 'verde'
+         WHERE s.id = $1 AND s.status = 'no_mural' AND s.faixa = 'verde'
          FOR UPDATE OF s`,
-        [id, sessao.municipioId],
+        [id],
       );
       const s = rows[0];
       if (!s) throw new NotFoundException('Este pedido não está mais disponível no mural.');
@@ -91,7 +121,7 @@ export class RedeController {
       });
       await auditar(cliente, { usuarioId: sessao.usuarioId, acao: 'oferecer_ajuda', entidade: 'solicitacao', entidadeId: id });
       await cliente.query('COMMIT');
-      this.eventos.emitir({ tipo: 'solicitacao_atualizada', municipioId: sessao.municipioId, solicitacaoId: id, protocolo: s.protocolo });
+      this.eventos.emitir({ tipo: 'solicitacao_atualizada', municipioId: s.municipio_id, solicitacaoId: id, protocolo: s.protocolo });
 
       return {
         protocolo: s.protocolo,
