@@ -42,7 +42,7 @@ const Caixa = z.object({
 });
 
 const COLUNAS = `l.id, l.tipo, l.nome, l.endereco, l.latitude::float AS latitude, l.longitude::float AS longitude,
-  l.telefone, l.horario, l.descricao, l.categorias, l.vagas, l.ativo, l.bairro_id, b.nome AS bairro,
+  l.telefone, l.horario, l.descricao, l.categorias::text[] AS categorias, l.vagas, l.ativo, l.bairro_id, b.nome AS bairro,
   p.capacidade_kg::float AS capacidade_kg, p.estoque_kg::float AS estoque_kg, (p.id IS NOT NULL) AS tem_sensor,
   l.atualizado_em`;
 
@@ -143,7 +143,7 @@ export class LocaisController {
     const { bbox: [oeste, sul, leste, norte], tipo } = validar(Caixa, query);
     const { rows } = await this.pool.query(
       `SELECT l.id, l.tipo, l.nome, l.endereco, l.latitude::float AS latitude, l.longitude::float AS longitude,
-              l.telefone, l.horario, l.descricao, l.categorias, l.vagas, m.nome AS municipio, m.uf,
+              l.telefone, l.horario, l.descricao, l.categorias::text[] AS categorias, l.vagas, m.nome AS municipio, m.uf,
               p.capacidade_kg::float AS capacidade_kg, p.estoque_kg::float AS estoque_kg
        FROM local_rede l
        JOIN municipio m ON m.id = l.municipio_id

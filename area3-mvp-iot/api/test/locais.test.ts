@@ -33,6 +33,8 @@ describe('locais da rede: cadastro pelo gestor e leitura no mapa', () => {
     const r = await app.inject({ method: 'GET', url: '/gestao/locais', headers: auth(gestor) });
     expect(r.statusCode).toBe(200);
     expect(r.json().filter((l: { tipo: string; tem_sensor: boolean }) => l.tipo === 'ponto_coleta' && l.tem_sensor)).toHaveLength(2);
+    // Lista de verdade (o driver não converte array de enum sozinho)
+    expect(r.json()[0].categorias).toEqual(['alimento', 'roupa', 'material_escolar']);
   });
 
   it('gestor cadastra um abrigo com coordenadas e ele aparece no mapa', async () => {
@@ -44,7 +46,7 @@ describe('locais da rede: cadastro pelo gestor e leitura no mapa', () => {
     expect(r.json()).toEqual(expect.objectContaining({ tipo: 'abrigo', vagas: 40, ativo: true }));
     abrigoId = r.json().id;
     const mapa = await app.inject({ method: 'GET', url: `/mapa/locais?bbox=${BBOX}`, headers: auth(ana) });
-    expect(mapa.json()).toEqual([expect.objectContaining({ id: abrigoId, nome: 'Abrigo Municipal Liberdade', latitude: -12.9711 })]);
+    expect(mapa.json()).toEqual([expect.objectContaining({ id: abrigoId, nome: 'Abrigo Municipal Liberdade', latitude: -12.9711, categorias: [] })]);
   });
 
   it('ponto de coleta novo exige bairro e devolve a chave do sensor uma única vez', async () => {

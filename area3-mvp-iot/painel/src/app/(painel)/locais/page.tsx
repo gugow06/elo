@@ -361,7 +361,7 @@ export default function Locais() {
       <Cartao>
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <label htmlFor="filtro" className="font-bold">Tipo</label>
-          <select id="filtro" className={`${campo} w-auto`} value={filtro} onChange={(e) => setFiltro(e.target.value as Tipo | "")}>
+          <select id="filtro" className="min-h-12 rounded-md border-2 border-borda bg-superficie px-3 focus:border-brand-700 focus:outline-none" value={filtro} onChange={(e) => setFiltro(e.target.value as Tipo | "")}>
             <option value="">Todos</option>
             {(Object.keys(TIPOS) as Tipo[]).map((t) => <option key={t} value={t}>{TIPOS[t].rotulo}</option>)}
           </select>
