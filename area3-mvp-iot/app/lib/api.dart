@@ -36,16 +36,24 @@ enum Provedor {
   final String nome;
 }
 
-/// Conta escolhida no provedor social. No protótipo o provedor é simulado (ver telas/conta_social.dart).
+/// Conta do provedor social.
+/// Google: real, leva o [idToken] que a API confere. Apple e Facebook: simulados no protótipo,
+/// levam o [sujeito] fictício (ver telas/conta_social.dart).
 class IdentidadeSocial {
-  const IdentidadeSocial({required this.provedor, required this.sujeito, required this.nome, this.email});
+  const IdentidadeSocial({required this.provedor, this.sujeito, this.idToken, this.nome, this.email});
   final Provedor provedor;
-  final String sujeito; // identificador estável do provedor ("sub")
-  final String nome;
+  final String? sujeito;
+  final String? idToken;
+  final String? nome;
   final String? email;
 
-  Map<String, dynamic> toJson() => {'provedor': provedor.name, 'sujeito': sujeito, 'email': ?email};
+  Map<String, dynamic> toJson() => provedor == Provedor.google
+      ? {'provedor': 'google', 'id_token': idToken}
+      : {'provedor': provedor.name, 'sujeito': sujeito, 'email': ?email};
 }
+
+/// Resposta do login social: a sessão, ou os dados para criar a conta.
+typedef ResultadoSocial = ({Usuario? usuario, String? nome, String? email});
 
 /// Cliente da API do ELO. Guarda a sessão localmente (token de 8 h).
 class Api {
@@ -93,27 +101,28 @@ class Api {
   }
 
   // ---------- autenticação
-  /// Conta ELO: pede o código de 6 dígitos para o telefone.
-  Future<String?> pedirCodigo(String telefone) async {
-    final r = await _req('POST', '/auth/codigo', {'telefone': telefone});
+  /// Conta ELO: pede o código de 6 dígitos, enviado por e-mail.
+  Future<String?> pedirCodigo(String email) async {
+    final r = await _req('POST', '/auth/codigo', {'email': email});
     return r['codigo_demo'] as String?;
   }
 
-  /// Conta ELO: telefone + código.
-  Future<Usuario> entrar(String telefone, String codigo) async =>
-      _guardarSessao(await _req('POST', '/auth/entrar', {'telefone': telefone, 'codigo': codigo}));
+  /// Conta ELO: e-mail + código.
+  Future<Usuario> entrar(String email, String codigo) async =>
+      _guardarSessao(await _req('POST', '/auth/entrar', {'email': email, 'codigo': codigo}));
 
-  /// Login social. Devolve null quando a identidade ainda não tem conta no ELO.
-  Future<Usuario?> entrarSocial(IdentidadeSocial id) async {
+  /// Login social. Sem conta no ELO, devolve nome e e-mail para a criação de conta.
+  Future<ResultadoSocial> entrarSocial(IdentidadeSocial id) async {
     final r = await _req('POST', '/auth/social', id.toJson());
-    if (r['cadastro_necessario'] == true) return null;
-    return _guardarSessao(r);
+    if (r['cadastro_necessario'] == true) return (usuario: null, nome: r['nome'] as String?, email: r['email'] as String?);
+    return (usuario: await _guardarSessao(r), nome: null, email: null);
   }
 
-  /// Cria a conta. Com [social], já entra e devolve o usuário; sem ele, o telefone
+  /// Cria a conta. Com [social], já entra e devolve o usuário; sem ele, o e-mail
   /// precisa ser confirmado: devolve null e [aoPedirCodigo] recebe o código de demonstração.
   Future<Usuario?> cadastrar({
     required String nome,
+    required String email,
     required String telefone,
     required String bairroId,
     required String perfil,
@@ -122,6 +131,7 @@ class Api {
   }) async {
     final r = await _req('POST', '/auth/cadastro', {
       'nome': nome,
+      'email': email,
       'telefone': telefone,
       'bairro_id': bairroId,
       'perfil': perfil,

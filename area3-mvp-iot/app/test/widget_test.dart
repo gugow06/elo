@@ -51,6 +51,18 @@ void main() {
     semantica.dispose();
   });
 
+  testWidgets('Google sem Client ID configurado avisa em vez de travar', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2340);
+    tester.view.devicePixelRatio = 2.625;
+    addTearDown(tester.view.reset);
+    final semantica = tester.ensureSemantics();
+    await tester.pumpWidget(_app(const BoasVindas()));
+    await tester.tap(find.bySemanticsLabel('Continuar com Google'));
+    await tester.pump();
+    expect(find.textContaining('login com Google não foi configurado'), findsOneWidget);
+    semantica.dispose();
+  });
+
   testWidgets('boas-vindas atende contraste, alvo de toque e rótulos (celular em retrato)', (tester) async {
     tester.view.physicalSize = const Size(1080, 2340);
     tester.view.devicePixelRatio = 2.625;

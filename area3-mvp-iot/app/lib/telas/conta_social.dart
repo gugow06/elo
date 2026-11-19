@@ -1,18 +1,15 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../api.dart';
+import '../google.dart';
 import '../tema.dart';
 import '../widgets/comum.dart';
 import '../widgets/login.dart';
 import 'criar_conta.dart';
 import 'shell.dart';
 
-/// Contas fictícias de cada provedor, vinculadas no seed da API (CONTAS_SOCIAIS_DEMO).
+/// Contas fictícias de Apple e Facebook, vinculadas no seed da API (CONTAS_SOCIAIS_DEMO).
 const _contasDemo = <Provedor, List<IdentidadeSocial>>{
-  Provedor.google: [
-    IdentidadeSocial(provedor: Provedor.google, sujeito: 'demo-google-ana', nome: 'Ana Paula Ribeiro', email: 'ana.ribeiro@example.com'),
-    IdentidadeSocial(provedor: Provedor.google, sujeito: 'demo-google-roberto', nome: 'Roberto Alves', email: 'roberto.alves@example.com'),
-  ],
   Provedor.apple: [
     IdentidadeSocial(provedor: Provedor.apple, sujeito: 'demo-apple-claudia', nome: 'Cláudia Martins', email: 'claudia.martins@example.com'),
   ],
@@ -21,10 +18,37 @@ const _contasDemo = <Provedor, List<IdentidadeSocial>>{
   ],
 };
 
-/// Escolha da conta no provedor social. No protótipo o provedor é simulado:
-/// numa versão real, aqui abriria o fluxo OAuth do Google, da Apple ou do Facebook.
+/// Entra com a conta social: se já tem conta no ELO, vai para o início; se não, abre a criação de conta.
+Future<void> entrarComConta(NavigatorState nav, IdentidadeSocial id, {bool substituir = false}) async {
+  final r = await Api.i.entrarSocial(id);
+  if (r.usuario != null) {
+    nav.pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const Shell()), (_) => false);
+    return;
+  }
+  final completa = IdentidadeSocial(
+    provedor: id.provedor, sujeito: id.sujeito, idToken: id.idToken,
+    nome: r.nome ?? id.nome, email: r.email ?? id.email,
+  );
+  final rota = MaterialPageRoute<void>(builder: (_) => CriarConta(social: completa));
+  substituir ? nav.pushReplacement(rota) : nav.push(rota);
+}
+
+/// Google real: abre a escolha de conta do próprio Android.
+Future<void> continuarComGoogle(BuildContext context) async {
+  final nav = Navigator.of(context);
+  try {
+    final id = await contaGoogle();
+    if (id == null || !context.mounted) return;
+    await entrarComConta(nav, id);
+  } on ErroApi catch (e) {
+    if (context.mounted) avisar(context, e.mensagem, erro: true);
+  }
+}
+
+/// Apple e Facebook: escolha da conta SIMULADA (o protótipo não tem conta de desenvolvedor
+/// nesses provedores). Contas fictícias e "Usar outra conta".
 class ContaSocial extends StatefulWidget {
-  const ContaSocial({super.key, required this.provedor});
+  const ContaSocial({super.key, required this.provedor}) : assert(provedor != Provedor.google);
   final Provedor provedor;
   @override
   State<ContaSocial> createState() => _ContaSocialState();
@@ -40,14 +64,7 @@ class _ContaSocialState extends State<ContaSocial> {
   Future<void> _continuar(IdentidadeSocial id) async {
     setState(() { _enviando = true; _erro = null; });
     try {
-      final usuario = await Api.i.entrarSocial(id);
-      if (!mounted) return;
-      final nav = Navigator.of(context);
-      if (usuario != null) {
-        nav.pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const Shell()), (_) => false);
-      } else {
-        nav.pushReplacement(MaterialPageRoute(builder: (_) => CriarConta(social: id)));
-      }
+      await entrarComConta(Navigator.of(context), id, substituir: true);
     } on ErroApi catch (e) {
       setState(() => _erro = e.mensagem);
     } finally {
@@ -58,7 +75,7 @@ class _ContaSocialState extends State<ContaSocial> {
   void _usarOutraConta() {
     final email = _email.text.trim().toLowerCase();
     final nome = _nome.text.trim();
-    if (nome.length < 2 || !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
+    if (nome.length < 2 || !emailValido(email)) {
       setState(() => _erro = 'Informe o seu nome e um e-mail válido.');
       return;
     }
@@ -92,12 +109,12 @@ class _ContaSocialState extends State<ContaSocial> {
                   CircleAvatar(
                     backgroundColor: EloCores.brand100,
                     foregroundColor: EloCores.brand900,
-                    child: Text(id.nome[0], style: const TextStyle(fontWeight: FontWeight.w800)),
+                    child: Text(id.nome![0], style: const TextStyle(fontWeight: FontWeight.w800)),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(id.nome, style: const TextStyle(fontWeight: FontWeight.w700)),
+                      Text(id.nome!, style: const TextStyle(fontWeight: FontWeight.w700)),
                       Text(id.email!, style: t.bodyMedium?.copyWith(fontSize: 14)),
                     ]),
                   ),

@@ -72,7 +72,10 @@ class BoasVindas extends StatelessWidget {
               Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                 for (final (i, p) in Provedor.values.indexed) ...[
                   if (i > 0) const SizedBox(width: 20),
-                  BotaoProvedor(provedor: p, onPressed: () => _abrir(context, ContaSocial(provedor: p))),
+                  BotaoProvedor(
+                    provedor: p,
+                    onPressed: () => p == Provedor.google ? continuarComGoogle(context) : _abrir(context, ContaSocial(provedor: p)),
+                  ),
                 ],
               ]),
             ]),

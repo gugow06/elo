@@ -34,8 +34,6 @@ export const CHAVES_DEMO = {
 
 /** Identificadores fictícios do provedor (o "sub" que Google/Apple/Facebook devolveriam). */
 export const CONTAS_SOCIAIS_DEMO = {
-  ana: 'demo-google-ana',
-  roberto: 'demo-google-roberto',
   claudia: 'demo-apple-claudia',
   maria: 'demo-facebook-maria',
 } as const;
@@ -58,11 +56,16 @@ export async function seed(url?: string): Promise<void> {
          VALUES ($8,$1,$2,$3,$4,$5,$6,$7) RETURNING id`,
         [m, b, nome, endereco, cap, estoque, sha256(CHAVES_DEMO[slug]), PONTOS_DEMO[slug]],
       )).rows[0].id;
+    // E-mail fictício (domínio reservado example.com), derivado do nome: "Ana Paula Ribeiro" → ana.ribeiro@example.com
+    const emailDe = (nome: string) => {
+      const p = nome.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().split(' ');
+      return `${p[0]}.${p[p.length - 1]}@example.com`;
+    };
     const usr = async (m: string, b: string | null, perfil: string, nome: string, base9: string, telefone: string, nasc: string) =>
       (await c.query<{ id: string }>(
-        `INSERT INTO usuario (municipio_id, bairro_id, perfil, nome, cpf, telefone, data_nascimento)
-         VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
-        [m, b, perfil, nome, cpfFicticio(base9), telefone, nasc],
+        `INSERT INTO usuario (municipio_id, bairro_id, perfil, nome, cpf, telefone, data_nascimento, email)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
+        [m, b, perfil, nome, cpfFicticio(base9), telefone, nasc, emailDe(nome)],
       )).rows[0].id;
 
     // Município 1 (fictício)
@@ -74,16 +77,14 @@ export async function seed(url?: string): Promise<void> {
     await ponto(m1, vilaNova, 'ponto-vila-nova', 'Ponto de Coleta Vila Nova', 'Escola Municipal Vila Nova, portão lateral', 300, 84);
     await ponto(m1, jardim, 'ponto-jardim', 'Ponto de Coleta CRAS Jardim', 'CRAS Jardim, recepção', 400, 36);
 
-    const ana = await usr(m1, jardimSP, 'cidadao', 'Ana Paula Ribeiro', '123456789', '+5511990000001', '1997-03-14');
+    await usr(m1, jardimSP, 'cidadao', 'Ana Paula Ribeiro', '123456789', '+5511990000001', '1997-03-14');
     const maria = await usr(m1, vilaNova, 'cidadao', 'Maria das Dores Lima', '234567891', '+5511990000002', '1954-08-02');
     const jose = await usr(m1, centro, 'cidadao', 'José Carlos Souza', '345678912', '+5511990000003', '1992-11-20');
     const claudia = await usr(m1, vilaNova, 'voluntario', 'Cláudia Martins', '456789123', '+5511990000004', '1985-05-09');
-    const roberto = await usr(m1, jardim, 'voluntario', 'Roberto Alves', '567891234', '+5511990000005', '1979-01-30');
+    await usr(m1, jardim, 'voluntario', 'Roberto Alves', '567891234', '+5511990000005', '1979-01-30');
 
-    // Contas sociais fictícias (login social simulado no protótipo; ver CONTAS_SOCIAIS_DEMO)
+    // Contas Apple e Facebook fictícias (esses dois provedores são simulados no protótipo; o Google é real)
     for (const [usuarioId, provedor, sujeito, email] of [
-      [ana, 'google', CONTAS_SOCIAIS_DEMO.ana, 'ana.ribeiro@example.com'],
-      [roberto, 'google', CONTAS_SOCIAIS_DEMO.roberto, 'roberto.alves@example.com'],
       [claudia, 'apple', CONTAS_SOCIAIS_DEMO.claudia, 'claudia.martins@example.com'],
       [maria, 'facebook', CONTAS_SOCIAIS_DEMO.maria, 'maria.lima@example.com'],
     ]) {

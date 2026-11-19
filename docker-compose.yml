@@ -33,6 +33,9 @@ services:
       LLM_TIMEOUT_MS: ${LLM_TIMEOUT_MS:-20000}
       DATABASE_URL_OURO: postgresql://elo_leitura_ouro:elo_leitura_ouro_dev@db:5432/${POSTGRES_DB:-elo}
       SLA_MURAL_HORAS: ${SLA_MURAL_HORAS:-48}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      RESEND_FROM: ${RESEND_FROM:-}
+      GOOGLE_CLIENT_IDS: ${GOOGLE_CLIENT_IDS:-}
     ports:
       - "3333:3333"
     depends_on:

@@ -6,8 +6,8 @@ import '../widgets/login.dart';
 import 'entrar.dart';
 import 'shell.dart';
 
-/// Criação de conta de cidadão ou voluntário. Vinda do login social, já traz o nome
-/// e vincula a conta do provedor; sem ele, o telefone é confirmado por código.
+/// Criação de conta de cidadão ou voluntário. Vinda do login social, já traz nome e e-mail
+/// e vincula a conta do provedor; sem ele, o e-mail é confirmado por código.
 class CriarConta extends StatefulWidget {
   const CriarConta({super.key, this.social});
   final IdentidadeSocial? social;
@@ -17,6 +17,7 @@ class CriarConta extends StatefulWidget {
 
 class _CriarContaState extends State<CriarConta> {
   late final _nome = TextEditingController(text: widget.social?.nome);
+  late final _email = TextEditingController(text: widget.social?.email);
   final _telefone = TextEditingController();
   List<dynamic>? _bairros;
   String? _bairroId;
@@ -40,6 +41,10 @@ class _CriarContaState extends State<CriarConta> {
   }
 
   Future<void> _criar() async {
+    if (!emailValido(_email.text)) {
+      setState(() => _erro = 'Informe um e-mail válido.');
+      return;
+    }
     if (_bairroId == null) {
       setState(() => _erro = 'Escolha o seu bairro.');
       return;
@@ -49,6 +54,7 @@ class _CriarContaState extends State<CriarConta> {
       String? codigoDemo;
       final usuario = await Api.i.cadastrar(
         nome: _nome.text.trim(),
+        email: _email.text.trim(),
         telefone: _telefone.text,
         bairroId: _bairroId!,
         perfil: _perfil,
@@ -60,7 +66,7 @@ class _CriarContaState extends State<CriarConta> {
       if (usuario != null) {
         nav.pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const Shell()), (_) => false);
       } else {
-        nav.pushReplacement(MaterialPageRoute(builder: (_) => Entrar(telefone: _telefone.text, codigoDemo: codigoDemo)));
+        nav.pushReplacement(MaterialPageRoute(builder: (_) => Entrar(email: _email.text.trim(), codigoDemo: codigoDemo)));
       }
     } on ErroApi catch (e) {
       setState(() => _erro = e.mensagem);
@@ -81,7 +87,7 @@ class _CriarContaState extends State<CriarConta> {
             Row(children: [
               LogoProvedor(social.provedor, tamanho: 22),
               const SizedBox(width: 10),
-              Expanded(child: Text('Conta ${social.provedor.nome}: ${social.email ?? social.nome}', style: t.bodyMedium)),
+              Expanded(child: Text('Conta ${social.provedor.nome}: ${social.email ?? social.nome ?? ''}', style: t.bodyMedium)),
             ]),
             const SizedBox(height: 8),
             Text('Falta pouco: complete o seu cadastro no ELO.', style: t.titleMedium),
@@ -104,6 +110,16 @@ class _CriarContaState extends State<CriarConta> {
             textCapitalization: TextCapitalization.words,
             autofillHints: const [AutofillHints.name],
             decoration: const InputDecoration(labelText: 'Nome'),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _email,
+            // No Google, vale o e-mail confirmado pelo Google
+            readOnly: social?.provedor == Provedor.google,
+            keyboardType: TextInputType.emailAddress,
+            autofillHints: const [AutofillHints.email],
+            autocorrect: false,
+            decoration: const InputDecoration(labelText: 'E-mail'),
           ),
           const SizedBox(height: 16),
           TextField(
@@ -130,7 +146,7 @@ class _CriarContaState extends State<CriarConta> {
           FilledButton(onPressed: _enviando ? null : _criar, child: Text(_enviando ? 'Criando…' : 'Criar conta')),
           if (social == null) ...[
             const SizedBox(height: 12),
-            Text('Vamos enviar um código para confirmar o seu telefone. Não precisa de senha.', textAlign: TextAlign.center, style: t.bodyMedium),
+            Text('Vamos enviar um código para confirmar o seu e-mail. Não precisa de senha.', textAlign: TextAlign.center, style: t.bodyMedium),
           ],
         ]),
       ),

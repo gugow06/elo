@@ -3,6 +3,9 @@ import 'package:material_ui/material_ui.dart';
 import '../api.dart';
 import '../tema.dart';
 
+/// Validação simples de e-mail (a API confere de novo).
+bool emailValido(String e) => RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(e.trim());
+
 /// Logo do provedor. Google usa o arquivo oficial (assets/google-g.png);
 /// Apple e Facebook usam os ícones de marca do Material Icons.
 class LogoProvedor extends StatelessWidget {
