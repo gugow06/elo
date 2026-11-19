@@ -65,7 +65,13 @@ O app usa o "Fazer login com o Google" do Android (`google_sign_in`) e a API con
 
    APK compilado em outra máquina (ou no CI) tem outro SHA-1: cadastre cada um, ou o Google cancela o login.
 
-Sem `GOOGLE_SERVER_CLIENT_ID`, o botão do Google avisa que o login não foi configurado. No navegador (`flutter run -d chrome`) o Google não funciona: use o Android.
+4. Para a versão **web**, adicione a origem do app (ex.: `http://localhost:8090`) em **Origens JavaScript autorizadas** do cliente Web. Na web aparece o botão oficial do Google (exigência do Google Identity Services) no lugar do botão do ELO.
+
+```bash
+flutter run -d chrome --web-port 8090   --dart-define=API_URL=http://localhost:3333   --dart-define=GOOGLE_SERVER_CLIENT_ID=xxxx.apps.googleusercontent.com
+```
+
+Sem `GOOGLE_SERVER_CLIENT_ID`, o botão do Google avisa que o login não foi configurado.
 
 ### Código por e-mail (Resend)
 

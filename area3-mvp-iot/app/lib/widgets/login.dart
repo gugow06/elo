@@ -14,19 +14,6 @@ class LogoGoogle extends StatelessWidget {
       ExcludeSemantics(child: Image.asset('assets/google-g.png', width: tamanho, height: tamanho));
 }
 
-/// Botão "Continuar com Google" (abaixo de "Ou continue com").
-class BotaoGoogle extends StatelessWidget {
-  const BotaoGoogle({super.key, required this.onPressed});
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) => OutlinedButton.icon(
-        onPressed: onPressed,
-        icon: const LogoGoogle(),
-        label: const Text('Continuar com Google'),
-      );
-}
-
 /// Linha divisória com texto no meio.
 class DivisorTexto extends StatelessWidget {
   const DivisorTexto(this.texto, {super.key});

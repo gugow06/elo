@@ -68,7 +68,7 @@ class BoasVindas extends StatelessWidget {
               const SizedBox(height: 20),
               const DivisorTexto('Ou continue com'),
               const SizedBox(height: 16),
-              BotaoGoogle(onPressed: () => continuarComGoogle(context)),
+              const BotaoGoogle(),
             ]),
           ),
         ),
