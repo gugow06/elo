@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Inject, NotFoundException, Param, Post, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Inject, NotFoundException, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { Pool } from 'pg';
 import { z } from 'zod';
 import { AuthGuard, Perfis, SessaoAtual } from '../auth/auth.guard';
@@ -27,6 +27,14 @@ const Entrega = z.object({
     .array(z.object({ item_id: z.string().uuid(), quantidade: z.number().int().min(1, 'Quantidade mínima: 1').max(999) }))
     .min(1, 'Marque pelo menos um item que a pessoa trouxe')
     .max(50),
+});
+
+/** Filtros do registro (log) de entregas e retiradas. */
+const FiltroRegistro = z.object({
+  ponto_coleta_id: z.string().uuid().optional(),
+  tipo: z.enum(['entrega', 'retirada', 'codigo_errado']).optional(),
+  protocolo: z.string().trim().regex(/^\d{6}$/, 'O protocolo tem 6 números').optional(),
+  limite: z.coerce.number().int().min(1).max(500).default(100),
 });
 
 /** Pedido que ainda pode receber doação: no mural, em atendimento ou já com algo no ponto. */
@@ -63,6 +71,54 @@ export class AgenteController {
     return rows;
   }
 
+  /**
+   * Registro (log) do município: cada doação recebida, cada retirada e cada tentativa de retirada
+   * com código errado, a mais recente primeiro. Mostra quando, onde, quem registrou (agente, sensor
+   * ou app), quem trouxe e o quê. Nunca mostra nome, endereço ou relato de quem pediu.
+   */
+  @Get('registro')
+  async registro(@SessaoAtual() sessao: Sessao, @Query() query: unknown) {
+    const f = validar(FiltroRegistro, query ?? {});
+    const { rows } = await this.pool.query(
+      `SELECT * FROM (
+         SELECT 'entrega' AS tipo, e.id::text AS id, e.criado_em, s.protocolo, s.titulo, p.nome AS ponto_coleta, e.ponto_coleta_id,
+                e.origem, ag.nome AS registrado_por, split_part(v.nome, ' ', 1) AS trouxe,
+                coalesce((SELECT json_agg(json_build_object('descricao', i.descricao, 'quantidade', ei.quantidade) ORDER BY i.ordem)
+                          FROM entrega_item ei JOIN item_solicitacao i ON i.id = ei.item_id WHERE ei.entrega_id = e.id), '[]'::json) AS itens
+         FROM entrega e
+         JOIN solicitacao s ON s.id = e.solicitacao_id
+         LEFT JOIN ponto_coleta p ON p.id = e.ponto_coleta_id
+         LEFT JOIN usuario ag ON ag.id = e.registrado_por
+         LEFT JOIN usuario v ON v.id = e.voluntario_id
+         WHERE s.municipio_id = $1
+         UNION ALL
+         SELECT 'retirada', r.id::text, r.criado_em, s.protocolo, s.titulo, p.nome, r.ponto_coleta_id,
+                r.origem, CASE WHEN r.origem = 'app' THEN NULL ELSE ag.nome END, NULL,
+                coalesce((SELECT json_agg(json_build_object('descricao', i.descricao, 'quantidade', NULLIF(i.quantidade_entregue, 0)) ORDER BY i.ordem)
+                          FROM retirada_item ri JOIN item_solicitacao i ON i.id = ri.item_id WHERE ri.retirada_id = r.id), '[]'::json)
+         FROM retirada r
+         JOIN solicitacao s ON s.id = r.solicitacao_id
+         LEFT JOIN ponto_coleta p ON p.id = r.ponto_coleta_id
+         LEFT JOIN usuario ag ON ag.id = r.registrado_por
+         WHERE s.municipio_id = $1
+         UNION ALL
+         SELECT 'codigo_errado', a.id::text, a.criado_em, s.protocolo, s.titulo, NULL, NULL,
+                CASE WHEN ag.perfil IN ('agente', 'tecnico', 'gestor') THEN 'painel' ELSE 'sensor' END, ag.nome, NULL, '[]'::json
+         FROM evento_auditoria a
+         JOIN solicitacao s ON s.id::text = a.entidade_id
+         LEFT JOIN usuario ag ON ag.id = a.usuario_id
+         WHERE a.acao = 'codigo_retirada_errado' AND s.municipio_id = $1
+       ) r
+       WHERE ($2::uuid IS NULL OR r.ponto_coleta_id = $2)
+         AND ($3::text IS NULL OR r.tipo = $3)
+         AND ($4::text IS NULL OR r.protocolo = $4)
+       ORDER BY r.criado_em DESC
+       LIMIT $5`,
+      [sessao.municipioId, f.ponto_coleta_id ?? null, f.tipo ?? null, f.protocolo ?? null, f.limite],
+    );
+    return rows.map(({ ponto_coleta_id: _, ...r }) => r);
+  }
+
   @Get('pedidos/:protocolo')
   async pedido(@SessaoAtual() sessao: Sessao, @Param('protocolo') protocoloBruto: string) {
     const protocolo = validar(Protocolo, protocoloBruto);
@@ -80,7 +136,7 @@ export class AgenteController {
         `SELECT id, status, cidadao_id, municipio_id, codigo_retirada FROM solicitacao WHERE municipio_id = $1 AND protocolo = $2 FOR UPDATE`,
         [sessao.municipioId, protocolo],
       )).rows[0];
-      if (!s) throw new NotFoundException('Protocolo não encontrado neste município. Confira os 6 números com a pessoa.');
+      if (!s) throw await this.naoEncontrado(sessao.municipioId, protocolo);
       if (!RECEBE.includes(s.status)) throw new BadRequestException(`Este pedido não recebe mais doações: ${STATUS_PARA_CIDADAO[s.status].toLowerCase()}.`);
 
       const ponto = (await c.query<{ id: string; nome: string }>(
@@ -178,7 +234,7 @@ export class AgenteController {
       'SELECT id, status, cidadao_id, municipio_id, codigo_retirada FROM solicitacao WHERE municipio_id = $1 AND protocolo = $2',
       [sessao.municipioId, protocolo],
     )).rows[0];
-    if (!s) throw new NotFoundException('Protocolo não encontrado neste município. Confira os 6 números com a pessoa.');
+    if (!s) throw await this.naoEncontrado(sessao.municipioId, protocolo);
     if (!RECEBE.includes(s.status)) throw new BadRequestException(`Este pedido já foi encerrado: ${STATUS_PARA_CIDADAO[s.status].toLowerCase()}.`);
     // Fora da transação: a tentativa errada fica registrada e conta para o limite
     if (!(await conferirCodigo(this.pool, s, d.codigo, sessao.usuarioId))) {
@@ -225,7 +281,7 @@ export class AgenteController {
        WHERE s.municipio_id = $1 AND s.protocolo = $2`,
       [municipioId, protocolo],
     )).rows[0];
-    if (!s) throw new NotFoundException('Protocolo não encontrado neste município. Confira os 6 números com a pessoa.');
+    if (!s) throw await this.naoEncontrado(municipioId, protocolo);
 
     const itens = (await this.pool.query<ItemAgente>(
       `SELECT i.id, i.descricao, i.quantidade_entregue AS quantidade,
@@ -272,5 +328,25 @@ export class AgenteController {
       ajudantes,
       entregas,
     };
+  }
+
+  /**
+   * Protocolo que não é deste município. Se ele existe em outra cidade, diz qual: o agente vê só os
+   * pedidos do município da própria conta (e a pessoa pode ter vindo ao ponto errado).
+   */
+  private async naoEncontrado(municipioId: string, protocolo: string): Promise<NotFoundException> {
+    const { rows } = await this.pool.query<{ cidade: string; uf: string }>(
+      `SELECT m.nome AS cidade, m.uf FROM solicitacao s JOIN municipio m ON m.id = s.municipio_id
+       WHERE s.protocolo = $1 AND s.municipio_id <> $2 ORDER BY s.criado_em DESC LIMIT 1`,
+      [protocolo, municipioId],
+    );
+    const aqui = (await this.pool.query<{ nome: string; uf: string }>('SELECT nome, uf FROM municipio WHERE id = $1', [municipioId])).rows[0];
+    if (rows[0] && aqui) {
+      return new NotFoundException(
+        `Este protocolo é de um pedido de ${rows[0].cidade} - ${rows[0].uf}, e este painel atende ${aqui.nome} - ${aqui.uf}. ` +
+          'A doação precisa ir a um ponto de coleta da cidade do pedido.',
+      );
+    }
+    return new NotFoundException('Protocolo não encontrado neste município. Confira os 6 números com a pessoa.');
   }
 }

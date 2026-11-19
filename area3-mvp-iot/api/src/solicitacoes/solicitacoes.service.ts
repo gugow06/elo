@@ -1,6 +1,7 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Classificacao, ClassificadorModelo, triar } from '@elo/triagem';
 import { randomInt } from 'node:crypto';
+import { bairroPorNome } from '../geo/bairros';
 import { gerarItens, sqlItens } from '../rede/itens';
 import { Pool, PoolClient } from 'pg';
 import { auditar } from '../infra/auditoria';
@@ -14,6 +15,8 @@ export interface NovaSolicitacao {
   relato: string;
   canal: 'app' | 'whatsapp' | 'balcao' | 'web_leve';
   bairroId?: string;
+  /** Bairro pelo nome, no município da conta (cria se ainda não existir). */
+  bairroNome?: string;
 }
 
 @Injectable()
@@ -34,7 +37,9 @@ export class SolicitacoesService {
     const cliente = await this.pool.connect();
     try {
       await cliente.query('BEGIN');
-      const bairroId = dados.bairroId ?? sessao.bairroId;
+      // Bairro do pedido: o escolhido, o da localização (pelo nome) ou o do cadastro
+      const bairroId = dados.bairroId ?? (dados.bairroNome ? await bairroPorNome(cliente, sessao.municipioId, dados.bairroNome) : null) ?? sessao.bairroId;
+      if (!bairroId) throw new BadRequestException('Escolha o bairro do pedido.');
       const bairro = await cliente.query<{ id: string }>('SELECT id FROM bairro WHERE id = $1 AND municipio_id = $2', [bairroId, sessao.municipioId]);
       if (!bairro.rows[0]) throw new NotFoundException('Bairro não encontrado no seu município.');
 

@@ -8,6 +8,8 @@ import { lerSessao, NOME_PERFIL, sair, useModoDemo, type UsuarioSessao } from "@
 
 const MENU = [
   { href: "/receber", rotulo: "Receber doação", icone: "📦", perfis: ["agente", "tecnico", "gestor"] },
+  { href: "/retirar", rotulo: "Retirar doação", icone: "🤲", perfis: ["agente", "tecnico", "gestor"] },
+  { href: "/registro", rotulo: "Registro", icone: "🧾", perfis: ["agente", "tecnico", "gestor"] },
   { href: "/fila", rotulo: "Fila do CRAS", icone: "📋", perfis: ["tecnico"] },
   { href: "/gestao", rotulo: "Gestão da rede", icone: "📊", perfis: ["gestor", "tecnico"] },
   { href: "/locais", rotulo: "Locais da rede", icone: "📍", perfis: ["gestor", "tecnico"] },

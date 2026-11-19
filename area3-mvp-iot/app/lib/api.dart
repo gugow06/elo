@@ -7,7 +7,20 @@ import 'textos_legais.dart';
 
 /// URL da API definida no build: flutter run --dart-define=API_URL=https://...
 /// Padrão: emulador Android acessando o computador (10.0.2.2).
-const apiUrl = String.fromEnvironment('API_URL', defaultValue: 'http://10.0.2.2:3333');
+const _apiUrlConfigurada = String.fromEnvironment('API_URL', defaultValue: 'http://10.0.2.2:3333');
+const _web = bool.fromEnvironment('dart.library.js_interop');
+
+/// Endereço da API. Na versão web, se a API está configurada em localhost mas a página foi aberta
+/// de outro aparelho ou pelo IP da máquina (ex.: http://192.168.0.10:8090), usa o mesmo endereço
+/// da página, na porta da API: senão o navegador procuraria a API no próprio aparelho.
+final String apiUrl = () {
+  final url = Uri.parse(_apiUrlConfigurada);
+  bool local(String h) => h == 'localhost' || h == '127.0.0.1' || h == '::1';
+  if (_web && local(url.host) && Uri.base.host.isNotEmpty && !local(Uri.base.host)) {
+    return url.replace(host: Uri.base.host).toString().replaceFirst(RegExp(r'/$'), '');
+  }
+  return _apiUrlConfigurada;
+}();
 
 class ErroApi implements Exception {
   ErroApi(this.status, this.mensagem);
@@ -202,8 +215,9 @@ class Api {
   }
 
   // ---------- cidadão
-  Future<Map<String, dynamic>> pedirAjuda(String relato, {String? bairroId}) async =>
-      Map<String, dynamic>.from(await _req('POST', '/solicitacoes', {'relato': relato, 'canal': 'app', 'bairro_id': ?bairroId}));
+  /// [bairroId] (da lista) ou [bairroNome] (o que a localização achou, ou digitado); sem nenhum, o bairro da conta.
+  Future<Map<String, dynamic>> pedirAjuda(String relato, {String? bairroId, String? bairroNome}) async => Map<String, dynamic>.from(
+      await _req('POST', '/solicitacoes', {'relato': relato, 'canal': 'app', 'bairro_id': ?bairroId, 'bairro_nome': ?bairroNome}));
   Future<List<dynamic>> meusPedidos() async => await _req('GET', '/solicitacoes/minhas') as List;
   Future<void> confirmarRecebimento(String id) async => _req('POST', '/solicitacoes/$id/confirmar-recebimento');
 

@@ -58,6 +58,14 @@ describe('agente do ponto de coleta: registra pelo protocolo o que a pessoa trou
     expect((await ver('12ab')).statusCode).toBe(400);
   });
 
+  it('protocolo de outra cidade: a mensagem diz de qual cidade é', async () => {
+    const luiz = await entrar(app, '+5511990000008'); // mora em Campo Alegre do Norte
+    const p = (await app.inject({ method: 'POST', url: '/solicitacoes', headers: auth(luiz), payload: { relato: 'Preciso de material escolar para o meu filho' } })).json();
+    const r = await ver(p.protocolo);
+    expect(r.statusCode).toBe(404);
+    expect(r.json().message).toContain('Campo Alegre do Norte');
+  });
+
   it('registra o que a pessoa trouxe, com quantidade, e avisa quem pediu e quem trouxe', async () => {
     const p = (await ver()).json() as PedidoAgente;
     const claudiaOferta = p.ajudantes[0].oferta_id;

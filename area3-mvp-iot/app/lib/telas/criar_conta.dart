@@ -25,12 +25,11 @@ class _CriarContaState extends State<CriarConta> {
   late final _email = TextEditingController(text: widget.google?.email);
   final _telefone = TextEditingController();
   final _buscaCidade = TextEditingController();
-  final _bairroNome = TextEditingController();
   Timer? _espera;
   List<Map<String, dynamic>> _sugestoes = [];
   Map<String, dynamic>? _cidade;
-  List<dynamic>? _bairros;
-  String? _bairroId; // _outro = digitar o bairro
+  /// Bairro que a localização do aparelho encontrou (vai junto, sem campo na tela).
+  String? _bairroDaLocalizacao;
   bool _enviando = false;
   /// Aceite dos Termos de uso e da Política de privacidade (obrigatório).
   bool _aceite = false;
@@ -38,8 +37,6 @@ class _CriarContaState extends State<CriarConta> {
   String? _erro;
   /// Posição do aparelho, se a pessoa aceitou compartilhar (só para a posição aproximada do bairro).
   ({double latitude, double longitude})? _posicao;
-
-  static const _outro = '_outro';
 
   @override
   void dispose() {
@@ -83,18 +80,9 @@ class _CriarContaState extends State<CriarConta> {
         return;
       }
       _posicao = p;
-      await _escolherCidade(cidade);
+      _escolherCidade(cidade);
       final b = r['bairro'] == null ? null : Map<String, dynamic>.from(r['bairro']);
-      if (!mounted || b == null) return;
-      final daLista = (_bairros ?? []).cast<Map>().where((x) => x['id'] == b['id'] || (x['nome'] as String).toLowerCase() == (b['nome'] as String).toLowerCase());
-      setState(() {
-        if (daLista.isNotEmpty) {
-          _bairroId = daLista.first['id'] as String;
-        } else {
-          _bairroId = _outro;
-          _bairroNome.text = b['nome'] as String;
-        }
-      });
+      if (mounted) setState(() => _bairroDaLocalizacao = b?['nome'] as String?);
     } on ErroApi catch (e) {
       if (mounted) setState(() => _erro = e.mensagem);
     } finally {
@@ -102,16 +90,10 @@ class _CriarContaState extends State<CriarConta> {
     }
   }
 
-  Future<void> _escolherCidade(Map<String, dynamic> c) async {
+  void _escolherCidade(Map<String, dynamic> c) {
     _buscaCidade.text = '${c['nome']}, ${c['uf']}';
     FocusScope.of(context).unfocus();
-    setState(() { _cidade = c; _sugestoes = []; _bairros = null; _bairroId = null; });
-    try {
-      final b = await Api.i.bairrosCadastro(municipio: c['id'] as String);
-      if (mounted) setState(() { _bairros = b; if (b.isEmpty) _bairroId = _outro; });
-    } on ErroApi catch (e) {
-      if (mounted) setState(() { _bairros = []; _bairroId = _outro; _erro = e.mensagem; });
-    }
+    setState(() { _cidade = c; _sugestoes = []; _bairroDaLocalizacao = null; });
   }
 
   Future<void> _criar() async {
@@ -121,11 +103,6 @@ class _CriarContaState extends State<CriarConta> {
     }
     if (_cidade == null) {
       setState(() => _erro = 'Escolha a sua cidade na lista.');
-      return;
-    }
-    final digitado = _bairroId == _outro;
-    if (_bairroId == null || (digitado && _bairroNome.text.trim().length < 2)) {
-      setState(() => _erro = 'Informe o seu bairro.');
       return;
     }
     if (!_aceite) {
@@ -139,9 +116,9 @@ class _CriarContaState extends State<CriarConta> {
         nome: _nome.text.trim(),
         email: _email.text.trim(),
         telefone: _telefone.text,
-        bairroId: digitado ? null : _bairroId,
-        municipioId: digitado ? _cidade!['id'] as String : null,
-        bairroNome: digitado ? _bairroNome.text.trim() : null,
+        // Sem campo de bairro: vai a cidade e, se a localização achou, o bairro
+        municipioId: _cidade!['id'] as String,
+        bairroNome: _bairroDaLocalizacao,
         posicao: _posicao,
         google: widget.google,
         aoPedirCodigo: (c) => codigoDemo = c,
@@ -213,8 +190,8 @@ class _CriarContaState extends State<CriarConta> {
           const Padding(
             padding: EdgeInsets.only(top: 6, bottom: 12),
             child: Text(
-              'O aparelho pergunta se você aceita compartilhar a localização (GPS ou rede). Usamos só para achar a sua cidade e o seu bairro; '
-              'não guardamos onde você mora.',
+              'O aparelho pergunta se você aceita compartilhar a localização (GPS ou rede). Usamos só para achar a sua cidade e mostrar o que '
+              'está perto de você; não guardamos onde você mora.',
               style: TextStyle(fontSize: 13, color: EloCores.texto2),
             ),
           ),
@@ -222,7 +199,7 @@ class _CriarContaState extends State<CriarConta> {
             controller: _buscaCidade,
             onChanged: (t) {
               _posicao = null; // cidade digitada: a localização deixa de valer
-              if (_cidade != null) setState(() { _cidade = null; _bairros = null; _bairroId = null; });
+              if (_cidade != null) setState(() { _cidade = null; _bairroDaLocalizacao = null; });
               _digitouCidade(t);
             },
             textInputAction: TextInputAction.search,
@@ -241,30 +218,6 @@ class _CriarContaState extends State<CriarConta> {
                   ListTile(title: Text('${c['nome']}, ${c['uf']}'), onTap: () => _escolherCidade(c)),
               ]),
             ),
-          if (_cidade != null) ...[
-            const SizedBox(height: 16),
-            if (_bairros == null)
-              const Carregando(texto: 'Carregando bairros…')
-            else if (_bairros!.isNotEmpty)
-              DropdownButtonFormField<String>(
-                initialValue: _bairroId,
-                isExpanded: true,
-                decoration: const InputDecoration(labelText: 'Bairro'),
-                items: [
-                  for (final b in _bairros!) DropdownMenuItem(value: b['id'] as String, child: Text(b['nome'], overflow: TextOverflow.ellipsis)),
-                  const DropdownMenuItem(value: _outro, child: Text('Meu bairro não está na lista')),
-                ],
-                onChanged: (v) => setState(() => _bairroId = v),
-              ),
-            if (_bairroId == _outro) ...[
-              if (_bairros?.isNotEmpty ?? false) const SizedBox(height: 16),
-              TextField(
-                controller: _bairroNome,
-                textCapitalization: TextCapitalization.words,
-                decoration: const InputDecoration(labelText: 'Bairro', hintText: 'Nome do seu bairro'),
-              ),
-            ],
-          ],
           const SizedBox(height: 16),
           CaixaAceite(aceito: _aceite, aoMudar: (v) => setState(() => _aceite = v)),
           const SizedBox(height: 16),
