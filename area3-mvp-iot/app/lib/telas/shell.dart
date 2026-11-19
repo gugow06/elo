@@ -76,7 +76,7 @@ class _ShellState extends State<Shell> {
   @override
   Widget build(BuildContext context) {
     final telas = [
-      Inicio(aoPedirAjuda: _publicar, aoAbrirMapa: () => _irPara(1)),
+      Inicio(aoPedirAjuda: _publicar, aoAbrirMapa: () => _irPara(1), aoAbrirPerfil: () => _irPara(4)),
       const MapaRede(),
       const SizedBox.shrink(),
       Mensagens(key: _mensagens, aoMudarNaoLidas: _contar),
@@ -84,7 +84,7 @@ class _ShellState extends State<Shell> {
     ];
     return Scaffold(
       body: IndexedStack(index: _aba, children: telas),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      floatingActionButtonLocation: const _PublicarNaBarra(),
       floatingActionButton: Semantics(
         button: true,
         label: 'Publicar pedido de ajuda',
@@ -120,3 +120,13 @@ class _ShellState extends State<Shell> {
 /// Atalho para abrir as notificações a partir do sino do cabeçalho.
 void abrirNotificacoes(BuildContext context) =>
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => const Notificacoes()));
+
+/// Botão "Publicar" no centro da barra, um pouco mais baixo que o padrão (centerDocked):
+/// fica mais dentro da barra e cobre menos o conteúdo da tela.
+class _PublicarNaBarra extends FloatingActionButtonLocation {
+  const _PublicarNaBarra();
+  static const descer = 18.0;
+  @override
+  Offset getOffset(ScaffoldPrelayoutGeometry g) =>
+      FloatingActionButtonLocation.centerDocked.getOffset(g) + const Offset(0, descer);
+}
