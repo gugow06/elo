@@ -58,7 +58,7 @@ export default function Entrar() {
   return (
     <main id="conteudo" className="grid min-h-screen place-items-center bg-gradient-to-b from-brand-50 to-fundo px-4">
       <div className="w-full max-w-md rounded-xl bg-superficie p-8 shadow-e2">
-        <Image src="/elo-logo.svg" alt="ELO" width={132} height={70} priority className="mb-4" />
+        <Image src="/elo-logo-ajustada.svg" alt="ELO" width={132} height={70} priority className="mb-4" />
         <h1 className="text-2xl font-extrabold text-brand-900">Painel municipal</h1>
         <p className="mb-6 text-texto-2">Cidadãos conectam. Comunidades fortalecem. O município avança.</p>
 

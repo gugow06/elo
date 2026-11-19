@@ -12,7 +12,15 @@ class Notificacoes extends StatefulWidget {
 }
 
 class _NotificacoesState extends State<Notificacoes> {
-  late final Future<List<dynamic>> _itens = Api.i.notificacoes().whenComplete(() => Api.i.marcarLidas().catchError((_) {}));
+  late Future<List<dynamic>> _itens = _buscar();
+
+  Future<List<dynamic>> _buscar() => Api.i.notificacoes().whenComplete(() => Api.i.marcarLidas().catchError((_) {}));
+
+  Future<void> _atualizar() async {
+    final f = _buscar();
+    setState(() => _itens = f);
+    await f;
+  }
 
   static IconData _icone(String tipo) => switch (tipo) {
         'sua_ajuda_chegou' => Icons.favorite,
@@ -27,12 +35,14 @@ class _NotificacoesState extends State<Notificacoes> {
     final t = Theme.of(context).textTheme;
     return Scaffold(
       appBar: AppBar(title: const Text('Mensagens', style: TextStyle(fontWeight: FontWeight.w800))),
-      body: FutureBuilder<List<dynamic>>(
+      body: RefreshIndicator(
+        onRefresh: _atualizar,
+        child: FutureBuilder<List<dynamic>>(
         future: _itens,
         builder: (context, snap) {
           if (snap.connectionState != ConnectionState.done) return const Carregando();
           final itens = (snap.data ?? []).cast<Map<String, dynamic>>();
-          if (itens.isEmpty) return Padding(padding: const EdgeInsets.all(24), child: Text('Nenhuma mensagem por enquanto.', style: t.bodyLarge));
+          if (itens.isEmpty) return ListView(padding: const EdgeInsets.all(24), children: [Text('Nenhuma mensagem por enquanto.', style: t.bodyLarge)]);
           return ListView.separated(
             padding: const EdgeInsets.all(16),
             itemCount: itens.length,
@@ -59,6 +69,7 @@ class _NotificacoesState extends State<Notificacoes> {
             },
           );
         },
+        ),
       ),
     );
   }

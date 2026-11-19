@@ -4,17 +4,19 @@ import '../api.dart';
 import '../tema.dart';
 import '../widgets/comum.dart';
 
-/// Cidadão: "Meus pedidos" com status em linguagem simples e confirmação de retirada.
-/// Voluntário: "Minhas ajudas" com o desfecho ("Sua ajuda chegou", P6).
+/// "Meus pedidos": status em linguagem simples e confirmação de retirada.
+/// "Minhas ajudas" ([ajudas]): pedidos que a pessoa assumiu, com o desfecho ("Sua ajuda chegou", P6).
+/// Os dois ficam no Perfil e valem para qualquer usuário.
 class Acompanhar extends StatefulWidget {
-  const Acompanhar({super.key});
+  const Acompanhar({super.key, required this.ajudas});
+  final bool ajudas;
   @override
   State<Acompanhar> createState() => _AcompanharState();
 }
 
 class _AcompanharState extends State<Acompanhar> {
   late Future<List<dynamic>> _itens;
-  bool get _voluntario => Api.i.usuario!.voluntario;
+  bool get _voluntario => widget.ajudas;
 
   @override
   void initState() {

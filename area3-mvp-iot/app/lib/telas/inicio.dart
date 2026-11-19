@@ -48,7 +48,7 @@ class _InicioState extends State<Inicio> {
         onRefresh: () async => _carregar(),
         child: ListView(padding: const EdgeInsets.fromLTRB(20, 12, 20, 100), children: [
           Row(children: [
-            Semantics(label: 'ELO', image: true, child: Image.asset('assets/elo-logo.png', height: 44)),
+            Semantics(label: 'ELO', image: true, child: Image.asset('assets/elo-logo-ajustada.png', height: 30)),
             const Spacer(),
             Semantics(
               button: true,
@@ -72,7 +72,7 @@ class _InicioState extends State<Inicio> {
           ]),
           const SizedBox(height: 16),
           Text('$_saudacao, ${u.primeiroNome}! 👋', style: t.headlineMedium),
-          Text(u.voluntario ? 'Quem precisa de ajuda perto de você hoje?' : 'Como podemos te ajudar hoje?', style: t.bodyLarge),
+          Text('Como podemos te ajudar hoje?', style: t.bodyLarge),
           const SizedBox(height: 16),
           TextField(
             onChanged: (v) => setState(() => _busca = v.toLowerCase()),
@@ -92,7 +92,7 @@ class _InicioState extends State<Inicio> {
             childAspectRatio: 1.35,
             children: [
               _Atalho(rotulo: 'Pedir ajuda', icone: Icons.favorite, cor: EloCores.pedido, fundo: EloCores.pedidoClaro,
-                  onTap: u.voluntario ? () => avisar(context, 'Entre com uma conta de cidadão para pedir ajuda.') : widget.aoPedirAjuda),
+                  onTap: widget.aoPedirAjuda),
               _Atalho(rotulo: 'Oferecer ajuda', icone: Icons.handshake, cor: EloCores.voluntario, fundo: EloCores.voluntarioClaro, onTap: widget.aoAbrirMapa),
               _Atalho(rotulo: 'Serviços públicos', icone: Icons.account_balance, cor: EloCores.servico, fundo: EloCores.servicoClaro, onTap: widget.aoAbrirMapa),
               _Atalho(rotulo: 'Oportunidades de emprego e cursos', icone: Icons.work, cor: EloCores.oportunidade, fundo: EloCores.oportunidadeClaro,

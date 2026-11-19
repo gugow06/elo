@@ -20,12 +20,24 @@ class Usuario {
   final String id;
   final String nome;
   final String perfil; // cidadao | voluntario
-  bool get voluntario => perfil == 'voluntario';
   String get primeiroNome => nome.split(' ').first;
 
   Map<String, dynamic> toJson() => {'id': id, 'nome': nome, 'perfil': perfil};
   factory Usuario.fromJson(Map<String, dynamic> j) => Usuario(id: j['id'], nome: j['nome'], perfil: j['perfil']);
 }
+
+/// Conta Google confirmada pelo "Fazer login com o Google". A API confere o [idToken].
+class IdentidadeGoogle {
+  const IdentidadeGoogle({required this.idToken, this.nome, this.email});
+  final String idToken;
+  final String? nome;
+  final String? email;
+
+  Map<String, dynamic> toJson() => {'provedor': 'google', 'id_token': idToken};
+}
+
+/// Resposta do login com Google: a sessão, ou os dados para criar a conta.
+typedef ResultadoGoogle = ({Usuario? usuario, String? nome, String? email});
 
 /// Cliente da API do ELO. Guarda a sessão localmente (token de 8 h).
 class Api {
@@ -72,14 +84,52 @@ class Api {
     return dado;
   }
 
-  // ---------- autenticação (login sem senha)
-  Future<String?> pedirCodigo(String telefone) async {
-    final r = await _req('POST', '/auth/codigo', {'telefone': telefone});
+  // ---------- autenticação
+  /// Conta ELO: pede o código de 6 dígitos, enviado por e-mail.
+  Future<String?> pedirCodigo(String email) async {
+    final r = await _req('POST', '/auth/codigo', {'email': email});
     return r['codigo_demo'] as String?;
   }
 
-  Future<Usuario> entrar(String telefone, String codigo) async {
-    final r = await _req('POST', '/auth/entrar', {'telefone': telefone, 'codigo': codigo});
+  /// Conta ELO: e-mail + código.
+  Future<Usuario> entrar(String email, String codigo) async =>
+      _guardarSessao(await _req('POST', '/auth/entrar', {'email': email, 'codigo': codigo}));
+
+  /// Login com Google. Sem conta no ELO, devolve nome e e-mail para a criação de conta.
+  Future<ResultadoGoogle> entrarGoogle(IdentidadeGoogle id) async {
+    final r = await _req('POST', '/auth/social', id.toJson());
+    if (r['cadastro_necessario'] == true) return (usuario: null, nome: r['nome'] as String?, email: r['email'] as String?);
+    return (usuario: await _guardarSessao(r), nome: null, email: null);
+  }
+
+  /// Cria a conta. Com [google], já entra e devolve o usuário; sem ele, o e-mail
+  /// precisa ser confirmado: devolve null e [aoPedirCodigo] recebe o código de demonstração.
+  Future<Usuario?> cadastrar({
+    required String nome,
+    required String email,
+    required String telefone,
+    required String bairroId,
+    IdentidadeGoogle? google,
+    void Function(String? codigoDemo)? aoPedirCodigo,
+  }) async {
+    final r = await _req('POST', '/auth/cadastro', {
+      'nome': nome,
+      'email': email,
+      'telefone': telefone,
+      'bairro_id': bairroId,
+      'social': ?google?.toJson(),
+    });
+    if (r['token'] == null) {
+      aoPedirCodigo?.call(r['codigo_demo'] as String?);
+      return null;
+    }
+    return _guardarSessao(r);
+  }
+
+  /// Bairros atendidos (público), para a tela de criar conta.
+  Future<List<dynamic>> bairrosCadastro() async => await _req('GET', '/auth/bairros') as List;
+
+  Future<Usuario> _guardarSessao(dynamic r) async {
     final u = Usuario.fromJson(r['usuario']);
     if (u.perfil != 'cidadao' && u.perfil != 'voluntario') {
       throw ErroApi(403, 'Este app é para cidadãos e voluntários. A equipe do CRAS usa o painel web.');

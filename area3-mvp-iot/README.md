@@ -35,14 +35,17 @@ Contraprova: um relato com indício de violência vai direto para a fila do téc
 
 | Método | Rota | Perfil | Função |
 | --- | --- | --- | --- |
-| POST | `/auth/codigo`, `/auth/entrar` | público | Login sem senha |
-| POST | `/solicitacoes` | cidadão | Pedir ajuda (com triagem) |
-| GET | `/solicitacoes/minhas` | cidadão | Acompanhar |
+| POST | `/auth/codigo`, `/auth/entrar` | público | Login sem senha: código por e-mail (Resend) no app; por telefone (SMS simulado) no painel |
+| POST | `/auth/cadastro` | público | Cria conta do app, sem escolha de perfil: todo usuário pede e oferece ajuda (com ou sem Google; sem Google, confirma o e-mail por código) |
+| POST | `/auth/social` | público | Login com Google: confere o ID token (`GOOGLE_CLIENT_IDS`) |
+| GET | `/auth/bairros` | público | Bairros para a tela de criar conta |
+| POST | `/solicitacoes` | usuário do app | Pedir ajuda (com triagem) |
+| GET | `/solicitacoes/minhas` | usuário do app | Meus pedidos |
 | GET | `/solicitacoes/consulta/{protocolo}?nascimento=` | público | Consulta sem login |
-| POST | `/solicitacoes/{id}/confirmar-recebimento` | cidadão | Retirada confirmada |
-| GET | `/mural`, `/mural/bairros` | voluntário, cidadão | Mural do bairro (sem dados pessoais) |
-| POST | `/mural/{id}/ofertas` | voluntário | Quero ajudar |
-| GET | `/voluntario/ofertas` | voluntário | Minhas ajudas + desfecho |
+| POST | `/solicitacoes/{id}/confirmar-recebimento` | usuário do app | Retirada confirmada |
+| GET | `/mural`, `/mural/bairros` | usuário do app | Mural do bairro (sem dados pessoais e sem os próprios pedidos) |
+| POST | `/mural/{id}/ofertas` | usuário do app | Quero ajudar (nunca no próprio pedido) |
+| GET | `/voluntario/ofertas` | usuário do app | Minhas ajudas + desfecho |
 | GET | `/tecnico/fila`, `/tecnico/solicitacoes/{id}` | técnico | Fila e ficha (leitura auditada) |
 | POST | `/tecnico/solicitacoes/{id}/reclassificar`, `/concluir` | técnico | Reclassificação e desfecho |
 | GET | `/tecnico/eventos` | técnico, gestor | Tempo real (SSE) |

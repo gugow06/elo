@@ -38,7 +38,7 @@ export async function seed(url?: string): Promise<void> {
   try {
     await c.query('BEGIN');
     await c.query(`TRUNCATE evento_auditoria, notificacao, evento_iot, entrega, oferta, classificacao, relato,
-                   solicitacao, codigo_acesso, usuario, ponto_coleta, bairro, municipio RESTART IDENTITY CASCADE`);
+                   solicitacao, codigo_acesso, conta_social, usuario, ponto_coleta, bairro, municipio RESTART IDENTITY CASCADE`);
 
     const mun = async (nome: string, uf: string, populacao: number) =>
       (await c.query<{ id: string }>('INSERT INTO municipio (nome, uf, populacao) VALUES ($1,$2,$3) RETURNING id', [nome, uf, populacao])).rows[0].id;
@@ -50,11 +50,16 @@ export async function seed(url?: string): Promise<void> {
          VALUES ($8,$1,$2,$3,$4,$5,$6,$7) RETURNING id`,
         [m, b, nome, endereco, cap, estoque, sha256(CHAVES_DEMO[slug]), PONTOS_DEMO[slug]],
       )).rows[0].id;
+    // E-mail fictício (domínio reservado example.com), derivado do nome: "Ana Paula Ribeiro" → ana.ribeiro@example.com
+    const emailDe = (nome: string) => {
+      const p = nome.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().split(' ');
+      return `${p[0]}.${p[p.length - 1]}@example.com`;
+    };
     const usr = async (m: string, b: string | null, perfil: string, nome: string, base9: string, telefone: string, nasc: string) =>
       (await c.query<{ id: string }>(
-        `INSERT INTO usuario (municipio_id, bairro_id, perfil, nome, cpf, telefone, data_nascimento)
-         VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
-        [m, b, perfil, nome, cpfFicticio(base9), telefone, nasc],
+        `INSERT INTO usuario (municipio_id, bairro_id, perfil, nome, cpf, telefone, data_nascimento, email)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
+        [m, b, perfil, nome, cpfFicticio(base9), telefone, nasc, emailDe(nome)],
       )).rows[0].id;
 
     // Município 1 (fictício)
@@ -71,6 +76,7 @@ export async function seed(url?: string): Promise<void> {
     const jose = await usr(m1, centro, 'cidadao', 'José Carlos Souza', '345678912', '+5511990000003', '1992-11-20');
     await usr(m1, vilaNova, 'voluntario', 'Cláudia Martins', '456789123', '+5511990000004', '1985-05-09');
     await usr(m1, jardim, 'voluntario', 'Roberto Alves', '567891234', '+5511990000005', '1979-01-30');
+
     await usr(m1, jardim, 'tecnico', 'Fernanda Costa', '678912345', '+5511990000006', '1988-07-17');
     await usr(m1, centro, 'gestor', 'Secretaria de Assistência Social', '789123456', '+5511990000007', '1975-04-01');
 

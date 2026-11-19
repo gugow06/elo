@@ -18,10 +18,6 @@ class _PedidoDetalheState extends State<PedidoDetalhe> {
   Map<String, dynamic>? _assumido;
 
   Future<void> _quero() async {
-    if (!Api.i.usuario!.voluntario) {
-      avisar(context, 'Para ajudar, entre com uma conta de voluntário.');
-      return;
-    }
     setState(() => _enviando = true);
     try {
       final r = await Api.i.quero(widget.pedido['id']);

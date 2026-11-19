@@ -22,7 +22,7 @@ export class SolicitacoesController {
 
   @Post()
   @UseGuards(AuthGuard)
-  @Perfis('cidadao')
+  @Perfis('cidadao', 'voluntario')
   abrir(@SessaoAtual() sessao: Sessao, @Body() corpo: unknown) {
     const d = validar(NovaSolicitacao, corpo);
     return this.servico.abrir(sessao, { relato: d.relato, canal: d.canal, bairroId: d.bairro_id });
@@ -30,7 +30,7 @@ export class SolicitacoesController {
 
   @Get('minhas')
   @UseGuards(AuthGuard)
-  @Perfis('cidadao')
+  @Perfis('cidadao', 'voluntario')
   minhas(@SessaoAtual() sessao: Sessao) {
     return this.servico.minhas(sessao);
   }

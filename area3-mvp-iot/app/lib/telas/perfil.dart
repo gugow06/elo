@@ -4,7 +4,7 @@ import '../api.dart';
 import '../tema.dart';
 import '../widgets/comum.dart';
 import 'boas_vindas.dart';
-import 'shell.dart';
+import 'acompanhar.dart';
 
 class Perfil extends StatelessWidget {
   const Perfil({super.key});
@@ -23,17 +23,15 @@ class Perfil extends StatelessWidget {
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(u.nome, style: t.titleMedium),
-                Text(u.voluntario ? 'Voluntário(a) verificado(a)' : 'Cidadã(o)', style: t.bodyMedium),
+                Text('Pede e oferece ajuda no seu bairro', style: t.bodyMedium),
               ]),
             ),
           ]),
         ),
         const SizedBox(height: 12),
-        Cartao(
-          onTap: () => abrirNotificacoes(context),
-          rotulo: 'Mensagens',
-          child: const Row(children: [Icon(Icons.chat_bubble_outline, color: EloCores.brand700), SizedBox(width: 12), Expanded(child: Text('Mensagens', style: TextStyle(fontWeight: FontWeight.w700))), Icon(Icons.chevron_right)]),
-        ),
+        _Atalho(icone: Icons.assignment_outlined, rotulo: 'Meus pedidos', tela: const Acompanhar(ajudas: false)),
+        const SizedBox(height: 12),
+        _Atalho(icone: Icons.handshake_outlined, rotulo: 'Minhas ajudas', tela: const Acompanhar(ajudas: true)),
         const SizedBox(height: 12),
         Cartao(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -61,4 +59,22 @@ class Perfil extends StatelessWidget {
       ]),
     );
   }
+}
+
+class _Atalho extends StatelessWidget {
+  const _Atalho({required this.icone, required this.rotulo, required this.tela});
+  final IconData icone;
+  final String rotulo;
+  final Widget tela;
+  @override
+  Widget build(BuildContext context) => Cartao(
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => tela)),
+        rotulo: rotulo,
+        child: Row(children: [
+          Icon(icone, color: EloCores.brand700),
+          const SizedBox(width: 12),
+          Expanded(child: Text(rotulo, style: const TextStyle(fontWeight: FontWeight.w700))),
+          const Icon(Icons.chevron_right),
+        ]),
+      );
 }

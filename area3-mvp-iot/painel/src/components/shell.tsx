@@ -31,7 +31,7 @@ export function Shell({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-30 border-b border-borda bg-superficie/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-4 py-3">
           <Link href={itens[0]?.href ?? "/"} className="flex items-center gap-3" aria-label="ELO, ir para o início">
-            <Image src="/elo-logo.svg" alt="" width={72} height={38} priority />
+            <Image src="/elo-logo-ajustada.svg" alt="" width={72} height={38} priority />
             <span className="hidden border-l border-borda pl-3 text-sm font-bold text-texto-2 sm:inline">Painel municipal</span>
           </Link>
           <nav aria-label="Principal" className="flex flex-1 gap-1">

@@ -18,12 +18,32 @@ final _pedido = {
 };
 
 void main() {
-  testWidgets('boas-vindas: login por gov.br e por código, sem login social', (tester) async {
+  testWidgets('boas-vindas: entrar, criar conta e continuar com Google', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2340);
+    tester.view.devicePixelRatio = 2.625;
+    addTearDown(tester.view.reset);
     await tester.pumpWidget(_app(const BoasVindas()));
-    expect(find.text('Entrar com gov.br'), findsOneWidget);
-    expect(find.text('Receber código por SMS'), findsOneWidget);
-    expect(find.textContaining('Google'), findsNothing);
-    expect(find.textContaining('Facebook'), findsNothing);
+    expect(find.text('Entrar na minha conta'), findsOneWidget);
+    expect(find.text('Criar uma conta'), findsOneWidget);
+    expect(find.text('Ou continue com'), findsOneWidget);
+    expect(find.text('Continuar com Google'), findsOneWidget);
+    for (final fora in ['Apple', 'Facebook', 'gov.br']) {
+      expect(find.textContaining(fora), findsNothing);
+    }
+    // Ordem do mockup: entrar, criar conta e Google por último
+    double y(String texto) => tester.getTopLeft(find.text(texto)).dy;
+    expect(y('Entrar na minha conta'), lessThan(y('Criar uma conta')));
+    expect(y('Criar uma conta'), lessThan(y('Continuar com Google')));
+  });
+
+  testWidgets('Google sem Client ID configurado avisa em vez de travar', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2340);
+    tester.view.devicePixelRatio = 2.625;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(_app(const BoasVindas()));
+    await tester.tap(find.text('Continuar com Google'));
+    await tester.pump();
+    expect(find.textContaining('login com Google não foi configurado'), findsOneWidget);
   });
 
   testWidgets('boas-vindas atende contraste, alvo de toque e rótulos (celular em retrato)', (tester) async {
