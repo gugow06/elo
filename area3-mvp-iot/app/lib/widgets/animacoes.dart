@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
 
@@ -135,60 +134,6 @@ class _TextoDigitadoState extends State<TextoDigitado> {
       ]),
     );
   }
-}
-
-/// Mãozinha acenando, como no README do GitHub: acena (~1,2 s), para um pouco e volta a acenar.
-class MaoAcenando extends StatefulWidget {
-  const MaoAcenando({super.key, this.tamanho = 28, this.acenar = true});
-  final double tamanho;
-  final bool acenar;
-  @override
-  State<MaoAcenando> createState() => _MaoAcenandoState();
-}
-
-class _MaoAcenandoState extends State<MaoAcenando> with SingleTickerProviderStateMixin {
-  // Ciclo de 2,6 s: os primeiros 60% são o aceno, o resto é a pausa
-  late final _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 2600));
-
-  /// Ângulo (graus) ao longo do ciclo: 0 → 14 → -8 → 14 → -4 → 10 → 0, depois parado.
-  static final _angulo = TweenSequence<double>([
-    TweenSequenceItem(tween: Tween(begin: 0, end: 14), weight: 10),
-    TweenSequenceItem(tween: Tween(begin: 14, end: -8), weight: 10),
-    TweenSequenceItem(tween: Tween(begin: -8, end: 14), weight: 10),
-    TweenSequenceItem(tween: Tween(begin: 14, end: -4), weight: 10),
-    TweenSequenceItem(tween: Tween(begin: -4, end: 10), weight: 10),
-    TweenSequenceItem(tween: Tween(begin: 10, end: 0), weight: 10),
-    TweenSequenceItem(tween: ConstantTween(0), weight: 40),
-  ]);
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (widget.acenar && !semAnimacao(context) && !_ctrl.isAnimating) _ctrl.repeat();
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => ExcludeSemantics(
-        child: Padding(
-          padding: const EdgeInsets.only(left: 6),
-          child: AnimatedBuilder(
-            animation: _ctrl,
-            builder: (_, filho) => Transform.rotate(
-              angle: _angulo.evaluate(_ctrl) * math.pi / 180,
-              // Gira a partir do pulso (embaixo, à direita), como uma mão de verdade
-              alignment: const Alignment(0.4, 0.4),
-              child: filho,
-            ),
-            child: Text('👋', style: TextStyle(fontSize: widget.tamanho, height: 1.1)),
-          ),
-        ),
-      );
 }
 
 /// Retorno ao toque: o conteúdo encolhe de leve enquanto está pressionado.

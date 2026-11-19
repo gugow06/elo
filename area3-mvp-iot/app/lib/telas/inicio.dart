@@ -111,18 +111,18 @@ class _InicioState extends State<Inicio> {
                 customBorder: const CircleBorder(),
                 onTap: widget.aoAbrirPerfil,
                 child: _foto == null
-                    ? const CircleAvatar(radius: 24, backgroundColor: EloCores.brand100, child: Icon(Icons.account_circle, color: EloCores.brand700, size: 34))
-                    : AvatarPessoa(nome: u.nome, foto: _foto, raio: 24),
+                    ? const CircleAvatar(radius: 20, backgroundColor: EloCores.brand100, child: Icon(Icons.account_circle, color: EloCores.brand700, size: 28))
+                    : AvatarPessoa(nome: u.nome, foto: _foto, raio: 20),
               ),
             ),
           ])),
           const SizedBox(height: 14),
-          // Saudação digitada na primeira vez, com a mãozinha acenando no fim
+          // Saudação digitada na primeira vez, com a mãozinha no fim
           TextoDigitado(
             '$_saudacao, ${u.primeiroNome}!',
             digitar: _apresentar,
             style: t.headlineMedium?.copyWith(fontWeight: FontWeight.w900, color: EloCores.brand900),
-            depois: const MaoAcenando(tamanho: 28),
+            depois: const Padding(padding: EdgeInsets.only(left: 6), child: Text('👋', style: TextStyle(fontSize: 28, height: 1.1))),
           ),
           const SizedBox(height: 2),
           Entrada(
