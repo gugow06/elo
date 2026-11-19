@@ -28,6 +28,8 @@ export async function emitirToken(s: Sessao): Promise<string> {
 
 export async function lerToken(token: string): Promise<Sessao> {
   const { payload } = await jwtVerify(token, segredo(), { issuer: 'elo-api', algorithms: ['HS256'] });
+  // O desafio da verificação em duas etapas usa o mesmo segredo, mas nunca vale como sessão
+  if (payload.aud !== undefined || payload.fin !== undefined || !payload.perfil) throw new Error('Token não é de sessão.');
   return {
     usuarioId: String(payload.sub),
     perfil: payload.perfil as Perfil,
@@ -35,4 +37,25 @@ export async function lerToken(token: string): Promise<Sessao> {
     bairroId: (payload.bai as string | null) ?? null,
     nome: String(payload.nome ?? ''),
   };
+}
+
+/**
+ * Desafio da verificação em duas etapas: prova curta (10 min) de que o primeiro passo
+ * (Google) deu certo. Só serve para trocar pelo código do e-mail em /auth/social/confirmar.
+ */
+export async function emitirDesafio(usuarioId: string): Promise<string> {
+  return new SignJWT({ fin: '2fa' })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setSubject(usuarioId)
+    .setIssuedAt()
+    .setExpirationTime('10m')
+    .setIssuer('elo-api')
+    .setAudience('elo-2fa')
+    .sign(segredo());
+}
+
+export async function lerDesafio(token: string): Promise<string> {
+  const { payload } = await jwtVerify(token, segredo(), { issuer: 'elo-api', audience: 'elo-2fa', algorithms: ['HS256'] });
+  if (payload.fin !== '2fa' || !payload.sub) throw new Error('Desafio inválido.');
+  return payload.sub;
 }

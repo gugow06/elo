@@ -18,6 +18,7 @@ export async function criarApp(): Promise<NestFastifyApplication> {
   process.env.MODO_DEMO = 'true';
   process.env.SLA_DESLIGADO = 'true';
   delete process.env.LLM_URL; // testes usam sempre o classificador offline
+  delete process.env.RESEND_API_KEY; // testes nunca enviam e-mail de verdade
   await migrar();
   await seed();
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), { logger: false });

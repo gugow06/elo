@@ -4,6 +4,7 @@ import { BancoModule } from './infra/banco.module';
 import { EventosService } from './infra/eventos.service';
 import { GestaoController, PoolOuro } from './gestao/gestao.controller';
 import { IotController, PontosController } from './iot/iot.controller';
+import { PerfilController } from './perfil/perfil.controller';
 import { RedeController } from './rede/rede.controller';
 import { SlaService } from './rede/sla.service';
 import { SaudeController } from './saude/saude.controller';
@@ -23,6 +24,7 @@ import { TecnicoController } from './tecnico/tecnico.controller';
     IotController,
     PontosController,
     GestaoController,
+    PerfilController,
   ],
   providers: [EventosService, classificadorProvider, SolicitacoesService, SlaService, PoolOuro],
 })

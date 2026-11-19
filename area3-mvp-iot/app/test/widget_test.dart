@@ -2,6 +2,7 @@
 import 'package:elo_app/tema.dart';
 import 'package:elo_app/telas/boas_vindas.dart';
 import 'package:elo_app/telas/mapa.dart';
+import 'package:elo_app/telas/perfil.dart';
 import 'package:elo_app/widgets/comum.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -55,6 +56,35 @@ void main() {
     await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
     await expectLater(tester, meetsGuideline(iOSTapTargetGuideline));
     await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+    await expectLater(tester, meetsGuideline(textContrastGuideline));
+    semantica.dispose();
+  });
+
+  testWidgets('verificação da conta: selo só com duas etapas ativa; SMS fora; o resto "em breve"', (tester) async {
+    final semantica = tester.ensureSemantics();
+    var toques = 0;
+    Widget secao(Map<String, dynamic> p) => _app(Scaffold(body: SingleChildScrollView(child: SecaoVerificacao(perfil: p, aoAlternarDoisFatores: () => toques++))));
+
+    await tester.pumpWidget(secao({'email_confirmado': true, 'dois_fatores': false, 'verificado': false}));
+    expect(find.text('Verificação em duas etapas por e-mail'), findsOneWidget);
+    expect(find.text('Ativar'), findsOneWidget);
+    expect(find.text('Em breve'), findsNWidgets(3));
+    expect(find.textContaining('SMS'), findsNothing);
+    await tester.tap(find.text('Ativar'));
+    expect(toques, 1);
+    await expectLater(tester, meetsGuideline(textContrastGuideline));
+    await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+
+    await tester.pumpWidget(secao({'email_confirmado': true, 'dois_fatores': true, 'verificado': true}));
+    expect(find.text('Desativar'), findsOneWidget);
+    expect(find.text('Seu perfil é verificado.'), findsOneWidget);
+    semantica.dispose();
+  });
+
+  testWidgets('selo de perfil verificado tem rótulo para leitor de tela', (tester) async {
+    final semantica = tester.ensureSemantics();
+    await tester.pumpWidget(_app(const Scaffold(body: Center(child: SeloVerificado()))));
+    expect(find.bySemanticsLabel('Perfil verificado'), findsOneWidget);
     await expectLater(tester, meetsGuideline(textContrastGuideline));
     semantica.dispose();
   });

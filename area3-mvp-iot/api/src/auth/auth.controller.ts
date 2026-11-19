@@ -5,8 +5,6 @@ import {
   Controller,
   Get,
   HttpCode,
-  HttpException,
-  HttpStatus,
   Inject,
   Logger,
   NotImplementedException,
@@ -14,17 +12,15 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
-import { randomInt } from 'node:crypto';
 import { Pool, PoolClient } from 'pg';
 import { z } from 'zod';
 import { auditar } from '../infra/auditoria';
 import { POOL } from '../infra/banco.module';
-import { emailCodigo, enviarEmail } from '../infra/email';
-import { sha256 } from '../infra/hash';
 import { validar } from '../infra/validacao';
 import { AuthGuard, SessaoAtual } from './auth.guard';
+import { consumirCodigo, gerarCodigo, mascararEmail } from './codigos';
 import { GoogleNaoConfigurado, IdentidadeGoogle, verificarTokenGoogle } from './google';
-import { emitirToken, Perfil, Sessao } from './sessao';
+import { emitirDesafio, emitirToken, lerDesafio, Perfil, Sessao } from './sessao';
 
 const telefone = z
   .string()
@@ -42,6 +38,7 @@ const identificador = z
 const social = z.object({ provedor: z.literal('google'), id_token: z.string().min(20) });
 
 const SolicitarCodigo = identificador;
+const ConfirmarDoisFatores = z.object({ desafio: z.string().min(20), codigo });
 const Entrar = identificador.and(z.object({ codigo }));
 const Cadastro = z.object({
   nome: z.string().trim().min(2, 'Informe o seu nome').max(80),
@@ -51,16 +48,21 @@ const Cadastro = z.object({
   social: social.optional(),
 });
 
-type LinhaUsuario = { id: string; perfil: Perfil; municipio_id: string; bairro_id: string | null; nome: string };
+type LinhaUsuario = {
+  id: string;
+  perfil: Perfil;
+  municipio_id: string;
+  bairro_id: string | null;
+  nome: string;
+  email: string | null;
+  dois_fatores_em: Date | null;
+};
 
-const COLUNAS = 'id, perfil, municipio_id, bairro_id, nome';
-const MAX_CODIGOS_ATIVOS = 5;
+const COLUNAS = 'id, perfil, municipio_id, bairro_id, nome, email, dois_fatores_em';
 
 function normalizarTelefone(t: string): string {
   return t.startsWith('+') ? t : `+55${t}`;
 }
-
-const modoDemo = () => process.env.MODO_DEMO !== 'false';
 
 /**
  * Autenticação do app e do painel.
@@ -82,7 +84,7 @@ export class AuthController {
     const via = id.email ? 'e-mail' : 'telefone';
     const resposta = { mensagem: `Se o ${via} estiver cadastrado, você receberá um código.` };
     if (!u) return resposta; // não revela se a conta existe
-    return { ...resposta, ...(await this.gerarCodigo(this.pool, u.id, id.email ? { email: id.email } : { telefone: normalizarTelefone(id.telefone!) })) };
+    return { ...resposta, ...(await gerarCodigo(this.pool, u.id, id.email ? { email: id.email } : { telefone: normalizarTelefone(id.telefone!) })) };
   }
 
   @Post('entrar')
@@ -92,15 +94,9 @@ export class AuthController {
     const u = await this.buscarPorIdentificador(d);
     if (!u) throw new UnauthorizedException('Código inválido ou expirado.');
 
-    const usado = await this.pool.query(
-      `UPDATE codigo_acesso SET usado_em = now()
-       WHERE id = (SELECT id FROM codigo_acesso
-                   WHERE usuario_id = $1 AND codigo_hash = $2 AND usado_em IS NULL AND expira_em > now()
-                   ORDER BY expira_em DESC LIMIT 1)
-       RETURNING id`,
-      [u.id, sha256(`${u.id}:${d.codigo}`)],
-    );
-    if (!usado.rowCount) throw new UnauthorizedException('Código inválido ou expirado.');
+    if (!(await consumirCodigo(this.pool, u.id, d.codigo))) throw new UnauthorizedException('Código inválido ou expirado.');
+    // Código recebido no e-mail = e-mail confirmado
+    if (d.email) await this.pool.query('UPDATE usuario SET email_confirmado_em = coalesce(email_confirmado_em, now()) WHERE id = $1', [u.id]);
     return this.sessaoPara(this.pool, u, 'login');
   }
 
@@ -114,12 +110,12 @@ export class AuthController {
   async entrarSocial(@Body() corpo: unknown) {
     const id = await this.conferirSocial(validar(social, corpo));
     const vinculada = await this.pool.query<LinhaUsuario>(
-      `SELECT u.id, u.perfil, u.municipio_id, u.bairro_id, u.nome
+      `SELECT u.id, u.perfil, u.municipio_id, u.bairro_id, u.nome, u.email, u.dois_fatores_em
        FROM conta_social cs JOIN usuario u ON u.id = cs.usuario_id
        WHERE cs.provedor = $1 AND cs.sujeito = $2`,
       [id.provedor, id.sujeito],
     );
-    if (vinculada.rows[0]) return this.sessaoPara(this.pool, vinculada.rows[0], 'login_google');
+    if (vinculada.rows[0]) return this.concluirGoogle(vinculada.rows[0]);
 
     const porEmail = await this.pool.query<LinhaUsuario>(`SELECT ${COLUNAS} FROM usuario WHERE lower(email) = $1`, [id.email]);
     const u = porEmail.rows[0];
@@ -128,9 +124,27 @@ export class AuthController {
         'INSERT INTO conta_social (usuario_id, provedor, sujeito, email) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING',
         [u.id, id.provedor, id.sujeito, id.email],
       );
-      return this.sessaoPara(this.pool, u, 'login_google');
+      return this.concluirGoogle(u);
     }
     return { cadastro_necessario: true, nome: id.nome, email: id.email };
+  }
+
+  /** Segundo passo do login com Google, quando a verificação em duas etapas está ativa. */
+  @Post('social/confirmar')
+  @HttpCode(200)
+  async confirmarDoisFatores(@Body() corpo: unknown) {
+    const d = validar(ConfirmarDoisFatores, corpo);
+    let usuarioId: string;
+    try {
+      usuarioId = await lerDesafio(d.desafio);
+    } catch {
+      throw new UnauthorizedException('A confirmação expirou. Entre com o Google de novo.');
+    }
+    const { rows } = await this.pool.query<LinhaUsuario>(`SELECT ${COLUNAS} FROM usuario WHERE id = $1`, [usuarioId]);
+    if (!rows[0] || !(await consumirCodigo(this.pool, usuarioId, d.codigo))) {
+      throw new UnauthorizedException('Código inválido ou expirado.');
+    }
+    return this.sessaoPara(this.pool, rows[0], 'login_google_2fa');
   }
 
   /**
@@ -163,9 +177,9 @@ export class AuthController {
       }
 
       const { rows } = await c.query<LinhaUsuario>(
-        `INSERT INTO usuario (municipio_id, bairro_id, perfil, nome, telefone, email)
-         VALUES ($1,$2,$3,$4,$5,$6) RETURNING ${COLUNAS}`,
-        [bairro.rows[0].municipio_id, dados.bairro_id, 'cidadao', dados.nome, tel, emailConta],
+        `INSERT INTO usuario (municipio_id, bairro_id, perfil, nome, telefone, email, email_confirmado_em)
+         VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING ${COLUNAS}`,
+        [bairro.rows[0].municipio_id, dados.bairro_id, 'cidadao', dados.nome, tel, emailConta, id ? new Date() : null],
       );
       const u = rows[0];
       await auditar(c, { usuarioId: u.id, acao: 'cadastro', entidade: 'usuario', entidadeId: u.id, detalhe: { via: id ? 'google' : 'email' } });
@@ -175,7 +189,7 @@ export class AuthController {
         await c.query('INSERT INTO conta_social (usuario_id, provedor, sujeito, email) VALUES ($1,$2,$3,$4)', [u.id, id.provedor, id.sujeito, id.email]);
         resposta = await this.sessaoPara(c, u, 'login_google');
       } else {
-        resposta = { confirmar_email: true, ...(await this.gerarCodigo(c, u.id, { email: emailConta })) };
+        resposta = { confirmar_email: true, ...(await gerarCodigo(c, u.id, { email: emailConta })) };
       }
       await c.query('COMMIT');
       return resposta;
@@ -221,26 +235,17 @@ export class AuthController {
     }
   }
 
-  private async gerarCodigo(db: Pool | PoolClient, usuarioId: string, destino: { email: string } | { telefone: string }) {
-    const ativos = await db.query<{ n: number }>(
-      'SELECT count(*)::int AS n FROM codigo_acesso WHERE usuario_id = $1 AND usado_em IS NULL AND expira_em > now()',
-      [usuarioId],
-    );
-    if (ativos.rows[0].n >= MAX_CODIGOS_ATIVOS) {
-      throw new HttpException('Muitos códigos pedidos. Use o último que chegou ou aguarde 10 minutos.', HttpStatus.TOO_MANY_REQUESTS);
+  /**
+   * Conta Google confirmada: o Google já confirmou o e-mail. Com a verificação em duas etapas
+   * ativa, envia o código ao e-mail e devolve um desafio em vez da sessão.
+   */
+  private async concluirGoogle(u: LinhaUsuario) {
+    await this.pool.query('UPDATE usuario SET email_confirmado_em = coalesce(email_confirmado_em, now()) WHERE id = $1', [u.id]);
+    if (u.dois_fatores_em && u.email) {
+      const extra = await gerarCodigo(this.pool, u.id, { email: u.email });
+      return { dois_fatores: true, desafio: await emitirDesafio(u.id), email: mascararEmail(u.email), ...extra };
     }
-    const cod = String(randomInt(0, 1_000_000)).padStart(6, '0');
-    await db.query(
-      `INSERT INTO codigo_acesso (usuario_id, codigo_hash, expira_em) VALUES ($1, $2, now() + interval '10 minutes')`,
-      [usuarioId, sha256(`${usuarioId}:${cod}`)],
-    );
-    if ('email' in destino) {
-      const m = emailCodigo(cod);
-      await enviarEmail(destino.email, m.assunto, m.texto, m.html);
-    } else {
-      this.log.log(`[SMS simulado] código para ${destino.telefone}: ${cod}`);
-    }
-    return modoDemo() ? { codigo_demo: cod } : {};
+    return this.sessaoPara(this.pool, u, 'login_google');
   }
 
   private async sessaoPara(db: Pool | PoolClient, u: LinhaUsuario, acao: string) {

@@ -37,7 +37,8 @@ class IdentidadeGoogle {
 }
 
 /// Resposta do login com Google: a sessão, ou os dados para criar a conta.
-typedef ResultadoGoogle = ({Usuario? usuario, String? nome, String? email});
+/// [desafio] vem quando a conta tem verificação em duas etapas: falta o código do e-mail ([email] mascarado).
+typedef ResultadoGoogle = ({Usuario? usuario, String? nome, String? email, String? desafio, String? codigoDemo});
 
 /// Cliente da API do ELO. Guarda a sessão localmente (token de 8 h).
 class Api {
@@ -98,9 +99,30 @@ class Api {
   /// Login com Google. Sem conta no ELO, devolve nome e e-mail para a criação de conta.
   Future<ResultadoGoogle> entrarGoogle(IdentidadeGoogle id) async {
     final r = await _req('POST', '/auth/social', id.toJson());
-    if (r['cadastro_necessario'] == true) return (usuario: null, nome: r['nome'] as String?, email: r['email'] as String?);
-    return (usuario: await _guardarSessao(r), nome: null, email: null);
+    if (r['cadastro_necessario'] == true) {
+      return (usuario: null, nome: r['nome'] as String?, email: r['email'] as String?, desafio: null, codigoDemo: null);
+    }
+    if (r['dois_fatores'] == true) {
+      return (usuario: null, nome: null, email: r['email'] as String?, desafio: r['desafio'] as String?, codigoDemo: r['codigo_demo'] as String?);
+    }
+    return (usuario: await _guardarSessao(r), nome: null, email: null, desafio: null, codigoDemo: null);
   }
+
+  /// Segundo passo do login com Google (verificação em duas etapas).
+  Future<Usuario> confirmarDoisFatores(String desafio, String codigo) async =>
+      _guardarSessao(await _req('POST', '/auth/social/confirmar', {'desafio': desafio, 'codigo': codigo}));
+
+  // ---------- perfil e verificação da conta
+  Future<Map<String, dynamic>> perfil() async => Map<String, dynamic>.from(await _req('GET', '/perfil'));
+  /// Envia o código ao e-mail; devolve o e-mail mascarado e, em modo demonstração, o código.
+  Future<({String email, String? codigoDemo})> codigoDoisFatores() async {
+    final r = await _req('POST', '/perfil/2fa/codigo');
+    return (email: r['email'] as String, codigoDemo: r['codigo_demo'] as String?);
+  }
+  Future<Map<String, dynamic>> ativarDoisFatores(String codigo) async =>
+      Map<String, dynamic>.from(await _req('POST', '/perfil/2fa/ativar', {'codigo': codigo}));
+  Future<Map<String, dynamic>> desativarDoisFatores(String codigo) async =>
+      Map<String, dynamic>.from(await _req('POST', '/perfil/2fa/desativar', {'codigo': codigo}));
 
   /// Cria a conta. Com [google], já entra e devolve o usuário; sem ele, o e-mail
   /// precisa ser confirmado: devolve null e [aoPedirCodigo] recebe o código de demonstração.
