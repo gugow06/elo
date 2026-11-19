@@ -23,7 +23,7 @@ class Perfil extends StatelessWidget {
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(u.nome, style: t.titleMedium),
-                Text(u.voluntario ? 'Voluntário(a) verificado(a)' : 'Cidadã(o)', style: t.bodyMedium),
+                Text('Pede e oferece ajuda no seu bairro', style: t.bodyMedium),
               ]),
             ),
           ]),

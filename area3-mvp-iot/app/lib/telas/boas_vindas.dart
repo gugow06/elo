@@ -31,7 +31,7 @@ class BoasVindas extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(28, 40, 28, 0),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Semantics(label: 'ELO', image: true, child: Image.asset('assets/elo-logo.png', height: 96)),
+                  Center(child: Semantics(label: 'ELO', image: true, child: Image.asset('assets/elo-logo-ajustada.png', height: 72))),
                   const SizedBox(height: 24),
                   Text('Cidadãos conectam.\nComunidades fortalecem.\nO município avança.',
                       style: t.titleLarge?.copyWith(color: EloCores.brand900, height: 1.3)),

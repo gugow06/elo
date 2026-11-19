@@ -76,10 +76,10 @@ describe('autenticação: e-mail + código e Google', () => {
 
     const cad = await app.inject({
       method: 'POST', url: '/auth/cadastro',
-      payload: { nome: 'Nova Pessoa', email: 'outro@example.com', telefone: '11990001111', bairro_id: bairroId, perfil: 'voluntario', social: { provedor: 'google', id_token } },
+      payload: { nome: 'Nova Pessoa', email: 'outro@example.com', telefone: '11990001111', bairro_id: bairroId, social: { provedor: 'google', id_token } },
     });
     expect(cad.statusCode).toBe(201);
-    expect(cad.json().usuario).toEqual(expect.objectContaining({ nome: 'Nova Pessoa', perfil: 'voluntario' }));
+    expect(cad.json().usuario).toEqual(expect.objectContaining({ nome: 'Nova Pessoa', perfil: 'cidadao' }));
 
     const depois = await app.inject({ method: 'POST', url: '/auth/social', payload: { provedor: 'google', id_token } });
     expect(depois.json().usuario.nome).toBe('Nova Pessoa');
@@ -112,7 +112,7 @@ describe('autenticação: e-mail + código e Google', () => {
   it('cadastro sem conta social confirma o e-mail por código', async () => {
     const cad = await app.inject({
       method: 'POST', url: '/auth/cadastro',
-      payload: { nome: 'Pessoa Email', email: 'pessoa.email@example.com', telefone: '+5511990002222', bairro_id: bairroId, perfil: 'cidadao' },
+      payload: { nome: 'Pessoa Email', email: 'pessoa.email@example.com', telefone: '+5511990002222', bairro_id: bairroId, },
     });
     expect(cad.statusCode).toBe(201);
     expect(cad.json().token).toBeUndefined();
@@ -124,7 +124,7 @@ describe('autenticação: e-mail + código e Google', () => {
   });
 
   it('não cria conta com e-mail ou telefone já cadastrados', async () => {
-    const base = { nome: 'Outra Ana', bairro_id: bairroId, perfil: 'cidadao' };
+    const base = { nome: 'Outra Ana', bairro_id: bairroId };
     const porEmail = await app.inject({ method: 'POST', url: '/auth/cadastro', payload: { ...base, email: 'ANA.RIBEIRO@example.com', telefone: '+5511990004444' } });
     expect(porEmail.statusCode).toBe(409);
     const porTel = await app.inject({ method: 'POST', url: '/auth/cadastro', payload: { ...base, email: 'nova.ana@example.com', telefone: '+5511990000001' } });
@@ -138,12 +138,13 @@ describe('autenticação: e-mail + código e Google', () => {
     }
   });
 
-  it('cadastro não aceita perfil de equipe', async () => {
+  it('cadastro ignora perfil enviado pelo app: toda conta é do app, nunca de equipe', async () => {
     const r = await app.inject({
       method: 'POST', url: '/auth/cadastro',
       payload: { nome: 'Alguém', email: 'alguem@example.com', telefone: '+5511990003333', bairro_id: bairroId, perfil: 'gestor' },
     });
-    expect(r.statusCode).toBe(400);
+    expect(r.statusCode).toBe(201);
+    const e = await app.inject({ method: 'POST', url: '/auth/entrar', payload: { email: 'alguem@example.com', codigo: r.json().codigo_demo } });
+    expect(e.json().usuario.perfil).toBe('cidadao');
   });
-
 });

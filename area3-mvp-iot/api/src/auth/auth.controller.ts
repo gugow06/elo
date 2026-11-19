@@ -48,7 +48,6 @@ const Cadastro = z.object({
   email,
   telefone,
   bairro_id: z.string().uuid('Escolha o seu bairro'),
-  perfil: z.enum(['cidadao', 'voluntario']),
   social: social.optional(),
 });
 
@@ -135,7 +134,8 @@ export class AuthController {
   }
 
   /**
-   * Cria a conta de cidadão ou voluntário. Com conta Google, já entra; sem ela, envia o código
+   * Cria a conta do app. Não há escolha de perfil: toda conta pede e oferece ajuda (perfil 'cidadao',
+   * que tem as mesmas permissões de 'voluntario' no app). Com conta Google, já entra; sem ela, envia o código
    * para o e-mail (o app segue para a etapa do código).
    */
   @Post('cadastro')
@@ -165,7 +165,7 @@ export class AuthController {
       const { rows } = await c.query<LinhaUsuario>(
         `INSERT INTO usuario (municipio_id, bairro_id, perfil, nome, telefone, email)
          VALUES ($1,$2,$3,$4,$5,$6) RETURNING ${COLUNAS}`,
-        [bairro.rows[0].municipio_id, dados.bairro_id, dados.perfil, dados.nome, tel, emailConta],
+        [bairro.rows[0].municipio_id, dados.bairro_id, 'cidadao', dados.nome, tel, emailConta],
       );
       const u = rows[0];
       await auditar(c, { usuarioId: u.id, acao: 'cadastro', entidade: 'usuario', entidadeId: u.id, detalhe: { via: id ? 'google' : 'email' } });

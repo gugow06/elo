@@ -20,7 +20,6 @@ class Usuario {
   final String id;
   final String nome;
   final String perfil; // cidadao | voluntario
-  bool get voluntario => perfil == 'voluntario';
   String get primeiroNome => nome.split(' ').first;
 
   Map<String, dynamic> toJson() => {'id': id, 'nome': nome, 'perfil': perfil};
@@ -110,7 +109,6 @@ class Api {
     required String email,
     required String telefone,
     required String bairroId,
-    required String perfil,
     IdentidadeGoogle? google,
     void Function(String? codigoDemo)? aoPedirCodigo,
   }) async {
@@ -119,7 +117,6 @@ class Api {
       'email': email,
       'telefone': telefone,
       'bairro_id': bairroId,
-      'perfil': perfil,
       'social': ?google?.toJson(),
     });
     if (r['token'] == null) {

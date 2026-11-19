@@ -48,7 +48,7 @@ class _InicioState extends State<Inicio> {
         onRefresh: () async => _carregar(),
         child: ListView(padding: const EdgeInsets.fromLTRB(20, 12, 20, 100), children: [
           Row(children: [
-            Semantics(label: 'ELO', image: true, child: Image.asset('assets/elo-logo.png', height: 44)),
+            Semantics(label: 'ELO', image: true, child: Image.asset('assets/elo-logo-ajustada.png', height: 30)),
             const Spacer(),
             Semantics(
               button: true,
@@ -72,7 +72,7 @@ class _InicioState extends State<Inicio> {
           ]),
           const SizedBox(height: 16),
           Text('$_saudacao, ${u.primeiroNome}! 👋', style: t.headlineMedium),
-          Text(u.voluntario ? 'Quem precisa de ajuda perto de você hoje?' : 'Como podemos te ajudar hoje?', style: t.bodyLarge),
+          Text('Como podemos te ajudar hoje?', style: t.bodyLarge),
           const SizedBox(height: 16),
           TextField(
             onChanged: (v) => setState(() => _busca = v.toLowerCase()),

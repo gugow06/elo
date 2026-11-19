@@ -6,7 +6,7 @@ import '../widgets/login.dart';
 import 'entrar.dart';
 import 'shell.dart';
 
-/// Criação de conta de cidadão ou voluntário. Vinda do Google, já traz nome e e-mail
+/// Criação de conta. Toda conta pode pedir e oferecer ajuda. Vinda do Google, já traz nome e e-mail
 /// e vincula a conta Google; sem ela, o e-mail é confirmado por código.
 class CriarConta extends StatefulWidget {
   const CriarConta({super.key, this.google});
@@ -21,7 +21,6 @@ class _CriarContaState extends State<CriarConta> {
   final _telefone = TextEditingController();
   List<dynamic>? _bairros;
   String? _bairroId;
-  String _perfil = 'cidadao';
   bool _enviando = false;
   String? _erro;
 
@@ -57,7 +56,6 @@ class _CriarContaState extends State<CriarConta> {
         email: _email.text.trim(),
         telefone: _telefone.text,
         bairroId: _bairroId!,
-        perfil: _perfil,
         google: widget.google,
         aoPedirCodigo: (c) => codigoDemo = c,
       );
@@ -94,17 +92,6 @@ class _CriarContaState extends State<CriarConta> {
             const SizedBox(height: 20),
           ],
           if (_erro != null) AvisoErro(_erro!),
-          Text('Como você quer usar o ELO?', style: t.titleMedium),
-          const SizedBox(height: 12),
-          SegmentedButton<String>(
-            segments: const [
-              ButtonSegment(value: 'cidadao', icon: Icon(Icons.volunteer_activism_outlined), label: Text('Preciso de ajuda')),
-              ButtonSegment(value: 'voluntario', icon: Icon(Icons.handshake_outlined), label: Text('Quero ajudar')),
-            ],
-            selected: {_perfil},
-            onSelectionChanged: (s) => setState(() => _perfil = s.first),
-          ),
-          const SizedBox(height: 20),
           TextField(
             controller: _nome,
             textCapitalization: TextCapitalization.words,
