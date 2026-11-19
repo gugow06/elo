@@ -39,18 +39,26 @@ export async function seed(url?: string): Promise<void> {
   try {
     await c.query('BEGIN');
     await c.query(`TRUNCATE evento_auditoria, notificacao, evento_iot, entrega, oferta, classificacao, relato,
-                   solicitacao, codigo_acesso, conta_social, usuario, ponto_coleta, bairro, municipio RESTART IDENTITY CASCADE`);
+                   solicitacao, codigo_acesso, conta_social, usuario, local_rede, ponto_coleta, bairro, municipio RESTART IDENTITY CASCADE`);
 
     const mun = async (nome: string, uf: string, populacao: number) =>
       (await c.query<{ id: string }>('INSERT INTO municipio (nome, uf, populacao) VALUES ($1,$2,$3) RETURNING id', [nome, uf, populacao])).rows[0].id;
     const bai = async (m: string, nome: string, slug: string, populacao: number) =>
       (await c.query<{ id: string }>('INSERT INTO bairro (municipio_id, nome, slug, populacao) VALUES ($1,$2,$3,$4) RETURNING id', [m, nome, slug, populacao])).rows[0].id;
-    const ponto = async (m: string, b: string, slug: keyof typeof CHAVES_DEMO, nome: string, endereco: string, cap: number, estoque: number) =>
-      (await c.query<{ id: string }>(
+    const ponto = async (m: string, b: string, slug: keyof typeof CHAVES_DEMO, nome: string, endereco: string, cap: number, estoque: number) => {
+      const id = (await c.query<{ id: string }>(
         `INSERT INTO ponto_coleta (id, municipio_id, bairro_id, nome, endereco, capacidade_kg, estoque_kg, device_key_hash)
          VALUES ($8,$1,$2,$3,$4,$5,$6,$7) RETURNING id`,
         [m, b, nome, endereco, cap, estoque, sha256(CHAVES_DEMO[slug]), PONTOS_DEMO[slug]],
       )).rows[0].id;
+      // Todo ponto de coleta também é um local da rede (mapa e painel)
+      await c.query(
+        `INSERT INTO local_rede (municipio_id, bairro_id, tipo, nome, endereco, ponto_coleta_id, categorias)
+         VALUES ($1,$2,'ponto_coleta',$3,$4,$5,'{alimento,roupa,material_escolar}')`,
+        [m, b, nome, endereco, id],
+      );
+      return id;
+    };
     // E-mail fictício (domínio reservado example.com), derivado do nome: "Ana Paula Ribeiro" → ana.ribeiro@example.com
     const emailDe = (nome: string) => {
       const p = nome.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().split(' ');

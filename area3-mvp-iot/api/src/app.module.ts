@@ -5,6 +5,7 @@ import { EventosService } from './infra/eventos.service';
 import { GeoController } from './geo/geo.controller';
 import { GestaoController, PoolOuro } from './gestao/gestao.controller';
 import { IotController, PontosController } from './iot/iot.controller';
+import { LocaisController } from './locais/locais.controller';
 import { PerfilController } from './perfil/perfil.controller';
 import { RedeController } from './rede/rede.controller';
 import { SlaService } from './rede/sla.service';
@@ -27,6 +28,7 @@ import { TecnicoController } from './tecnico/tecnico.controller';
     GestaoController,
     PerfilController,
     GeoController,
+    LocaisController,
   ],
   providers: [EventosService, classificadorProvider, SolicitacoesService, SlaService, PoolOuro],
 })

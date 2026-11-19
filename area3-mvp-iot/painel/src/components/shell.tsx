@@ -9,6 +9,7 @@ import { lerSessao, sair, type UsuarioSessao } from "@/lib/api";
 const MENU = [
   { href: "/fila", rotulo: "Fila do CRAS", icone: "📋", perfis: ["tecnico"] },
   { href: "/gestao", rotulo: "Gestão da rede", icone: "📊", perfis: ["gestor", "tecnico"] },
+  { href: "/locais", rotulo: "Locais da rede", icone: "📍", perfis: ["gestor", "tecnico"] },
 ];
 
 /** Layout autenticado do painel: cabeçalho, navegação e proteção de rota por perfil. */
