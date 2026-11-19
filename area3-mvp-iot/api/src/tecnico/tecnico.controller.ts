@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Inject, MessageEvent, NotFoundException, Param, Post, Sse, UseGuards } from '@nestjs/common';
+import { gerarItens } from '../rede/itens';
 import { Pool } from 'pg';
 import { map, merge, Observable, interval } from 'rxjs';
 import { z } from 'zod';
@@ -84,6 +85,12 @@ export class TecnicoController {
       [id, sessao.municipioId, d.faixa, d.categoria, status, TITULO_POR_CATEGORIA[d.categoria]],
     );
     if (!r.rowCount) throw new NotFoundException('Solicitação não encontrada.');
+    // Categoria nova, itens novos: só se ninguém se comprometeu ainda
+    const ajudando = await this.pool.query('SELECT 1 FROM oferta WHERE solicitacao_id = $1 AND ativa', [id]);
+    if (!ajudando.rowCount) {
+      await this.pool.query('DELETE FROM item_solicitacao WHERE solicitacao_id = $1', [id]);
+      await gerarItens(this.pool, id, d.categoria, TITULO_POR_CATEGORIA[d.categoria]);
+    }
     await this.solicitacoes.registrarClassificacao(
       this.pool,
       id,

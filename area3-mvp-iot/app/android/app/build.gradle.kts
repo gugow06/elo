@@ -36,6 +36,13 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    // O lint "vital" do build de release quebra com erro interno (NoSuchMethodError no JavaDocParser)
+    // ao analisar o plugin image_picker_android. É bug da ferramenta, não do app: a análise do
+    // código Dart continua no CI com `flutter analyze`.
+    lint {
+        checkReleaseBuilds = false
+    }
 }
 
 kotlin {

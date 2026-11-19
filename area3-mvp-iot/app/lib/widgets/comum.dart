@@ -1,6 +1,8 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../tema.dart';
+import 'animacoes.dart';
+import 'itens.dart';
 
 const categorias = {
   'alimento': 'Alimentação',
@@ -77,48 +79,81 @@ class Cartao extends StatelessWidget {
       ),
       child: conteudo,
     );
-    if (rotulo == null) return caixa;
-    return Semantics(label: rotulo, button: onTap != null, excludeSemantics: true, child: caixa);
+    // Tocável: encolhe de leve enquanto está pressionado
+    final comToque = Pressionavel(ativo: onTap != null, child: caixa);
+    if (rotulo == null) return comToque;
+    return Semantics(label: rotulo, button: onTap != null, excludeSemantics: true, child: comToque);
   }
 }
 
 /// Cartão de pedido do mural: categoria, bairro, título e situação. Nunca mostra endereço ou nome.
 class CartaoPedido extends StatelessWidget {
-  const CartaoPedido({super.key, required this.pedido, this.onTap});
+  const CartaoPedido({super.key, required this.pedido, this.onTap, this.mostrarCidade = false});
   final Map<String, dynamic> pedido;
+  final bool mostrarCidade;
   final VoidCallback? onTap;
+
+  /// "Precisa de arroz, feijão e óleo." (itens que ainda ninguém leva), ou onde a doação é entregue.
+  static String resumo(Map<String, dynamic> pedido) {
+    final itens = ItemPedido.daLista(pedido['itens']);
+    final abertos = itens.where((i) => i.aberto).map((i) => i.descricao.toLowerCase()).toList();
+    if (abertos.isNotEmpty) {
+      final lista = abertos.length == 1 ? abertos.first : '${abertos.sublist(0, abertos.length - 1).join(', ')} e ${abertos.last}';
+      return 'Precisa de $lista.';
+    }
+    if (itens.any((i) => i.status == 'comprometido')) return 'Todos os itens já têm alguém levando.';
+    if (itens.isNotEmpty) return 'As doações já chegaram ao ponto de coleta.';
+    return pedido['ponto_coleta'] != null ? 'Doação entregue no ${pedido['ponto_coleta']}.' : 'Doação entregue em ponto de coleta.';
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final cat = pedido['categoria'] as String;
     final bairro = pedido['bairro'] as String;
+    // Na lista de todos os pedidos, que pode misturar cidades, mostra também cidade e UF
+    final onde = mostrarCidade && pedido['municipio'] != null ? 'Bairro $bairro · ${pedido['municipio']} - ${pedido['uf']}' : 'Bairro $bairro';
+    // Distância até o bairro do pedido, quando a lista veio pela localização do aparelho
+    final km = pedido['distancia_km'] as num?;
+    final ondeTexto = km == null ? onde : '$onde • ${distanciaTexto(km).replaceFirst('a ', '')}';
+    final ajudando = (pedido['pessoas_ajudando'] as num?)?.toInt() ?? 0;
+    final situacao = ajudando > 0 ? 'Em andamento' : 'Aguardando ajuda';
+    final descricao = resumo(pedido);
     return Cartao(
       onTap: onTap,
-      rotulo: '${categorias[cat]}. ${pedido['titulo']}. Bairro $bairro. Publicado ${tempoRelativo(pedido['criado_em'])}. Aguardando voluntário.',
+      rotulo: '${categorias[cat]}. ${pedido['titulo']}. $onde.${km == null ? '' : ' ${distanciaTexto(km)} de você.'} $descricao '
+          '${ajudando == 0 ? 'Ninguém ajudando ainda' : ajudando == 1 ? '1 pessoa ajudando' : '$ajudando pessoas ajudando'}. '
+          '$situacao. Publicado ${tempoRelativo(pedido['criado_em'])}.',
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           TagCategoria(cat),
+          const SizedBox(width: 8),
           const Spacer(),
           const Icon(Icons.location_on_outlined, size: 18, color: EloCores.texto2),
           const SizedBox(width: 4),
-          Flexible(child: Text('Bairro $bairro', style: t.bodyMedium, overflow: TextOverflow.ellipsis)),
+          Flexible(flex: 6, child: Text(ondeTexto, style: t.bodyMedium?.copyWith(fontSize: 13.5), overflow: TextOverflow.ellipsis)),
         ]),
         const SizedBox(height: 10),
-        Text(pedido['titulo'], style: t.titleMedium),
+        Text(pedido['titulo'], style: t.titleMedium?.copyWith(fontSize: 18, fontWeight: FontWeight.w800, color: EloCores.brand900)),
         const SizedBox(height: 4),
-        Text(
-          pedido['ponto_coleta'] != null ? 'Doação entregue no ${pedido['ponto_coleta']}.' : 'Doação entregue em ponto de coleta.',
-          style: t.bodyMedium,
-        ),
-        const SizedBox(height: 10),
+        Text(descricao, style: t.bodyMedium, maxLines: 2, overflow: TextOverflow.ellipsis),
+        const SizedBox(height: 12),
         Row(children: [
-          const Selo('Aguardando voluntário'),
-          const Spacer(),
-          Text(tempoRelativo(pedido['criado_em']), style: t.bodyMedium?.copyWith(fontSize: 13)),
+          // Uma linha só, ao lado do selo: diminui um pouco se não couber
+          Expanded(child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: PessoasAjudando.doPedido(pedido, tamanho: 14))),
+          const SizedBox(width: 8),
+          Selo(situacao, fundo: ajudando > 0 ? EloCores.sucessoClaro : EloCores.brand100, cor: ajudando > 0 ? EloCores.sucesso : EloCores.brand900),
         ]),
       ]),
     );
   }
+}
+
+/// "a 800 m", "a 2,4 km", "a 35 km" (distância aproximada até o bairro do pedido).
+String distanciaTexto(num km) {
+  if (km < 1) return 'a ${((km * 1000) / 100).round().clamp(1, 9) * 100} m';
+  if (km < 10) return 'a ${km.toStringAsFixed(1).replaceAll('.', ',')} km';
+  return 'a ${km.round()} km';
 }
 
 void avisar(BuildContext context, String mensagem, {bool erro = false}) {

@@ -4,17 +4,30 @@ import '../api.dart';
 import '../tema.dart';
 import '../widgets/comum.dart';
 
-/// Avisos do ELO: voluntário assumiu, doação disponível, "Sua ajuda chegou", pedido escalado.
-class Notificacoes extends StatefulWidget {
+/// Notificações do sistema numa tela própria (sino do Início).
+class Notificacoes extends StatelessWidget {
   const Notificacoes({super.key});
   @override
-  State<Notificacoes> createState() => _NotificacoesState();
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(title: const Text('Notificações do sistema', style: TextStyle(fontWeight: FontWeight.w800))),
+        body: const ListaNotificacoes(),
+      );
 }
 
-class _NotificacoesState extends State<Notificacoes> {
+/// Avisos do ELO: voluntário assumiu, doação disponível, "Sua ajuda chegou", pedido escalado.
+/// Abrir a lista marca os avisos como lidos.
+class ListaNotificacoes extends StatefulWidget {
+  const ListaNotificacoes({super.key, this.aoLer});
+  /// Chamado depois de marcar como lidas (a aba Mensagens atualiza o número).
+  final VoidCallback? aoLer;
+  @override
+  State<ListaNotificacoes> createState() => _ListaNotificacoesState();
+}
+
+class _ListaNotificacoesState extends State<ListaNotificacoes> {
   late Future<List<dynamic>> _itens = _buscar();
 
-  Future<List<dynamic>> _buscar() => Api.i.notificacoes().whenComplete(() => Api.i.marcarLidas().catchError((_) {}));
+  Future<List<dynamic>> _buscar() => Api.i.notificacoes().whenComplete(() => Api.i.marcarLidas().then((_) => widget.aoLer?.call()).catchError((_) {}));
 
   Future<void> _atualizar() async {
     final f = _buscar();
@@ -27,22 +40,21 @@ class _NotificacoesState extends State<Notificacoes> {
         'doacao_disponivel' => Icons.inventory_2,
         'voluntario_assumiu' => Icons.handshake,
         'escalado' => Icons.account_balance,
+        'pedido_encerrado' || 'ajuda_cancelada' => Icons.info_outline,
         _ => Icons.notifications,
       };
 
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Mensagens', style: TextStyle(fontWeight: FontWeight.w800))),
-      body: RefreshIndicator(
+    return RefreshIndicator(
         onRefresh: _atualizar,
         child: FutureBuilder<List<dynamic>>(
         future: _itens,
         builder: (context, snap) {
           if (snap.connectionState != ConnectionState.done) return const Carregando();
           final itens = (snap.data ?? []).cast<Map<String, dynamic>>();
-          if (itens.isEmpty) return ListView(padding: const EdgeInsets.all(24), children: [Text('Nenhuma mensagem por enquanto.', style: t.bodyLarge)]);
+          if (itens.isEmpty) return ListView(padding: const EdgeInsets.all(24), children: [Text('Nenhum aviso do sistema por enquanto.', style: t.bodyLarge)]);
           return ListView.separated(
             padding: const EdgeInsets.all(16),
             itemCount: itens.length,
@@ -69,7 +81,6 @@ class _NotificacoesState extends State<Notificacoes> {
             },
           );
         },
-        ),
       ),
     );
   }

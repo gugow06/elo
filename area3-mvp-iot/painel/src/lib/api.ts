@@ -1,8 +1,34 @@
 "use client";
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3333";
+import { useEffect, useState } from "react";
 
-export type Perfil = "cidadao" | "voluntario" | "tecnico" | "gestor";
+/**
+ * Endereço da API. O padrão (NEXT_PUBLIC_API_URL) aponta para localhost, que só funciona no próprio
+ * computador. Aberto de outro aparelho ou pelo IP da máquina (ex.: http://192.168.0.10:3000), o
+ * navegador procuraria a API no próprio aparelho e a conexão falharia: nesse caso, usa o mesmo
+ * endereço da página, na porta da API.
+ */
+function resolverApiUrl(): string {
+  const configurada = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3333";
+  if (typeof window === "undefined") return configurada;
+  try {
+    const url = new URL(configurada);
+    const local = (h: string) => h === "localhost" || h === "127.0.0.1" || h === "[::1]";
+    if (local(url.hostname) && !local(window.location.hostname)) url.hostname = window.location.hostname;
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    return configurada;
+  }
+}
+
+export const API_URL = resolverApiUrl();
+
+export type Perfil = "cidadao" | "voluntario" | "tecnico" | "gestor" | "agente";
+
+/** Primeira tela de cada perfil do painel. */
+export const INICIO_POR_PERFIL: Partial<Record<Perfil, string>> = { tecnico: "/fila", gestor: "/gestao", agente: "/receber" };
+
+export const NOME_PERFIL: Partial<Record<Perfil, string>> = { tecnico: "Técnica do CRAS", gestor: "Gestão", agente: "Agente do ponto de coleta" };
 
 export interface UsuarioSessao {
   id: string;
@@ -39,14 +65,21 @@ export class ErroApi extends Error {
 
 export async function api<T = unknown>(caminho: string, opcoes: RequestInit = {}): Promise<T> {
   const sessao = lerSessao();
-  const resposta = await fetch(`${API_URL}${caminho}`, {
-    ...opcoes,
-    headers: {
-      "content-type": "application/json",
-      ...(sessao ? { authorization: `Bearer ${sessao.token}` } : {}),
-      ...opcoes.headers,
-    },
-  });
+  let resposta: Response;
+  try {
+    resposta = await fetch(`${API_URL}${caminho}`, {
+      ...opcoes,
+      headers: {
+        // Só com corpo: o Fastify recusa JSON vazio (ex.: DELETE sem corpo)
+        ...(opcoes.body ? { "content-type": "application/json" } : {}),
+        ...(sessao ? { authorization: `Bearer ${sessao.token}` } : {}),
+        ...opcoes.headers,
+      },
+    });
+  } catch {
+    // "Failed to fetch": API fora do ar, sem rede ou bloqueio do navegador (CORS)
+    throw new ErroApi(0, "Não foi possível falar com a API do ELO. Confira se ela está no ar e tente de novo.");
+  }
   if (resposta.status === 401 && sessao) {
     sair();
     throw new ErroApi(401, "Sessão expirada");
@@ -73,4 +106,16 @@ export function assinarEventos(caminho: string, aoReceber: (tipo: string, dados:
     fonte.addEventListener(tipo, (e) => aoReceber(tipo, JSON.parse((e as MessageEvent).data)));
   }
   return () => fonte.close();
+}
+
+let configCache: Promise<{ modo_demo: boolean }> | null = null;
+
+/** Modo demonstração da API (contas de teste e avisos). Em produção (MODO_DEMO=false) é false. */
+export function useModoDemo(): boolean {
+  const [demo, setDemo] = useState(false);
+  useEffect(() => {
+    configCache ??= fetch(`${API_URL}/config`).then((r) => r.json()).catch(() => ({ modo_demo: false }));
+    configCache.then((c) => setDemo(c.modo_demo === true));
+  }, []);
+  return demo;
 }

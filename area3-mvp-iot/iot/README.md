@@ -25,10 +25,15 @@ Ligação dos sensores analógicos:
 2. Adicione: Arduino Uno R3, Keypad 4×4, LCD 16×2 (I2C), Force Sensor (FSR), Temperature Sensor (TMP36), LED, Piezo, resistores de 10 kΩ e 220 Ω.
 3. Ligue conforme a tabela acima.
 4. Em **Code** → **Text**, cole o conteúdo de [`ponto-coleta/ponto_coleta.ino`](ponto-coleta/ponto_coleta.ino).
-5. **Start Simulation**. Abra o **Serial Monitor**, digite um protocolo de 6 dígitos + `#` e aumente a força no FSR: depois de 3 s estável, o LCD mostra "Entrega OK!" e o Serial imprime o evento `entrega_depositada` em JSON.
-6. Aqueça o TMP36 acima de 30 °C: o LED acende e o buzzer toca.
+5. **Start Simulation**. Digite um protocolo de 6 dígitos + `#` no teclado (ou no **Serial Monitor**) e aumente a força no FSR: depois de 3 s estável, o LCD mostra "Entrega OK!" e o Serial imprime o evento `entrega_depositada` em JSON.
+6. **Retirada:** `B`, o protocolo + `#` e o código de retirada (4 números) + `#`. O LCD mostra o código como `****` e o Serial imprime o evento `retirada`.
+7. Aqueça o TMP36 acima de 30 °C: o LED acende e o buzzer toca.
 
-Para a entrega: print do circuito e o link público da simulação vão no PDF.
+## Como abrir no Wokwi
+
+Mesma lógica, com as peças que o Wokwi tem (potenciômetro como balança, sensor NTC como temperatura): veja [`wokwi/README.md`](wokwi/README.md). O projeto já vem montado (`diagram.json`) e tem teste automático pelo Wokwi CLI. O sketch do Tinkercad é gerado a partir do sketch do Wokwi (`python iot/wokwi/gerar_tinkercad.py`), para os dois não se separarem.
+
+Para a entrega: a foto do circuito está em [`wokwi/circuito.png`](wokwi/circuito.png), e as telas do LCD, em [`wokwi/telas`](wokwi/telas/). O link público da simulação vai no PDF.
 
 ## Integração com a API
 
@@ -45,7 +50,7 @@ Tinkercad (evidência)       Simulador Python (demo)        Hardware real
 | --- | --- | --- |
 | `GET` | `/iot/pontos/{id}/estado` | Estoque atual e limiares (o dispositivo sincroniza ao ligar) |
 | `GET` | `/iot/pontos/{id}/protocolos/{protocolo}` | Confere o protocolo antes do depósito e devolve o texto do LCD |
-| `POST` | `/iot/pontos/{id}/eventos` | Recebe `leitura_sensor`, `entrega_depositada` e `retirada` |
+| `POST` | `/iot/pontos/{id}/eventos` | Recebe `leitura_sensor`, `entrega_depositada` e `retirada`. A retirada exige o `codigo` de retirada (4 números que só quem pediu tem): com ele, o que estava no ponto conta como recebido e o pedido conclui |
 
 O dispositivo se autentica com a **chave do ponto** no cabeçalho `X-Device-Key`. A API guarda só o hash SHA-256 da chave e compara em tempo constante. Todo payload é validado (Zod).
 
@@ -70,3 +75,5 @@ python simulador.py --ponto vila-nova estado            # outro ponto
 O protocolo vem do app da voluntária, quando ela toca em "Quero ajudar". Variável `API_URL` (padrão `http://localhost:3333`).
 
 **Limitação assumida:** o peso prova que *algo* foi depositado, não *o quê*. O responsável pelo ponto valida o conteúdo na retirada.
+
+**Retirada com código:** o protocolo é compartilhado com quem ajuda (para entregar); para **retirar**, quem pediu digita também o código de retirada. Depois de 5 códigos errados, o pedido fica bloqueado por 1 hora. No simulador: `python simulador/simulador.py retirada --protocolo 123456 --codigo 0000`.

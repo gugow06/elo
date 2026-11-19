@@ -1,50 +1,60 @@
-import 'dart:math' as math;
+import 'dart:async';
 
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../api.dart';
+import '../geo.dart';
+import '../localizacao.dart';
 import '../tema.dart';
 import '../widgets/comum.dart';
-import 'pedido_detalhe.dart';
+import 'todos_pedidos.dart';
 
-/// Posições esquemáticas dos bairros fictícios (0..1). O mapa é ilustrativo e local:
-/// não depende de serviço de mapas e nunca mostra endereço de cidadão.
-const _posicaoBairro = {
-  'vila-nova': Offset(0.28, 0.24),
-  'jardim': Offset(0.72, 0.42),
-  'centro': Offset(0.5, 0.56),
-  'jardim-sao-pedro': Offset(0.24, 0.72),
-  'vila-esperanca': Offset(0.74, 0.76),
+/// Tipo de local da rede: rótulo, ícone e cor (cor nunca é a única informação: sempre ícone + texto).
+class TipoLocal {
+  const TipoLocal(this.rotulo, this.icone, this.cor, this.fundo);
+  final String rotulo;
+  final IconData icone;
+  final Color cor;
+  final Color fundo;
+}
+
+const tiposLocal = {
+  'ponto_coleta': TipoLocal('Ponto de coleta', Icons.inventory_2, EloCores.pedido, EloCores.pedidoClaro),
+  'assistencia': TipoLocal('Assistência social', Icons.account_balance, EloCores.servico, EloCores.servicoClaro),
+  'abrigo': TipoLocal('Abrigo', Icons.night_shelter, EloCores.voluntario, EloCores.voluntarioClaro),
+  'distribuicao': TipoLocal('Ponto de distribuição', Icons.restaurant, EloCores.oportunidade, EloCores.oportunidadeClaro),
+  'saude': TipoLocal('Saúde', Icons.local_hospital, EloCores.servico, EloCores.servicoClaro),
 };
-const _kmPorUnidade = 6.0;
 
-enum _Filtro { todos, pedidos, servicos, oportunidades }
+/// Um marcador do mapa: um local da rede ou os pedidos de um bairro (sempre agregados).
+class _Marca {
+  _Marca.local(this.dados)
+      : pedidos = false,
+        ponto = LatLng((dados['latitude'] as num).toDouble(), (dados['longitude'] as num).toDouble());
+  _Marca.bairro(this.dados)
+      : pedidos = true,
+        ponto = LatLng((dados['latitude'] as num).toDouble(), (dados['longitude'] as num).toDouble());
+  final Map<String, dynamic> dados;
+  final bool pedidos;
+  final LatLng ponto;
 
-class _Marcador {
-  _Marcador({required this.tipo, required this.titulo, required this.subtitulo, required this.descricao, required this.pos, this.slugBairro, this.contagem});
-  final String tipo; // pedidos | servico
-  final String titulo;
-  final String subtitulo;
-  final String descricao;
-  final Offset pos;
-  final String? slugBairro;
-  final int? contagem;
+  TipoLocal get tipo => tiposLocal[dados['tipo']] ?? tiposLocal['assistencia']!;
+  int get quantidade => (dados['pedidos'] as num?)?.toInt() ?? 0;
+  String get titulo => pedidos ? '$quantidade ${quantidade == 1 ? 'pedido' : 'pedidos'} em ${dados['bairro']}' : dados['nome'] as String;
+  /// O bairro ainda não tem posição no mapa: o marcador fica no centro da cidade.
+  bool get aproximado => pedidos && dados['aproximado'] == true;
+  String get subtitulo => !pedidos
+      ? tipo.rotulo
+      : aproximado
+          ? 'Posição aproximada: centro de ${dados['municipio']} - ${dados['uf']} (o bairro ainda não está no mapa)'
+          : 'Pedidos de ajuda do bairro · ${dados['municipio']} - ${dados['uf']}';
 }
 
-String direcao(Offset de, Offset para) {
-  final d = para - de;
-  if (d.distance < 0.02) return 'no seu bairro';
-  final ang = (math.atan2(-d.dy, d.dx) * 180 / math.pi + 360) % 360;
-  const nomes = ['a leste', 'a nordeste', 'ao norte', 'a noroeste', 'a oeste', 'a sudoeste', 'ao sul', 'a sudeste'];
-  return nomes[((ang + 22.5) ~/ 45) % 8];
-}
-
-String distancia(Offset de, Offset para) {
-  final km = (para - de).distance * _kmPorUnidade;
-  return km < 0.2 ? 'perto de você' : '${km.toStringAsFixed(1).replaceAll('.', ',')} km ${direcao(de, para)}';
-}
-
-/// Tela 3 do mockup: Mapa da rede, com lista equivalente (RNF-A10 / RF-402).
+/// Tela 3 do mockup: mapa da rede com lista equivalente (RF-402).
+/// Pedidos aparecem só agregados por bairro (P3/RS-01); locais da rede no endereço (são públicos).
+/// A localização do aparelho fica no aparelho: centraliza o mapa e calcula distâncias.
 class MapaRede extends StatefulWidget {
   const MapaRede({super.key});
   @override
@@ -52,344 +62,497 @@ class MapaRede extends StatefulWidget {
 }
 
 class _MapaRedeState extends State<MapaRede> {
-  _Filtro _filtro = _Filtro.todos;
-  bool? _comoLista;
-  List<_Marcador> _marcadores = [];
-  _Marcador? _selecionado;
-  Offset _eu = const Offset(0.5, 0.5);
-  String? _erro;
-  bool _carregando = true;
+  final _mapa = MapController();
+  final _busca = TextEditingController();
+  Timer? _esperaMapa;
+  Timer? _esperaBusca;
+  bool _pronto = false;
+  bool? _lista; // null = decide pelo leitor de tela
+  String _filtro = 'todos';
+  LatLng? _eu;
+  LatLng _inicio = centroBrasil;
+  double _zoomInicio = 4;
+  List<_Marca> _locais = [];
+  List<_Marca> _bairros = [];
+  _Marca? _selecionado;
+  List<Map<String, dynamic>> _sugestoes = [];
+  bool _carregando = false;
+  String? _aviso;
 
   @override
   void initState() {
     super.initState();
-    _carregar();
+    _posicionar();
   }
 
-  Future<void> _carregar() async {
+  @override
+  void dispose() {
+    _esperaMapa?.cancel();
+    _esperaBusca?.cancel();
+    _busca.dispose();
+    super.dispose();
+  }
+
+  /// Onde abrir: localização do aparelho; sem ela, bairro/município do cadastro; sem ele, o Brasil.
+  Future<void> _posicionar() async {
     try {
-      final res = await Future.wait([Api.i.muralPorBairro(), Api.i.pontos()]);
-      final bairros = res[0].cast<Map<String, dynamic>>();
-      final pontos = res[1].cast<Map<String, dynamic>>();
-      final nomeParaSlug = {for (final b in bairros) b['bairro'] as String: b['slug'] as String};
-      final m = <_Marcador>[
-        for (final b in bairros)
-          if ((b['pedidos'] as num) > 0 && _posicaoBairro.containsKey(b['slug']))
-            _Marcador(
-              tipo: 'pedidos',
-              titulo: '${b['pedidos']} pedido${b['pedidos'] == 1 ? '' : 's'} em ${b['bairro']}',
-              subtitulo: 'Pedidos de ajuda do bairro',
-              descricao: 'Para proteger as famílias, o mapa mostra só o bairro. Toque para ver os pedidos.',
-              pos: _posicaoBairro[b['slug']]!,
-              slugBairro: b['slug'],
-              contagem: (b['pedidos'] as num).toInt(),
-            ),
-        for (final p in pontos)
-          if (_posicaoBairro.containsKey(nomeParaSlug[p['bairro']]))
-            _Marcador(
-              tipo: 'servico',
-              titulo: p['nome'],
-              subtitulo: (p['nome'] as String).contains('CRAS') ? 'Serviço municipal · ponto de coleta' : 'Ponto de coleta',
-              descricao: '${p['endereco']}. Estoque: ${(p['estoque_kg'] as num).toStringAsFixed(0)} kg de ${(p['capacidade_kg'] as num).toStringAsFixed(0)} kg.',
-              pos: _posicaoBairro[nomeParaSlug[p['bairro']]]! + const Offset(0.06, -0.05),
-            ),
-      ];
-      // posição do usuário: centro do bairro mais citado nos pedidos próximos (aproximação para o protótipo)
-      final mural = await Api.i.mural();
-      if (mural.isNotEmpty) {
-        final slug = (mural.first as Map)['bairro_slug'];
-        if (_posicaoBairro.containsKey(slug)) _eu = _posicaoBairro[slug]!;
+      final p = await Api.i.perfil();
+      if (p['latitude'] != null && p['longitude'] != null) {
+        _inicio = LatLng((p['latitude'] as num).toDouble(), (p['longitude'] as num).toDouble());
+        _zoomInicio = 13;
       }
-      setState(() {
-        _marcadores = m;
-        _selecionado = m.where((x) => x.tipo == 'servico').firstOrNull ?? m.firstOrNull;
-        _carregando = false;
-      });
-    } on ErroApi catch (e) {
-      setState(() { _erro = e.mensagem; _carregando = false; });
+    } on ErroApi {
+      // sem perfil, fica no centro do Brasil
+    }
+    final eu = await _localizacao(pedir: true);
+    if (eu != null) {
+      _eu = eu;
+      _inicio = eu;
+      _zoomInicio = 15;
+    }
+    if (!mounted) return;
+    setState(() {});
+    if (_pronto) {
+      _mapa.move(_inicio, _zoomInicio);
+      _mapaMudou();
     }
   }
 
-  List<_Marcador> get _visiveis => _marcadores.where((m) => switch (_filtro) {
-        _Filtro.todos => true,
-        _Filtro.pedidos => m.tipo == 'pedidos',
-        _Filtro.servicos => m.tipo == 'servico',
-        _Filtro.oportunidades => false,
-      }).toList()
-        ..sort((a, b) => (a.pos - _eu).distance.compareTo((b.pos - _eu).distance));
+  Future<LatLng?> _localizacao({required bool pedir}) async {
+    final p = await Localizacao.i.obter(pedir: pedir);
+    return p == null ? null : LatLng(p.latitude, p.longitude);
+  }
 
-  Future<void> _abrir(_Marcador m) async {
-    if (m.tipo != 'pedidos') {
-      setState(() => _selecionado = m);
+  Future<void> _minhaLocalizacao() async {
+    final eu = await _localizacao(pedir: true);
+    if (!mounted) return;
+    if (eu == null) {
+      avisar(context, 'Não foi possível usar a sua localização. Busque uma cidade ou endereço.', erro: true);
       return;
     }
-    final pedidos = (await Api.i.mural(bairro: m.slugBairro)).cast<Map<String, dynamic>>();
-    if (!mounted) return;
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (_) => SafeArea(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.7),
-          child: ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 16), shrinkWrap: true, children: [
-            Text(m.titulo, style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 12),
-            for (final p in pedidos)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: CartaoPedido(
-                  pedido: p,
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    Navigator.of(context).push(MaterialPageRoute(builder: (_) => PedidoDetalhe(pedido: p)));
-                  },
-                ),
-              ),
-          ]),
-        ),
-      ),
-    );
-    _carregar();
+    setState(() => _eu = eu);
+    _mapa.move(eu, 15);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    // Com leitor de tela ativo, a lista é o padrão (RNF-A10)
-    final lista = _comoLista ?? MediaQuery.of(context).accessibleNavigation;
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mapa da rede', style: TextStyle(fontWeight: FontWeight.w800)),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: SegmentedButton<bool>(
-              showSelectedIcon: false,
-              segments: const [
-                ButtonSegment(value: false, icon: Icon(Icons.map_outlined), label: Text('Mapa')),
-                ButtonSegment(value: true, icon: Icon(Icons.list), label: Text('Lista')),
-              ],
-              selected: {lista},
-              onSelectionChanged: (s) => setState(() => _comoLista = s.first),
-            ),
-          ),
-        ],
-      ),
-      body: Column(children: [
-        SizedBox(
-          height: 56,
-          child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), children: [
-            for (final (f, rotulo) in [(_Filtro.todos, 'Todos'), (_Filtro.pedidos, 'Pedidos'), (_Filtro.servicos, 'Serviços'), (_Filtro.oportunidades, 'Oportunidades')])
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: ChoiceChip(
-                  label: Text(rotulo),
-                  selected: _filtro == f,
-                  onSelected: (_) => setState(() => _filtro = f),
-                  selectedColor: EloCores.brand900,
-                  labelStyle: TextStyle(color: _filtro == f ? Colors.white : EloCores.texto, fontWeight: FontWeight.w700),
-                  backgroundColor: EloCores.superficie,
-                  showCheckmark: false,
-                ),
-              ),
-          ]),
-        ),
-        Expanded(
-          child: _carregando
-              ? const Carregando(texto: 'Carregando a rede')
-              : _erro != null
-                  ? Center(child: Padding(padding: const EdgeInsets.all(24), child: Text(_erro!)))
-                  : lista
-                      ? _Lista(marcadores: _visiveis, eu: _eu, aoAbrir: _abrir, filtro: _filtro)
-                      : Stack(children: [
-                          Positioned.fill(
-                            child: LayoutBuilder(builder: (context, c) {
-                              final tam = Size(c.maxWidth, c.maxHeight);
-                              return Stack(children: [
-                                const Positioned.fill(child: ExcludeSemantics(child: CustomPaint(painter: _Ruas()))),
-                                for (final m in _visiveis)
-                                  Positioned(
-                                    left: m.pos.dx * tam.width - 26,
-                                    top: m.pos.dy * tam.height - 60,
-                                    child: _Pino(marcador: m, selecionado: m == _selecionado, onTap: () => _abrir(m)),
-                                  ),
-                                Positioned(
-                                  left: _eu.dx * tam.width - 10,
-                                  top: _eu.dy * tam.height - 10,
-                                  child: Semantics(
-                                    label: 'Você está aqui',
-                                    child: Container(width: 20, height: 20, decoration: BoxDecoration(color: EloCores.voluntario, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 3))),
-                                  ),
-                                ),
-                              ]);
-                            }),
-                          ),
-                          if (_filtro == _Filtro.oportunidades)
-                            const Center(child: Selo('Oportunidades de emprego e cursos chegam em breve')),
-                          if (_selecionado != null && _filtro != _Filtro.oportunidades)
-                            Positioned(left: 16, right: 16, bottom: 16, child: _CartaoSelecionado(m: _selecionado!, eu: _eu, aoAbrir: () => _abrir(_selecionado!))),
-                        ]),
-        ),
-      ]),
-    );
-  }
-}
-
-class _Pino extends StatelessWidget {
-  const _Pino({required this.marcador, required this.selecionado, required this.onTap});
-  final _Marcador marcador;
-  final bool selecionado;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) {
-    final pedido = marcador.tipo == 'pedidos';
-    final cor = pedido ? EloCores.pedido : EloCores.servico;
-    return Semantics(
-      button: true,
-      label: marcador.titulo,
-      excludeSemantics: true,
-      child: GestureDetector(
-        onTap: onTap,
-        child: SizedBox(
-          width: 52,
-          height: 64,
-          child: Column(children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              width: selecionado ? 50 : 44,
-              height: selecionado ? 50 : 44,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: cor,
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 3),
-                boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 6, offset: Offset(0, 2))],
-              ),
-              child: pedido
-                  ? Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Icon(Icons.favorite, color: Colors.white, size: 16),
-                      const SizedBox(width: 2),
-                      Text('${marcador.contagem}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15)),
-                    ])
-                  : const Icon(Icons.account_balance, color: Colors.white, size: 22),
-            ),
-            CustomPaint(size: const Size(14, 10), painter: _Ponta(cor)),
-          ]),
-        ),
-      ),
-    );
-  }
-}
-
-class _Ponta extends CustomPainter {
-  const _Ponta(this.cor);
-  final Color cor;
-  @override
-  void paint(Canvas canvas, Size s) {
-    final path = Path()..moveTo(0, 0)..lineTo(s.width, 0)..lineTo(s.width / 2, s.height)..close();
-    canvas.drawPath(path, Paint()..color = cor);
+  void _mapaMudou() {
+    _esperaMapa?.cancel();
+    _esperaMapa = Timer(const Duration(milliseconds: 450), _carregarArea);
   }
 
-  @override
-  bool shouldRepaint(covariant _Ponta old) => old.cor != cor;
-}
+  /// Busca locais e pedidos agregados dentro da área visível.
+  Future<void> _carregarArea() async {
+    if (!_pronto) return;
+    final b = _mapa.camera.visibleBounds;
+    final c = _mapa.camera.center;
+    // Sem altura ainda (aba escondida): usa uma área de ~30 km ao redor do centro
+    final semArea = (b.north - b.south).abs() < 1e-6 || (b.east - b.west).abs() < 1e-6;
+    final caixa = semArea
+        ? caixaApi(oeste: c.longitude - 0.15, sul: c.latitude - 0.15, leste: c.longitude + 0.15, norte: c.latitude + 0.15)
+        : caixaApi(oeste: b.west, sul: b.south, leste: b.east, norte: b.north);
+    setState(() { _carregando = true; _aviso = null; });
+    try {
+      final r = await Future.wait([Api.i.mapaLocais(caixa), Api.i.mapaPedidos(caixa)]);
+      if (!mounted) return;
+      setState(() {
+        _locais = r[0].map((e) => _Marca.local(Map<String, dynamic>.from(e))).toList();
+        _bairros = r[1].map((e) => _Marca.bairro(Map<String, dynamic>.from(e))).toList();
+        if (_selecionado != null && ![..._locais, ..._bairros].any((m) => m.ponto == _selecionado!.ponto)) _selecionado = null;
+      });
+    } on ErroApi catch (e) {
+      if (mounted) setState(() => _aviso = e.mensagem);
+    } catch (e) {
+      debugPrint('mapa: falha ao carregar a área: $e');
+      if (mounted) setState(() => _aviso = 'Não foi possível carregar o mapa agora.');
+    } finally {
+      if (mounted) setState(() => _carregando = false);
+    }
+  }
 
-class _CartaoSelecionado extends StatelessWidget {
-  const _CartaoSelecionado({required this.m, required this.eu, required this.aoAbrir});
-  final _Marcador m;
-  final Offset eu;
-  final VoidCallback aoAbrir;
+  void _digitou(String texto) {
+    _esperaBusca?.cancel();
+    if (texto.trim().length < 2) {
+      setState(() => _sugestoes = []);
+      return;
+    }
+    _esperaBusca = Timer(const Duration(milliseconds: 300), () async {
+      try {
+        final r = await Api.i.localidades(texto.trim());
+        if (mounted) setState(() => _sugestoes = r.map((e) => Map<String, dynamic>.from(e)).toList());
+      } on ErroApi {
+        // a busca é uma ajuda; erro aqui não trava o mapa
+      }
+    });
+  }
+
+  /// Endereço ou nome de lugar: vai pela API (serviço gratuito com limite de uso).
+  Future<void> _buscarEndereco() async {
+    final q = _busca.text.trim();
+    if (q.length < 3) return;
+    try {
+      final r = await Api.i.buscarLugar(q);
+      if (!mounted) return;
+      if (r.isEmpty) {
+        avisar(context, 'Nada encontrado para "$q". Tente com o nome da cidade junto.');
+        return;
+      }
+      setState(() => _sugestoes = r.map((e) => {...Map<String, dynamic>.from(e), 'tipo': 'lugar'}).toList());
+    } on ErroApi catch (e) {
+      if (mounted) avisar(context, e.mensagem, erro: true);
+    }
+  }
+
+  void _ir(Map<String, dynamic> s) {
+    final destino = LatLng((s['latitude'] as num).toDouble(), (s['longitude'] as num).toDouble());
+    final zoom = switch (s['tipo']) { 'uf' => 6.5, 'municipio' => 12.5, _ => 16.0 };
+    _busca.clear();
+    FocusScope.of(context).unfocus();
+    setState(() { _sugestoes = []; _selecionado = null; });
+    _mapa.move(destino, zoom);
+    _mapaMudou();
+  }
+
+  List<_Marca> get _visiveis => [
+        if (_filtro != 'servicos') ..._bairros,
+        if (_filtro != 'pedidos') ..._locais,
+      ];
+
+  /// Referência para distância: a pessoa, se a localização estiver liberada; senão, o centro do mapa.
+  LatLng get _referencia => _eu ?? (_pronto ? _mapa.camera.center : _inicio);
+
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    final pedido = m.tipo == 'pedidos';
-    return Cartao(
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-        Row(children: [
-          CircleAvatar(
-            radius: 24,
-            backgroundColor: pedido ? EloCores.pedidoClaro : EloCores.voluntarioClaro,
-            child: Icon(pedido ? Icons.favorite : Icons.groups, color: pedido ? EloCores.pedido : EloCores.voluntario),
+    final lista = _lista ?? MediaQuery.of(context).accessibleNavigation;
+    final visiveis = _visiveis;
+    return Scaffold(
+      body: SafeArea(
+        child: Column(children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: Row(children: [
+              Expanded(child: Text('Mapa da rede', style: t.headlineSmall?.copyWith(fontWeight: FontWeight.w800, color: EloCores.brand900))),
+              SegmentedButton<bool>(
+                segments: const [
+                  ButtonSegment(value: false, icon: Icon(Icons.map_outlined), label: Text('Mapa')),
+                  ButtonSegment(value: true, icon: Icon(Icons.list), label: Text('Lista')),
+                ],
+                selected: {lista},
+                showSelectedIcon: false,
+                onSelectionChanged: (s) => setState(() => _lista = s.first),
+              ),
+            ]),
           ),
-          const SizedBox(width: 12),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: TextField(
+              controller: _busca,
+              onChanged: _digitou,
+              onSubmitted: (_) => _buscarEndereco(),
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.search),
+                labelText: 'Buscar cidade, estado ou endereço',
+                isDense: true,
+                suffixIcon: IconButton(
+                  tooltip: 'Minha localização',
+                  icon: const Icon(Icons.my_location, color: EloCores.brand700),
+                  onPressed: _minhaLocalizacao,
+                ),
+              ),
+            ),
+          ),
+          if (_sugestoes.isNotEmpty || _busca.text.trim().length >= 3)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Cartao(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Column(children: [
+                  for (final s in _sugestoes)
+                    ListTile(
+                      dense: true,
+                      leading: Icon(
+                        switch (s['tipo']) { 'uf' => Icons.map_outlined, 'municipio' => Icons.location_city_outlined, _ => Icons.place_outlined },
+                        color: EloCores.brand700,
+                      ),
+                      title: Text(s['tipo'] == 'uf' ? '${s['nome']} (${s['uf']})' : s['tipo'] == 'municipio' ? '${s['nome']}, ${s['uf']}' : s['nome']),
+                      subtitle: s['tipo'] == 'lugar' ? Text(s['endereco'] ?? '') : null,
+                      onTap: () => _ir(s),
+                    ),
+                  if (_busca.text.trim().length >= 3 && !_sugestoes.any((s) => s['tipo'] == 'lugar'))
+                    ListTile(
+                      dense: true,
+                      leading: const Icon(Icons.travel_explore, color: EloCores.brand700),
+                      title: Text('Buscar o endereço "${_busca.text.trim()}"'),
+                      onTap: _buscarEndereco,
+                    ),
+                ]),
+              ),
+            ),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: Row(children: [
+              for (final f in const [('todos', 'Todos'), ('pedidos', 'Pedidos'), ('servicos', 'Serviços')])
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ChoiceChip(
+                    label: Text(f.$2),
+                    selected: _filtro == f.$1,
+                    onSelected: (_) => setState(() { _filtro = f.$1; _selecionado = null; }),
+                  ),
+                ),
+              ActionChip(
+                label: const Text('Oportunidades'),
+                onPressed: () => avisar(context, 'Oportunidades de emprego e cursos chegam em breve.'),
+              ),
+            ]),
+          ),
+          if (_aviso != null)
+            Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Text(_aviso!, style: const TextStyle(color: EloCores.erro, fontWeight: FontWeight.w700))),
           Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(m.titulo, style: t.titleMedium),
-              Text(m.subtitulo, style: t.bodyMedium),
+            child: Stack(children: [
+              // O mapa fica montado mesmo na lista: a lista usa a mesma área visível
+              Offstage(
+                offstage: lista,
+                child: FlutterMap(
+                  mapController: _mapa,
+                  options: MapOptions(
+                    initialCenter: _inicio,
+                    initialZoom: _zoomInicio,
+                    minZoom: 3,
+                    maxZoom: 18,
+                    onMapReady: () {
+                      _pronto = true;
+                      _mapa.move(_inicio, _zoomInicio);
+                      _carregarArea();
+                    },
+                    onMapEvent: (e) {
+                      // Fim de gesto, movimento feito pelo app (busca, minha localização) ou mudança de tamanho
+                      // (a aba do mapa abre escondida e só ganha altura quando aparece)
+                      final porCodigo = e is MapEventMove &&
+                          (e.source == MapEventSource.mapController || e.source == MapEventSource.nonRotatedSizeChange);
+                      if (porCodigo || e is MapEventMoveEnd || e is MapEventFlingAnimationEnd || e is MapEventDoubleTapZoomEnd || e is MapEventScrollWheelZoom) {
+                        _mapaMudou();
+                      }
+                    },
+                    onTap: (_, _) => setState(() => _selecionado = null),
+                  ),
+                  children: [
+                    TileLayer(urlTemplate: urlTiles, userAgentPackageName: 'br.elo.elo_app'),
+                    MarkerLayer(markers: [
+                      for (final m in visiveis)
+                        Marker(
+                          point: m.ponto,
+                          width: m.pedidos ? 64 : 48,
+                          height: 48,
+                          alignment: Alignment.topCenter,
+                          child: _Pino(marca: m, selecionado: identical(m, _selecionado), aoTocar: () => setState(() => _selecionado = m)),
+                        ),
+                      if (_eu != null) Marker(point: _eu!, width: 140, height: 120, child: const _VoceEstaAqui()),
+                    ]),
+                    RichAttributionWidget(
+                      attributions: [TextSourceAttribution('© colaboradores do OpenStreetMap')],
+                      showFlutterMapAttribution: false,
+                    ),
+                  ],
+                ),
+              ),
+              if (lista) _Lista(marcas: visiveis, referencia: _referencia, aoTocar: (m) => _abrir(m)),
+              if (_carregando) const Positioned(top: 8, right: 8, child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 3, color: EloCores.brand700))),
+              if (!lista && !_carregando && visiveis.isEmpty)
+                Positioned(
+                  left: 16,
+                  right: 16,
+                  top: 8,
+                  child: Cartao(child: Text('Nada nesta área ainda. Afaste o mapa ou busque outra cidade.', style: t.bodyMedium)),
+                ),
+              if (!lista && _selecionado != null)
+                Positioned(left: 16, right: 16, bottom: 90, child: _CartaoSelecionado(marca: _selecionado!, referencia: _referencia, aoVerPedidos: () => _abrir(_selecionado!))),
             ]),
           ),
         ]),
-        const SizedBox(height: 10),
-        Text(m.descricao, style: t.bodyLarge),
-        const SizedBox(height: 4),
-        Text(distancia(eu, m.pos), style: t.bodyLarge?.copyWith(fontWeight: FontWeight.w700)),
-        const SizedBox(height: 12),
-        FilledButton(
-          style: FilledButton.styleFrom(backgroundColor: EloCores.brand600, minimumSize: const Size.fromHeight(48)),
-          onPressed: aoAbrir,
-          child: Text(pedido ? 'Ver pedidos' : 'Ver detalhes'),
+      ),
+    );
+  }
+
+  /// Bairro: abre a lista de pedidos daquela cidade. Local: mostra o card.
+  void _abrir(_Marca m) {
+    if (m.pedidos) {
+      Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => TodosPedidos(
+          inicial: Localidade(tipo: 'municipio', uf: m.dados['uf'], nome: m.dados['municipio'], id: m.dados['municipio_id']),
         ),
-      ]),
+      ));
+    } else {
+      setState(() { _lista = false; _selecionado = m; });
+      _mapa.move(m.ponto, 16);
+    }
+  }
+}
+
+/// Onde o aparelho está: ponto azul com halo e o rótulo "Você está aqui" (o ponto fica no centro do marcador).
+class _VoceEstaAqui extends StatelessWidget {
+  const _VoceEstaAqui();
+  static const azul = Color(0xFF1A73E8);
+  @override
+  Widget build(BuildContext context) => Semantics(
+        label: 'Você está aqui',
+        excludeSemantics: true,
+        child: Stack(alignment: Alignment.center, clipBehavior: Clip.none, children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(color: azul.withValues(alpha: 0.18), shape: BoxShape.circle, border: Border.all(color: azul.withValues(alpha: 0.35))),
+          ),
+          Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              color: azul,
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 3),
+              boxShadow: const [BoxShadow(color: Color(0x55000000), blurRadius: 4)],
+            ),
+          ),
+          Positioned(
+            top: 0,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(999), boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 4)]),
+              child: const Text('Você está aqui', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: azul)),
+            ),
+          ),
+        ]),
+      );
+}
+
+class _Pino extends StatelessWidget {
+  const _Pino({required this.marca, required this.selecionado, required this.aoTocar});
+  final _Marca marca;
+  final bool selecionado;
+  final VoidCallback aoTocar;
+
+  @override
+  Widget build(BuildContext context) {
+    final cor = marca.pedidos ? EloCores.pedido : marca.tipo.cor;
+    return Semantics(
+      button: true,
+      label: '${marca.titulo}. ${marca.subtitulo}',
+      excludeSemantics: true,
+      child: GestureDetector(
+        onTap: aoTocar,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          decoration: BoxDecoration(
+            color: cor,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: Colors.white, width: selecionado ? 4 : 2),
+            boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 6, offset: Offset(0, 2))],
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, children: [
+            Icon(marca.pedidos ? Icons.favorite : marca.tipo.icone, color: Colors.white, size: 22),
+            if (marca.pedidos) ...[
+              const SizedBox(width: 4),
+              Text('${marca.quantidade}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
+            ],
+          ]),
+        ),
+      ),
     );
   }
 }
 
-class _Lista extends StatelessWidget {
-  const _Lista({required this.marcadores, required this.eu, required this.aoAbrir, required this.filtro});
-  final List<_Marcador> marcadores;
-  final Offset eu;
-  final void Function(_Marcador) aoAbrir;
-  final _Filtro filtro;
+class _CartaoSelecionado extends StatelessWidget {
+  const _CartaoSelecionado({required this.marca, required this.referencia, required this.aoVerPedidos});
+  final _Marca marca;
+  final LatLng referencia;
+  final VoidCallback aoVerPedidos;
+
   @override
   Widget build(BuildContext context) {
-    if (filtro == _Filtro.oportunidades) return const Center(child: Selo('Oportunidades de emprego e cursos chegam em breve'));
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-      itemCount: marcadores.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 10),
-      itemBuilder: (_, i) {
-        final m = marcadores[i];
-        final pedido = m.tipo == 'pedidos';
-        return Cartao(
-          onTap: () => aoAbrir(m),
-          rotulo: '${m.titulo}. ${m.subtitulo}. ${distancia(eu, m.pos)}.',
-          child: Row(children: [
-            Icon(pedido ? Icons.favorite : Icons.account_balance, color: pedido ? EloCores.pedido : EloCores.servico, size: 32),
-            const SizedBox(width: 14),
+    final t = Theme.of(context).textTheme;
+    final d = marca.dados;
+    final detalhes = <String>[
+      if (!marca.pedidos) d['endereco'] as String,
+      if (d['horario'] != null) d['horario'] as String,
+      if (d['telefone'] != null) d['telefone'] as String,
+      if (d['vagas'] != null) '${d['vagas']} vagas',
+      if (d['capacidade_kg'] != null) 'Estoque: ${d['estoque_kg'] ?? 0} kg de ${d['capacidade_kg']} kg',
+    ];
+    return Material(
+      elevation: 6,
+      borderRadius: BorderRadius.circular(EloRaio.lg),
+      color: EloCores.superficie,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            CircleAvatar(
+              backgroundColor: marca.pedidos ? EloCores.pedidoClaro : marca.tipo.fundo,
+              child: Icon(marca.pedidos ? Icons.favorite : marca.tipo.icone, color: marca.pedidos ? EloCores.pedido : marca.tipo.cor),
+            ),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(m.titulo, style: Theme.of(context).textTheme.titleMedium),
-                Text('${m.subtitulo} · ${distancia(eu, m.pos)}', style: Theme.of(context).textTheme.bodyMedium),
+                Text(marca.titulo, style: t.titleMedium),
+                Text(marca.subtitulo, style: t.bodyMedium),
               ]),
             ),
-            const Icon(Icons.chevron_right, color: EloCores.texto2),
+          ]),
+          const SizedBox(height: 8),
+          for (final x in detalhes) Text(x, style: t.bodyMedium),
+          if (d['descricao'] != null) Text(d['descricao'], style: t.bodyMedium),
+          const SizedBox(height: 6),
+          Text(distanciaPorExtenso(referencia, marca.ponto), style: t.bodyLarge?.copyWith(fontWeight: FontWeight.w800)),
+          if (marca.pedidos) ...[
+            const SizedBox(height: 10),
+            FilledButton(onPressed: aoVerPedidos, child: const Text('Ver pedidos')),
+          ],
+        ]),
+      ),
+    );
+  }
+}
+
+/// Lista equivalente ao mapa (RF-402), ordenada por distância. Padrão com leitor de tela.
+class _Lista extends StatelessWidget {
+  const _Lista({required this.marcas, required this.referencia, required this.aoTocar});
+  final List<_Marca> marcas;
+  final LatLng referencia;
+  final void Function(_Marca) aoTocar;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final ordenadas = [...marcas]..sort((a, b) => distanciaKm(referencia, a.ponto).compareTo(distanciaKm(referencia, b.ponto)));
+    if (ordenadas.isEmpty) {
+      return ListView(padding: const EdgeInsets.all(24), children: [
+        Text('Nada nesta área ainda. Volte ao mapa e afaste, ou busque outra cidade.', style: t.bodyLarge),
+      ]);
+    }
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
+      itemCount: ordenadas.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 8),
+      itemBuilder: (_, i) {
+        final m = ordenadas[i];
+        final distancia = distanciaPorExtenso(referencia, m.ponto);
+        return Cartao(
+          onTap: () => aoTocar(m),
+          rotulo: '${m.titulo}. ${m.subtitulo}. $distancia.',
+          child: Row(children: [
+            Icon(m.pedidos ? Icons.favorite : m.tipo.icone, color: m.pedidos ? EloCores.pedido : m.tipo.cor, size: 28),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(m.titulo, style: t.titleMedium),
+                Text('${m.subtitulo} · $distancia', style: t.bodyMedium),
+              ]),
+            ),
+            const Icon(Icons.chevron_right),
           ]),
         );
       },
     );
   }
-}
-
-/// Ruas, quarteirões e praças estilizados (decorativo).
-class _Ruas extends CustomPainter {
-  const _Ruas();
-  @override
-  void paint(Canvas canvas, Size s) {
-    canvas.drawRect(Offset.zero & s, Paint()..color = const Color(0xFFEDEFEA));
-    final parque = Paint()..color = const Color(0xFFD5EBD3);
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(s.width * 0.05, s.height * 0.45, s.width * 0.18, s.height * 0.14), const Radius.circular(10)), parque);
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(s.width * 0.6, s.height * 0.08, s.width * 0.25, s.height * 0.12), const Radius.circular(10)), parque);
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(s.width * 0.42, s.height * 0.82, s.width * 0.2, s.height * 0.12), const Radius.circular(10)), parque);
-    final rua = Paint()..color = Colors.white..strokeWidth = 10..strokeCap = StrokeCap.round;
-    final ruaFina = Paint()..color = Colors.white..strokeWidth = 5;
-    for (var i = 1; i < 8; i++) {
-      canvas.drawLine(Offset(0, s.height * i / 8), Offset(s.width, s.height * i / 8 + s.height * 0.05), ruaFina);
-      canvas.drawLine(Offset(s.width * i / 6, 0), Offset(s.width * i / 6 - s.width * 0.08, s.height), ruaFina);
-    }
-    canvas.drawLine(Offset(0, s.height * 0.1), Offset(s.width, s.height * 0.9), rua);
-    canvas.drawLine(Offset(s.width * 0.1, s.height), Offset(s.width * 0.9, 0), rua);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

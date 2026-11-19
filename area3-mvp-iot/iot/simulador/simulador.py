@@ -103,6 +103,24 @@ class Dispositivo:
         lcd(*linhas)
         print(f"[api] HTTP {status}")
 
+    def retirada(self, protocolo: str, codigo: str, kg: float) -> None:
+        """Quem pediu digita o protocolo e o código de retirada (4 números que só ela tem) e retira a doação."""
+        print(f"[teclado] protocolo digitado: {protocolo}")
+        print("[teclado] código de retirada digitado: ****")
+        peso_antes = self.estado()["estoque_kg"]
+        peso_depois = max(0.0, peso_antes - kg)
+        print(f"[balança] peso depois: {peso_depois:.1f} kg (-{kg:.1f} kg)")
+        status, corpo = self._req("POST", "/eventos", {
+            "tipo": "retirada",
+            "protocolo": protocolo,
+            "codigo": codigo,
+            "delta_peso_kg": round(-kg, 2),
+            "peso_kg": round(peso_depois, 2),
+        })
+        linhas = corpo.get("lcd") or (corpo.get("message") or {}).get("lcd") or ["Erro", str(status)]
+        lcd(*linhas)
+        print(f"[api] HTTP {status}")
+
 
 def lcd(l1: str, l2: str = "") -> None:
     borda = "+" + "-" * 16 + "+"
@@ -123,6 +141,11 @@ def main() -> None:
     e.add_argument("--protocolo", required=True)
     e.add_argument("--kg", type=float, default=8.0)
 
+    r = sub.add_parser("retirada", help="Simula a retirada de uma doação por quem pediu")
+    r.add_argument("--protocolo", required=True)
+    r.add_argument("--codigo", required=True, help="código de retirada de 4 números (só quem pediu tem)")
+    r.add_argument("--kg", type=float, default=8.0)
+
     t = sub.add_parser("telemetria", help="Envia leituras periódicas dos sensores")
     t.add_argument("--intervalo", type=float, default=60)
     t.add_argument("--vezes", type=int, default=0, help="0 = infinito")
@@ -137,6 +160,8 @@ def main() -> None:
         print(json.dumps(d.estado(), indent=2, ensure_ascii=False))
     elif args.comando == "entrega":
         d.entrega(args.protocolo, args.kg)
+    elif args.comando == "retirada":
+        d.retirada(args.protocolo, args.codigo, args.kg)
     elif args.comando == "calor":
         peso = d.estado()["estoque_kg"]
         print(d.leitura(peso, 33.5, 70.0))

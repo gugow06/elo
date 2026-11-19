@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 import 'api.dart';
 import 'google_botao_stub.dart' if (dart.library.js_interop) 'google_botao_web.dart';
 import 'tema.dart';
+import 'telas/codigo_email.dart';
 import 'telas/criar_conta.dart';
 import 'telas/shell.dart';
 import 'widgets/comum.dart';
@@ -60,6 +61,19 @@ Future<void> _concluir(NavigatorState nav, IdentidadeGoogle id) async {
   final r = await Api.i.entrarGoogle(id);
   if (r.usuario != null) {
     nav.pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const Shell()), (_) => false);
+  } else if (r.desafio != null) {
+    // Verificação em duas etapas: falta o código enviado ao e-mail
+    nav.push(MaterialPageRoute(
+      builder: (_) => CodigoEmail(
+        titulo: 'Verificação em duas etapas',
+        email: r.email ?? 'o seu e-mail',
+        codigoDemo: r.codigoDemo,
+        aoConfirmar: (codigo) async {
+          await Api.i.confirmarDoisFatores(r.desafio!, codigo);
+          nav.pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const Shell()), (_) => false);
+        },
+      ),
+    ));
   } else {
     nav.push(MaterialPageRoute(
       builder: (_) => CriarConta(google: IdentidadeGoogle(idToken: id.idToken, nome: r.nome ?? id.nome, email: r.email ?? id.email)),

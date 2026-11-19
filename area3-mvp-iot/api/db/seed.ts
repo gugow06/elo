@@ -4,6 +4,8 @@
  * Pode ser executado várias vezes: limpa o que criou antes.
  */
 import { criarPool } from './conexao';
+import { importarIbge } from './importar-ibge';
+import { gerarItens } from '../src/rede/itens';
 import { sha256 } from '../src/infra/hash';
 
 /** Gera um CPF fictício com dígitos verificadores válidos a partir de 9 dígitos base. */
@@ -38,18 +40,26 @@ export async function seed(url?: string): Promise<void> {
   try {
     await c.query('BEGIN');
     await c.query(`TRUNCATE evento_auditoria, notificacao, evento_iot, entrega, oferta, classificacao, relato,
-                   solicitacao, codigo_acesso, conta_social, usuario, ponto_coleta, bairro, municipio RESTART IDENTITY CASCADE`);
+                   oferta_item, item_solicitacao, solicitacao, codigo_acesso, conta_social, usuario, local_rede, ponto_coleta, bairro, municipio RESTART IDENTITY CASCADE`);
 
     const mun = async (nome: string, uf: string, populacao: number) =>
       (await c.query<{ id: string }>('INSERT INTO municipio (nome, uf, populacao) VALUES ($1,$2,$3) RETURNING id', [nome, uf, populacao])).rows[0].id;
     const bai = async (m: string, nome: string, slug: string, populacao: number) =>
       (await c.query<{ id: string }>('INSERT INTO bairro (municipio_id, nome, slug, populacao) VALUES ($1,$2,$3,$4) RETURNING id', [m, nome, slug, populacao])).rows[0].id;
-    const ponto = async (m: string, b: string, slug: keyof typeof CHAVES_DEMO, nome: string, endereco: string, cap: number, estoque: number) =>
-      (await c.query<{ id: string }>(
+    const ponto = async (m: string, b: string, slug: keyof typeof CHAVES_DEMO, nome: string, endereco: string, cap: number, estoque: number) => {
+      const id = (await c.query<{ id: string }>(
         `INSERT INTO ponto_coleta (id, municipio_id, bairro_id, nome, endereco, capacidade_kg, estoque_kg, device_key_hash)
          VALUES ($8,$1,$2,$3,$4,$5,$6,$7) RETURNING id`,
         [m, b, nome, endereco, cap, estoque, sha256(CHAVES_DEMO[slug]), PONTOS_DEMO[slug]],
       )).rows[0].id;
+      // Todo ponto de coleta também é um local da rede (mapa e painel)
+      await c.query(
+        `INSERT INTO local_rede (municipio_id, bairro_id, tipo, nome, endereco, ponto_coleta_id, categorias)
+         VALUES ($1,$2,'ponto_coleta',$3,$4,$5,'{alimento,roupa,material_escolar}')`,
+        [m, b, nome, endereco, id],
+      );
+      return id;
+    };
     // E-mail fictício (domínio reservado example.com), derivado do nome: "Ana Paula Ribeiro" → ana.ribeiro@example.com
     const emailDe = (nome: string) => {
       const p = nome.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().split(' ');
@@ -79,6 +89,7 @@ export async function seed(url?: string): Promise<void> {
 
     await usr(m1, jardim, 'tecnico', 'Fernanda Costa', '678912345', '+5511990000006', '1988-07-17');
     await usr(m1, centro, 'gestor', 'Secretaria de Assistência Social', '789123456', '+5511990000007', '1975-04-01');
+    await usr(m1, vilaNova, 'agente', 'Joana Pereira', '135792468', '+5511990000010', '1990-09-12');
 
     // Pedidos verdes já no mural, para a demonstração não começar vazia
     const pedidoNoMural = async (cidadao: string, bairro: string, ponto: string, protocolo: string, categoria: string, titulo: string, relato: string, horasAtras: number) => {
@@ -88,6 +99,7 @@ export async function seed(url?: string): Promise<void> {
         [m1, protocolo, cidadao, bairro, ponto, categoria, titulo, horasAtras],
       );
       await c.query('INSERT INTO relato (solicitacao_id, texto) VALUES ($1,$2)', [rows[0].id, relato]);
+      await gerarItens(c, rows[0].id, categoria, titulo);
       await c.query(
         `INSERT INTO classificacao (solicitacao_id, faixa, categoria, confianca, origem, justificativa)
          VALUES ($1,'verde',$2,0.9,'offline','Seed de demonstração')`,
@@ -106,6 +118,8 @@ export async function seed(url?: string): Promise<void> {
     await usr(m2, campoCentro, 'tecnico', 'Patrícia Gomes', '912345678', '+5511990000009', '1983-12-12');
 
     await c.query('COMMIT');
+    // O TRUNCATE em municipio apagou também os municípios reais: importa de novo
+    await importarIbge(pool);
   } catch (erro) {
     await c.query('ROLLBACK');
     throw erro;

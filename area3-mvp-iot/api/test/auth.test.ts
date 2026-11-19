@@ -1,8 +1,9 @@
 import { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from 'jose';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, onTestFinished } from 'vitest';
 import { definirChavesGoogle } from '../src/auth/google';
-import { criarApp } from './helpers';
+import { Pool } from 'pg';
+import { auth, criarApp } from './helpers';
 
 const CLIENTE_GOOGLE = 'cliente-teste.apps.googleusercontent.com';
 
@@ -43,6 +44,22 @@ describe('autenticação: e-mail + código e Google', () => {
     return r.json().codigo_demo as string;
   };
 
+  it('config pública diz se está em modo demonstração', async () => {
+    const r = await app.inject({ method: 'GET', url: '/config' });
+    expect(r.json()).toEqual({ modo_demo: true, google: true });
+    process.env.MODO_DEMO = 'false';
+    expect((await app.inject({ method: 'GET', url: '/config' })).json().modo_demo).toBe(false);
+    process.env.MODO_DEMO = 'true';
+  });
+
+  it('fora do modo demonstração o código só vai por e-mail, nunca na resposta', async () => {
+    process.env.MODO_DEMO = 'false';
+    const r = await app.inject({ method: 'POST', url: '/auth/codigo', payload: { email: 'maria.lima@example.com' } });
+    process.env.MODO_DEMO = 'true';
+    expect(r.statusCode).toBe(200);
+    expect(r.json().codigo_demo).toBeUndefined();
+  });
+
   it('lista bairros sem precisar de sessão', async () => {
     const r = await app.inject({ method: 'GET', url: '/auth/bairros' });
     expect(r.statusCode).toBe(200);
@@ -76,7 +93,7 @@ describe('autenticação: e-mail + código e Google', () => {
 
     const cad = await app.inject({
       method: 'POST', url: '/auth/cadastro',
-      payload: { nome: 'Nova Pessoa', email: 'outro@example.com', telefone: '11990001111', bairro_id: bairroId, social: { provedor: 'google', id_token } },
+      payload: { aceite_termos: true, nome: 'Nova Pessoa', email: 'outro@example.com', telefone: '11990001111', bairro_id: bairroId, social: { provedor: 'google', id_token } },
     });
     expect(cad.statusCode).toBe(201);
     expect(cad.json().usuario).toEqual(expect.objectContaining({ nome: 'Nova Pessoa', perfil: 'cidadao' }));
@@ -112,7 +129,7 @@ describe('autenticação: e-mail + código e Google', () => {
   it('cadastro sem conta social confirma o e-mail por código', async () => {
     const cad = await app.inject({
       method: 'POST', url: '/auth/cadastro',
-      payload: { nome: 'Pessoa Email', email: 'pessoa.email@example.com', telefone: '+5511990002222', bairro_id: bairroId, },
+      payload: { aceite_termos: true, nome: 'Pessoa Email', email: 'pessoa.email@example.com', telefone: '+5511990002222', bairro_id: bairroId, },
     });
     expect(cad.statusCode).toBe(201);
     expect(cad.json().token).toBeUndefined();
@@ -123,11 +140,54 @@ describe('autenticação: e-mail + código e Google', () => {
     expect(e.json().usuario.perfil).toBe('cidadao');
   });
 
+  it('cadastro em qualquer cidade do Brasil, com bairro digitado (cria uma vez e reaproveita)', async () => {
+    const loc = await app.inject({ method: 'GET', url: '/localidades?q=feira%20de%20santana' });
+    const feira = loc.json().find((l: { tipo: string }) => l.tipo === 'municipio');
+    expect(feira).toEqual(expect.objectContaining({ nome: 'Feira de Santana', uf: 'BA' }));
+    const base = { telefone: '+5575990001111', municipio_id: feira.id, bairro_nome: '  Centro  ' };
+    const r1 = await app.inject({ method: 'POST', url: '/auth/cadastro', payload: { aceite_termos: true, ...base, nome: 'Pessoa Feira', email: 'pessoa.feira@example.com' } });
+    expect(r1.statusCode).toBe(201);
+    const r2 = await app.inject({ method: 'POST', url: '/auth/cadastro', payload: { aceite_termos: true, ...base, nome: 'Outra Feira', email: 'outra.feira@example.com', telefone: '+5575990002222', bairro_nome: 'centro' } });
+    expect(r2.statusCode).toBe(201);
+    const bairros = await app.inject({ method: 'GET', url: `/auth/bairros?municipio=${feira.id}` });
+    expect(bairros.json()).toEqual([expect.objectContaining({ nome: 'Centro', municipio: 'Feira de Santana', uf: 'BA' })]);
+  });
+
+  it('cadastro exige a cidade', async () => {
+    const r = await app.inject({ method: 'POST', url: '/auth/cadastro', payload: { aceite_termos: true, nome: 'Sem Cidade', email: 'sem.bairro@example.com', telefone: '+5511990005555' } });
+    expect(r.statusCode).toBe(400);
+  });
+
+  it('conta sem bairro: só a cidade; o bairro é escolhido no pedido (pelo nome que a localização encontrou)', async () => {
+    const loc = await app.inject({ method: 'GET', url: '/localidades?q=feira%20de%20santana' });
+    const feira = loc.json().find((l: { tipo: string }) => l.tipo === 'municipio');
+    const cad = await app.inject({
+      method: 'POST', url: '/auth/cadastro',
+      payload: { aceite_termos: true, nome: 'Sem Bairro', email: 'so.cidade@example.com', telefone: '+5575990003333', municipio_id: feira.id },
+    });
+    expect(cad.statusCode).toBe(201);
+    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+    onTestFinished(() => pool.end());
+    const { rows } = await pool.query('SELECT bairro_id FROM usuario WHERE email = $1', ['so.cidade@example.com']);
+    expect(rows[0].bairro_id).toBeNull();
+
+    const cod = (await app.inject({ method: 'POST', url: '/auth/codigo', payload: { email: 'so.cidade@example.com' } })).json().codigo_demo;
+    const token = (await app.inject({ method: 'POST', url: '/auth/entrar', payload: { email: 'so.cidade@example.com', codigo: cod } })).json().token;
+    const relato = 'Preciso de roupas de frio para meus filhos pequenos';
+    const semBairro = await app.inject({ method: 'POST', url: '/solicitacoes', headers: auth(token), payload: { relato } });
+    expect(semBairro.statusCode).toBe(400);
+    expect(semBairro.json().message).toMatch(/bairro/i);
+    const comBairro = await app.inject({ method: 'POST', url: '/solicitacoes', headers: auth(token), payload: { relato, bairro_nome: 'Kalilândia' } });
+    expect(comBairro.statusCode).toBe(201);
+    const b = await pool.query('SELECT b.nome FROM solicitacao s JOIN bairro b ON b.id = s.bairro_id WHERE s.id = $1', [comBairro.json().id]);
+    expect(b.rows[0].nome).toBe('Kalilândia');
+  });
+
   it('não cria conta com e-mail ou telefone já cadastrados', async () => {
     const base = { nome: 'Outra Ana', bairro_id: bairroId };
-    const porEmail = await app.inject({ method: 'POST', url: '/auth/cadastro', payload: { ...base, email: 'ANA.RIBEIRO@example.com', telefone: '+5511990004444' } });
+    const porEmail = await app.inject({ method: 'POST', url: '/auth/cadastro', payload: { aceite_termos: true, ...base, email: 'ANA.RIBEIRO@example.com', telefone: '+5511990004444' } });
     expect(porEmail.statusCode).toBe(409);
-    const porTel = await app.inject({ method: 'POST', url: '/auth/cadastro', payload: { ...base, email: 'nova.ana@example.com', telefone: '+5511990000001' } });
+    const porTel = await app.inject({ method: 'POST', url: '/auth/cadastro', payload: { aceite_termos: true, ...base, email: 'nova.ana@example.com', telefone: '+5511990000001' } });
     expect(porTel.statusCode).toBe(409);
   });
 
@@ -141,7 +201,7 @@ describe('autenticação: e-mail + código e Google', () => {
   it('cadastro ignora perfil enviado pelo app: toda conta é do app, nunca de equipe', async () => {
     const r = await app.inject({
       method: 'POST', url: '/auth/cadastro',
-      payload: { nome: 'Alguém', email: 'alguem@example.com', telefone: '+5511990003333', bairro_id: bairroId, perfil: 'gestor' },
+      payload: { aceite_termos: true, nome: 'Alguém', email: 'alguem@example.com', telefone: '+5511990003333', bairro_id: bairroId, perfil: 'gestor' },
     });
     expect(r.statusCode).toBe(201);
     const e = await app.inject({ method: 'POST', url: '/auth/entrar', payload: { email: 'alguem@example.com', codigo: r.json().codigo_demo } });

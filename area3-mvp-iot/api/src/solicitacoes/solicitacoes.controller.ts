@@ -9,6 +9,8 @@ const NovaSolicitacao = z.object({
   relato: z.string().trim().min(10, 'Conte um pouco mais sobre o que você precisa').max(2000),
   canal: z.enum(['app', 'whatsapp', 'balcao', 'web_leve']).default('app'),
   bairro_id: z.string().uuid().optional(),
+  // Bairro pelo nome (o que a localização do aparelho encontrou), para conta sem bairro
+  bairro_nome: z.string().trim().min(2, 'Informe o bairro').max(80).optional(),
 });
 
 const Consulta = z.object({
@@ -25,7 +27,7 @@ export class SolicitacoesController {
   @Perfis('cidadao', 'voluntario')
   abrir(@SessaoAtual() sessao: Sessao, @Body() corpo: unknown) {
     const d = validar(NovaSolicitacao, corpo);
-    return this.servico.abrir(sessao, { relato: d.relato, canal: d.canal, bairroId: d.bairro_id });
+    return this.servico.abrir(sessao, { relato: d.relato, canal: d.canal, bairroId: d.bairro_id, bairroNome: d.bairro_nome });
   }
 
   @Get('minhas')
