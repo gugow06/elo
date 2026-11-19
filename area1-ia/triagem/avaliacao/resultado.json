@@ -1,0 +1,633 @@
+{
+  "modelo": "offline-palavras-chave",
+  "versao_lexico": "2026-11-19.2",
+  "limiar_confianca": 0.75,
+  "total": 60,
+  "acuracia": 1,
+  "recall_vermelha": 1,
+  "precisao_vermelha": 1,
+  "falsos_negativos_vermelha": 0,
+  "acuracia_categoria": 0.9777777777777777,
+  "pct_decidido_por_regra": 0.25,
+  "tempo_medio_ms": 0.05,
+  "matriz_confusao": {
+    "verde": {
+      "verde": 30,
+      "amarela": 0,
+      "vermelha": 0
+    },
+    "amarela": {
+      "verde": 0,
+      "amarela": 15,
+      "vermelha": 0
+    },
+    "vermelha": {
+      "verde": 0,
+      "amarela": 0,
+      "vermelha": 15
+    }
+  },
+  "erros": [],
+  "detalhes": [
+    {
+      "id": 1,
+      "relato": "Perdi o emprego e preciso de uma cesta básica para meus dois filhos",
+      "esperado": "verde",
+      "obtido": "verde",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.8,
+      "acerto": true
+    },
+    {
+      "id": 2,
+      "relato": "Estou precisando de arroz feijão e óleo esse mês, o dinheiro não deu",
+      "esperado": "verde",
+      "obtido": "verde",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.95,
+      "acerto": true
+    },
+    {
+      "id": 3,
+      "relato": "preciso de leite e fralda pro meu bebe",
+      "esperado": "verde",
+      "obtido": "verde",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.9,
+      "acerto": true
+    },
+    {
+      "id": 4,
+      "relato": "Gostaria de uma cesta básica, estou desempregada há dois meses",
+      "esperado": "verde",
+      "obtido": "verde",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.8,
+      "acerto": true
+    },
+    {
+      "id": 5,
+      "relato": "a comida ta acabando aqui em casa, se alguém puder ajudar com mantimentos",
+      "esperado": "verde",
+      "obtido": "verde",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.9,
+      "acerto": true
+    },
+    {
+      "id": 6,
+      "relato": "Preciso de roupas de frio para minhas crianças, o inverno chegou",
+      "esperado": "verde",
+      "obtido": "verde",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.8,
+      "acerto": true
+    },
+    {
+      "id": 7,
+      "relato": "Meu filho precisa de tênis e uma calça para ir na escola",
+      "esperado": "verde",
+      "obtido": "verde",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.9,
+      "acerto": true
+    },
+    {
+      "id": 8,
+      "relato": "Precisamos de cobertores, a casa é muito fria",
+      "esperado": "verde",
+      "obtido": "verde",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.8,
+      "acerto": true
+    },
+    {
+      "id": 9,
+      "relato": "Estou precisando de agasalho tamanho G",
+      "esperado": "verde",
+      "obtido": "verde",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.8,
+      "acerto": true
+    },
+    {
+      "id": 10,
+      "relato": "preciso de roupa pra entrevista de emprego, não tenho nenhuma social",
+      "esperado": "verde",
+      "obtido": "verde",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.8,
+      "acerto": true
+    },
+    {
+      "id": 11,
+      "relato": "Preciso de um colchão, estamos dormindo no chão",
+      "esperado": "verde",
+      "obtido": "verde",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.8,
+      "acerto": true
+    },
+    {
+      "id": 12,
+      "relato": "Minha geladeira queimou e não tenho como comprar outra",
+      "esperado": "verde",
+      "obtido": "verde",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.8,
+      "acerto": true
+    },
+    {
+      "id": 13,
+      "relato": "alguém tem um fogão usado pra doar?",
+      "esperado": "verde",
+      "obtido": "verde",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.8,
+      "acerto": true
+    },
+    {
+      "id": 14,
+      "relato": "Precisamos de uma cama de solteiro para minha filha",
+      "esperado": "verde",
+      "obtido": "verde",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.8,
+      "acerto": true
+    },
+    {
+      "id": 15,
+      "relato": "Mudei para uma casa nova e não tenho mesa nem cadeiras",
+      "esperado": "verde",
+      "obtido": "verde",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.9,
+      "acerto": true
+    },
+    {
+      "id": 16,
+      "relato": "Meus filhos precisam de material escolar, cadernos e lápis",
+      "esperado": "verde",
+      "obtido": "verde",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.95,
+      "acerto": true
+    },
+    {
+      "id": 17,
+      "relato": "Preciso de mochila e estojo para meu filho que começou na escola",
+      "esperado": "verde",
+      "obtido": "verde",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.95,
+      "acerto": true
+    },
+    {
+      "id": 18,
+      "relato": "preciso de caderno e livros pro meu menino estudar",
+      "esperado": "verde",
+      "obtido": "verde",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.9,
+      "acerto": true
+    },
+    {
+      "id": 19,
+      "relato": "Gostaria de ajuda com o uniforme escolar das crianças",
+      "esperado": "verde",
+      "obtido": "verde",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.8,
+      "acerto": true
+    },
+    {
+      "id": 20,
+      "relato": "falta material escolar pros meus dois filhos, nao consegui comprar",
+      "esperado": "verde",
+      "obtido": "verde",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.8,
+      "acerto": true
+    },
+    {
+      "id": 21,
+      "relato": "Preciso de uma cesta básica e também de um colchão",
+      "esperado": "verde",
+      "obtido": "verde",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.8,
+      "acerto": true
+    },
+    {
+      "id": 22,
+      "relato": "vc tem cesta basica? to precisando mto",
+      "esperado": "verde",
+      "obtido": "verde",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.8,
+      "acerto": true
+    },
+    {
+      "id": 23,
+      "relato": "Estou com dificuldade para comprar comida esse mês",
+      "esperado": "verde",
+      "obtido": "verde",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.8,
+      "acerto": true
+    },
+    {
+      "id": 24,
+      "relato": "Preciso de um armário pra guardar as roupas das crianças",
+      "esperado": "verde",
+      "obtido": "verde",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.8,
+      "acerto": true
+    },
+    {
+      "id": 25,
+      "relato": "Preciso de um berço, minha bebê nasceu semana passada",
+      "esperado": "verde",
+      "obtido": "verde",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.8,
+      "acerto": true
+    },
+    {
+      "id": 26,
+      "relato": "Queria ajuda com macarrão, açúcar e café",
+      "esperado": "verde",
+      "obtido": "verde",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.95,
+      "acerto": true
+    },
+    {
+      "id": 27,
+      "relato": "Preciso de sapatos para meu marido trabalhar",
+      "esperado": "verde",
+      "obtido": "verde",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.8,
+      "acerto": true
+    },
+    {
+      "id": 28,
+      "relato": "Precisamos de uma máquina de lavar usada",
+      "esperado": "verde",
+      "obtido": "verde",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.8,
+      "acerto": true
+    },
+    {
+      "id": 29,
+      "relato": "meu filho precisa de lapis de cor e caderno de desenho",
+      "esperado": "verde",
+      "obtido": "verde",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.9,
+      "acerto": true
+    },
+    {
+      "id": 30,
+      "relato": "Estamos sem gás e sem comida no armário essa semana",
+      "esperado": "verde",
+      "obtido": "verde",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.8,
+      "acerto": true
+    },
+    {
+      "id": 31,
+      "relato": "Sou idosa, moro sozinha e preciso de alguém para me ajudar a carregar o botijão",
+      "esperado": "amarela",
+      "obtido": "amarela",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.95,
+      "acerto": true
+    },
+    {
+      "id": 32,
+      "relato": "Minha mãe é idosa e precisa de companhia durante a tarde",
+      "esperado": "amarela",
+      "obtido": "amarela",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.9,
+      "acerto": true
+    },
+    {
+      "id": 33,
+      "relato": "Preciso de carona para levar meu pai ao hospital na quinta",
+      "esperado": "amarela",
+      "obtido": "amarela",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.9,
+      "acerto": true
+    },
+    {
+      "id": 34,
+      "relato": "Tenho consulta no posto e não tenho como ir, alguém pode me levar?",
+      "esperado": "amarela",
+      "obtido": "amarela",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.8,
+      "acerto": true
+    },
+    {
+      "id": 35,
+      "relato": "Sou aposentado, moro sozinho e não consigo ir ao mercado",
+      "esperado": "amarela",
+      "obtido": "amarela",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.8,
+      "acerto": true
+    },
+    {
+      "id": 36,
+      "relato": "Preciso de transporte para fazer exame no centro",
+      "esperado": "amarela",
+      "obtido": "amarela",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.9,
+      "acerto": true
+    },
+    {
+      "id": 37,
+      "relato": "meu avô precisa de cadeira de rodas pra ir na fisioterapia",
+      "esperado": "amarela",
+      "obtido": "amarela",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.9,
+      "acerto": true
+    },
+    {
+      "id": 38,
+      "relato": "Moro sozinha, tenho 78 anos e queria uma visita de vez em quando",
+      "esperado": "amarela",
+      "obtido": "amarela",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.8,
+      "acerto": true
+    },
+    {
+      "id": 39,
+      "relato": "Preciso de ajuda para levar minha filha na consulta do especialista",
+      "esperado": "amarela",
+      "obtido": "amarela",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.8,
+      "acerto": true
+    },
+    {
+      "id": 40,
+      "relato": "Sou idoso e preciso de alguém para me ajudar com as compras",
+      "esperado": "amarela",
+      "obtido": "amarela",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.8,
+      "acerto": true
+    },
+    {
+      "id": 41,
+      "relato": "minha vó precisa de alguem pra ficar com ela enquanto eu trabalho",
+      "esperado": "amarela",
+      "obtido": "amarela",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.9,
+      "acerto": true
+    },
+    {
+      "id": 42,
+      "relato": "Preciso de carona para a sessão de fisioterapia",
+      "esperado": "amarela",
+      "obtido": "amarela",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.9,
+      "acerto": true
+    },
+    {
+      "id": 43,
+      "relato": "Minha tia idosa precisa de ajuda para tomar os remédios no horário",
+      "esperado": "amarela",
+      "obtido": "amarela",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.8,
+      "acerto": true
+    },
+    {
+      "id": 44,
+      "relato": "Não tenho como ir ao hospital fazer o exame de sangue",
+      "esperado": "amarela",
+      "obtido": "amarela",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.9,
+      "acerto": true
+    },
+    {
+      "id": 45,
+      "relato": "Sou idosa e queria companhia para ir à missa",
+      "esperado": "amarela",
+      "obtido": "amarela",
+      "origem": "offline",
+      "regra": null,
+      "confianca": 0.9,
+      "acerto": true
+    },
+    {
+      "id": 46,
+      "relato": "Meu marido me bate quando bebe e eu tenho medo de ficar em casa",
+      "esperado": "vermelha",
+      "obtido": "vermelha",
+      "origem": "regra",
+      "regra": "violencia_fisica",
+      "confianca": 1,
+      "acerto": true
+    },
+    {
+      "id": 47,
+      "relato": "Preciso de cesta básica mas meu companheiro não deixa eu sair de casa",
+      "esperado": "vermelha",
+      "obtido": "vermelha",
+      "origem": "regra",
+      "regra": "violencia_domestica",
+      "confianca": 1,
+      "acerto": true
+    },
+    {
+      "id": 48,
+      "relato": "Estamos há três dias sem comer, meus filhos estão com fome",
+      "esperado": "vermelha",
+      "obtido": "vermelha",
+      "origem": "regra",
+      "regra": "fome_aguda",
+      "confianca": 1,
+      "acerto": true
+    },
+    {
+      "id": 49,
+      "relato": "não aguento mais, não quero mais viver",
+      "esperado": "vermelha",
+      "obtido": "vermelha",
+      "origem": "regra",
+      "regra": "risco_suicidio",
+      "confianca": 1,
+      "acerto": true
+    },
+    {
+      "id": 50,
+      "relato": "Tem uma criança sozinha na casa do vizinho desde ontem",
+      "esperado": "vermelha",
+      "obtido": "vermelha",
+      "origem": "regra",
+      "regra": "crianca_em_risco",
+      "confianca": 1,
+      "acerto": true
+    },
+    {
+      "id": 51,
+      "relato": "Meu ex me ameaça e disse que vai me matar",
+      "esperado": "vermelha",
+      "obtido": "vermelha",
+      "origem": "regra",
+      "regra": "ameaca_arma",
+      "confianca": 1,
+      "acerto": true
+    },
+    {
+      "id": 52,
+      "relato": "Estou dormindo na rua com meus dois filhos",
+      "esperado": "vermelha",
+      "obtido": "vermelha",
+      "origem": "regra",
+      "regra": "situacao_de_rua",
+      "confianca": 1,
+      "acerto": true
+    },
+    {
+      "id": 53,
+      "relato": "Minha vizinha idosa está trancada em casa e ninguém leva comida",
+      "esperado": "vermelha",
+      "obtido": "vermelha",
+      "origem": "regra",
+      "regra": "idoso_em_risco",
+      "confianca": 1,
+      "acerto": true
+    },
+    {
+      "id": 54,
+      "relato": "O menino do lado trabalha vendendo no farol o dia todo em vez de ir para a escola",
+      "esperado": "vermelha",
+      "obtido": "vermelha",
+      "origem": "regra",
+      "regra": "trabalho_infantil",
+      "confianca": 1,
+      "acerto": true
+    },
+    {
+      "id": 55,
+      "relato": "Meu filho está usando droga e vendeu as coisas de casa",
+      "esperado": "vermelha",
+      "obtido": "vermelha",
+      "origem": "regra",
+      "regra": "drogas",
+      "confianca": 1,
+      "acerto": true
+    },
+    {
+      "id": 56,
+      "relato": "Fui despejada e não tenho para onde ir",
+      "esperado": "vermelha",
+      "obtido": "vermelha",
+      "origem": "regra",
+      "regra": "situacao_de_rua",
+      "confianca": 1,
+      "acerto": true
+    },
+    {
+      "id": 57,
+      "relato": "Preciso de roupa para minha filha, ela foi abusada pelo padrasto e saímos de casa",
+      "esperado": "vermelha",
+      "obtido": "vermelha",
+      "origem": "regra",
+      "regra": "violencia_sexual",
+      "confianca": 1,
+      "acerto": true
+    },
+    {
+      "id": 58,
+      "relato": "meu vizinho espanca a mulher todo dia, dá pra ouvir os gritos",
+      "esperado": "vermelha",
+      "obtido": "vermelha",
+      "origem": "regra",
+      "regra": "violencia_fisica",
+      "confianca": 1,
+      "acerto": true
+    },
+    {
+      "id": 59,
+      "relato": "Estou passando fome, não como desde anteontem",
+      "esperado": "vermelha",
+      "obtido": "vermelha",
+      "origem": "regra",
+      "regra": "fome_aguda",
+      "confianca": 1,
+      "acerto": true
+    },
+    {
+      "id": 60,
+      "relato": "Quero morrer, ninguém liga pra mim",
+      "esperado": "vermelha",
+      "obtido": "vermelha",
+      "origem": "regra",
+      "regra": "risco_suicidio",
+      "confianca": 1,
+      "acerto": true
+    }
+  ]
+}

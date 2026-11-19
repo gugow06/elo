@@ -1,0 +1,21 @@
+id;relato;faixa_esperada;categoria_esperada
+101;Boa tarde, minha despensa está vazia e o salário só sai dia 10;verde;alimento
+102;Preciso de fraldas tamanho M e leite em pó;verde;alimento
+103;Meu filho cresceu e as roupas não servem mais, precisamos de calças e blusas;verde;roupa
+104;Estou precisando de um sofá ou umas cadeiras, a sala está vazia;verde;movel
+105;Queria uma mochila para minha filha, a dela rasgou;verde;material_escolar
+106;Se alguém tiver feijão e arroz sobrando ajudaria muito;verde;alimento
+107;Preciso de um colchão de casal, o nosso afundou;verde;movel
+108;tem como conseguir caderno e caneta pro meu filho?;verde;material_escolar
+109;Meu pai tem 81 anos, mora sozinho e precisa de alguém para ir ao mercado com ele;amarela;apoio_idoso
+110;Tenho exame marcado no hospital regional e não tenho dinheiro para o ônibus;amarela;transporte
+111;Sou idosa e preciso de ajuda para trocar o botijão;amarela;apoio_idoso
+112;Preciso que alguém leve minha mãe para a consulta de quarta;amarela;transporte
+113;Minha avó fica muito sozinha, queria alguém pra conversar com ela;amarela;apoio_idoso
+114;O pai das crianças chega bêbado e agride todo mundo;vermelha;outro
+115;Estou sem comer faz dois dias;vermelha;outro
+116;Penso em acabar com tudo, não vejo saída;vermelha;outro
+117;Meus filhos ficam sozinhos em casa porque preciso trabalhar à noite, o menor tem 4 anos;vermelha;outro
+118;Estou morando na rua desde que perdi o emprego;vermelha;outro
+119;Meu namorado pega meu celular e não me deixa sair sozinha;vermelha;outro
+120;Tem um idoso caído na calçada da minha rua desde cedo;vermelha;outro

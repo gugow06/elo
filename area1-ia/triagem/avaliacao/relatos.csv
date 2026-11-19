@@ -1,0 +1,61 @@
+id;relato;faixa_esperada;categoria_esperada
+1;Perdi o emprego e preciso de uma cesta básica para meus dois filhos;verde;alimento
+2;Estou precisando de arroz feijão e óleo esse mês, o dinheiro não deu;verde;alimento
+3;preciso de leite e fralda pro meu bebe;verde;alimento
+4;Gostaria de uma cesta básica, estou desempregada há dois meses;verde;alimento
+5;a comida ta acabando aqui em casa, se alguém puder ajudar com mantimentos;verde;alimento
+6;Preciso de roupas de frio para minhas crianças, o inverno chegou;verde;roupa
+7;Meu filho precisa de tênis e uma calça para ir na escola;verde;roupa
+8;Precisamos de cobertores, a casa é muito fria;verde;roupa
+9;Estou precisando de agasalho tamanho G;verde;roupa
+10;preciso de roupa pra entrevista de emprego, não tenho nenhuma social;verde;roupa
+11;Preciso de um colchão, estamos dormindo no chão;verde;movel
+12;Minha geladeira queimou e não tenho como comprar outra;verde;movel
+13;alguém tem um fogão usado pra doar?;verde;movel
+14;Precisamos de uma cama de solteiro para minha filha;verde;movel
+15;Mudei para uma casa nova e não tenho mesa nem cadeiras;verde;movel
+16;Meus filhos precisam de material escolar, cadernos e lápis;verde;material_escolar
+17;Preciso de mochila e estojo para meu filho que começou na escola;verde;material_escolar
+18;preciso de caderno e livros pro meu menino estudar;verde;material_escolar
+19;Gostaria de ajuda com o uniforme escolar das crianças;verde;material_escolar
+20;falta material escolar pros meus dois filhos, nao consegui comprar;verde;material_escolar
+21;Preciso de uma cesta básica e também de um colchão;verde;alimento
+22;vc tem cesta basica? to precisando mto;verde;alimento
+23;Estou com dificuldade para comprar comida esse mês;verde;alimento
+24;Preciso de um armário pra guardar as roupas das crianças;verde;movel
+25;Preciso de um berço, minha bebê nasceu semana passada;verde;movel
+26;Queria ajuda com macarrão, açúcar e café;verde;alimento
+27;Preciso de sapatos para meu marido trabalhar;verde;roupa
+28;Precisamos de uma máquina de lavar usada;verde;movel
+29;meu filho precisa de lapis de cor e caderno de desenho;verde;material_escolar
+30;Estamos sem gás e sem comida no armário essa semana;verde;alimento
+31;Sou idosa, moro sozinha e preciso de alguém para me ajudar a carregar o botijão;amarela;apoio_idoso
+32;Minha mãe é idosa e precisa de companhia durante a tarde;amarela;apoio_idoso
+33;Preciso de carona para levar meu pai ao hospital na quinta;amarela;transporte
+34;Tenho consulta no posto e não tenho como ir, alguém pode me levar?;amarela;transporte
+35;Sou aposentado, moro sozinho e não consigo ir ao mercado;amarela;apoio_idoso
+36;Preciso de transporte para fazer exame no centro;amarela;transporte
+37;meu avô precisa de cadeira de rodas pra ir na fisioterapia;amarela;transporte
+38;Moro sozinha, tenho 78 anos e queria uma visita de vez em quando;amarela;apoio_idoso
+39;Preciso de ajuda para levar minha filha na consulta do especialista;amarela;transporte
+40;Sou idoso e preciso de alguém para me ajudar com as compras;amarela;apoio_idoso
+41;minha vó precisa de alguem pra ficar com ela enquanto eu trabalho;amarela;apoio_idoso
+42;Preciso de carona para a sessão de fisioterapia;amarela;transporte
+43;Minha tia idosa precisa de ajuda para tomar os remédios no horário;amarela;apoio_idoso
+44;Não tenho como ir ao hospital fazer o exame de sangue;amarela;transporte
+45;Sou idosa e queria companhia para ir à missa;amarela;apoio_idoso
+46;Meu marido me bate quando bebe e eu tenho medo de ficar em casa;vermelha;outro
+47;Preciso de cesta básica mas meu companheiro não deixa eu sair de casa;vermelha;outro
+48;Estamos há três dias sem comer, meus filhos estão com fome;vermelha;outro
+49;não aguento mais, não quero mais viver;vermelha;outro
+50;Tem uma criança sozinha na casa do vizinho desde ontem;vermelha;outro
+51;Meu ex me ameaça e disse que vai me matar;vermelha;outro
+52;Estou dormindo na rua com meus dois filhos;vermelha;outro
+53;Minha vizinha idosa está trancada em casa e ninguém leva comida;vermelha;outro
+54;O menino do lado trabalha vendendo no farol o dia todo em vez de ir para a escola;vermelha;outro
+55;Meu filho está usando droga e vendeu as coisas de casa;vermelha;outro
+56;Fui despejada e não tenho para onde ir;vermelha;outro
+57;Preciso de roupa para minha filha, ela foi abusada pelo padrasto e saímos de casa;vermelha;outro
+58;meu vizinho espanca a mulher todo dia, dá pra ouvir os gritos;vermelha;outro
+59;Estou passando fome, não como desde anteontem;vermelha;outro
+60;Quero morrer, ninguém liga pra mim;vermelha;outro
