@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Grafico } from "@/components/grafico";
 import { Alerta, Botao, Cartao, Carregando, Kpi, type Meta } from "@/components/ui";
 import { API_URL, api, assinarEventos, lerSessao } from "@/lib/api";
-import { CANAL, CATEGORIA, num, pct } from "@/lib/formato";
+import { CANAL, CATEGORIA, ORIGEM_TRIAGEM, num, pct } from "@/lib/formato";
 
 type Aba = "geral" | "equidade" | "territorio" | "pontos" | "ia";
 const ABAS: { id: Aba; rotulo: string }[] = [
@@ -32,7 +32,8 @@ interface Avaliacao { modelo: string; total: number; acuracia: number; recall_ve
 interface Ia { avaliacoes: Record<string, Avaliacao | null>; producao: { origem_triagem: string; faixa: string; total: number; ms_medio: number }[] }
 
 const isoDiasAtras = (n: number) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
-const mesCurto = (iso: string) => new Date(iso + "T12:00:00").toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
+const dia = (iso: string) => new Date(`${iso.slice(0, 10)}T12:00:00`);
+const mesCurto = (iso: string) => dia(iso).toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
 
 function querystring(f: Filtros) {
   const p = new URLSearchParams({ inicio: isoDiasAtras(Number(f.periodo)), fim: isoDiasAtras(0) });
@@ -163,7 +164,7 @@ export default function Gestao() {
               <Kpi titulo="Voluntários ativos por 200 habitantes" valor={i.voluntarios_por_200_hab} formatado={num(i.voluntarios_por_200_hab, 2)} meta={m.voluntarios_por_200_hab} />
             </div>
             <Grafico titulo="Pedidos por canal, por semana" descricao="Por onde os cidadãos chegam ao ELO ao longo do tempo." opcao={canaisOpcao(canais)}
-              tabela={{ colunas: ["Semana", "Canal", "Pedidos"], linhas: canais.map((c) => [new Date(c.semana + "T12:00:00").toLocaleDateString("pt-BR"), CANAL[c.canal] ?? c.canal, num(c.total)]) }} />
+              tabela={{ colunas: ["Semana", "Canal", "Pedidos"], linhas: canais.map((c) => [dia(c.semana).toLocaleDateString("pt-BR"), CANAL[c.canal] ?? c.canal, num(c.total)]) }} />
           </>
         )}
 
@@ -205,7 +206,11 @@ export default function Gestao() {
                       <div className="h-full bg-brand-600" style={{ width: `${Math.min(100, p.ocupacao_pct)}%` }} />
                     </div>
                     <p className="text-sm text-texto-2">{num(p.ocupacao_pct)}% de {num(p.capacidade_kg)} kg · {p.temperatura_c !== null ? `${num(p.temperatura_c, 1)} °C` : "sem leitura"}</p>
-                    {prev && <p className="mt-1 text-sm font-bold">Previsão: zera em ~{num(prev.dias_ate_zerar, 1)} dias (consumo médio {num(prev.consumo_medio_7d_kg, 1)} kg/dia)</p>}
+                    {prev && prev.consumo_medio_7d_kg > 0 && (
+                      <p className="mt-1 text-sm font-bold">
+                        Previsão: zera em ~{num(p.estoque_kg / prev.consumo_medio_7d_kg, 1)} dias (consumo médio de {num(prev.consumo_medio_7d_kg, 1)} kg/dia nos últimos 7 dias)
+                      </p>
+                    )}
                     {p.alertas.map((a) => <p key={a} className="mt-1 text-sm font-bold text-risco-vermelha">⚠ {a}</p>)}
                   </Cartao>
                 );
@@ -249,7 +254,7 @@ function AbaIa({ ia }: { ia: Ia }) {
         <h3 className="mb-2 text-lg font-extrabold text-brand-900">Como a triagem decidiu, no histórico</h3>
         <table className="w-full text-left text-sm">
           <thead><tr className="border-b border-borda"><th scope="col" className="py-2">Origem da decisão</th><th scope="col">Faixa</th><th scope="col">Pedidos</th></tr></thead>
-          <tbody>{ia.producao.map((p, i) => <tr key={i} className="border-b border-borda last:border-0"><td className="py-2">{p.origem_triagem}</td><td>{p.faixa}</td><td>{num(p.total)}</td></tr>)}</tbody>
+          <tbody>{ia.producao.map((p, i) => <tr key={i} className="border-b border-borda last:border-0"><td className="py-2">{ORIGEM_TRIAGEM[p.origem_triagem] ?? p.origem_triagem}</td><td>{p.faixa}</td><td>{num(p.total)}</td></tr>)}</tbody>
         </table>
       </Cartao>
     </>
@@ -287,7 +292,7 @@ function canaisOpcao(canais: Canal[]) {
   const tipos = [...new Set(canais.map((c) => c.canal))];
   return {
     legend: { bottom: 0 },
-    xAxis: { type: "category" as const, data: semanas.map((s) => new Date(s + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })) },
+    xAxis: { type: "category" as const, data: semanas.map((s) => dia(s).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })) },
     yAxis: { type: "value" as const },
     series: tipos.map((t) => ({ type: "line" as const, smooth: true, name: CANAL[t] ?? t, data: semanas.map((s) => canais.find((c) => c.semana === s && c.canal === t)?.total ?? 0) })),
   };
