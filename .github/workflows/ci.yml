@@ -79,6 +79,32 @@ jobs:
         working-directory: area2-dados
         run: python -m pytest -v
 
+  app-flutter:
+    name: App Flutter (análise, testes e APK)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: area3-mvp-iot/app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+      - name: Build do APK (aponta para o emulador Android por padrão)
+        run: flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: elo-apk
+          path: area3-mvp-iot/app/build/app/outputs/flutter-apk/app-release.apk
+
   docker:
     name: Build das imagens Docker
     runs-on: ubuntu-latest
