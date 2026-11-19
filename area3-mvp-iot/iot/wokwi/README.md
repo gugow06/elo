@@ -34,8 +34,18 @@ As linhas JSON do Serial têm o mesmo formato que a API recebe em `POST /iot/pon
 [`cenario-entrega.yaml`](cenario-entrega.yaml) liga o ponto, faz uma entrega e uma retirada, e confere as linhas JSON no Serial. As teclas vão pelo Serial, porque o teclado membrana não tem controle de automação no Wokwi.
 
 ```bash
-# compilar (gera build/sketch.ino.hex, que o wokwi.toml usa)
+# compilar (gera build/sketch.ino.hex e .elf, que o wokwi.toml usa); com PlatformIO ou arduino-cli
 arduino-cli compile --fqbn arduino:avr:uno --output-dir build sketch   # com o sketch numa pasta "sketch"
-# rodar (precisa de WOKWI_CLI_TOKEN da sua conta do Wokwi)
-wokwi-cli . --scenario cenario-entrega.yaml --timeout 30000
+# rodar (precisa de WOKWI_CLI_TOKEN da sua conta do Wokwi, no .env)
+wokwi-cli . --scenario cenario-entrega.yaml --timeout 40000
 ```
+
+**Testado em 19/11/2026** (Wokwi CLI 0.29.1): os dois sketches compilam para o Arduino Uno, e o cenário passa. O Serial imprime:
+
+```
+{"tipo":"leitura_sensor","peso_kg":87.98,"temperatura_c":24.0}
+{"tipo":"entrega_depositada","protocolo":"204815","delta_peso_kg":92.08,"peso_kg":180.06,"temperatura_c":24.0}
+{"tipo":"retirada","protocolo":"204815","codigo":"4821","delta_peso_kg":0,"peso_kg":180.06}
+```
+
+O cenário também salva o visor LCD em cada etapa, em [`telas/`](telas/): início, "Entrega OK!", código de retirada oculto (`****`) e "Retirada enviada".

@@ -8,6 +8,10 @@ author: 'ELO'
 steps:
   # Liga: leitura inicial dos sensores
   - wait-serial: '"tipo":"leitura_sensor"'
+  - delay: 300ms
+  - take-screenshot:
+      part-id: lcd1
+      save-to: telas/1-inicio.png
 
   # Entrega: protocolo + '#', depois o peso sobe e fica estável por 3 s
   - write-serial: '204815#'
@@ -17,8 +21,21 @@ steps:
       name: position
       value: 0.6
   - wait-serial: '"tipo":"entrega_depositada","protocolo":"204815"'
+  - delay: 300ms
+  - take-screenshot:
+      part-id: lcd1
+      save-to: telas/2-entrega-ok.png
 
   # Retirada: 'B', protocolo + '#', código de retirada + '#'
   - delay: 3000ms
-  - write-serial: 'B204815#4821#'
+  - write-serial: 'B204815#4821'
+  - delay: 500ms
+  - take-screenshot:
+      part-id: lcd1
+      save-to: telas/3-codigo-oculto.png
+  - write-serial: '#'
   - wait-serial: '"tipo":"retirada","protocolo":"204815","codigo":"4821"'
+  - delay: 300ms
+  - take-screenshot:
+      part-id: lcd1
+      save-to: telas/4-retirada-enviada.png
