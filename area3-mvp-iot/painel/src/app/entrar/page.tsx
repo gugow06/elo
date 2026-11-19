@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { Alerta, Botao } from "@/components/ui";
-import { api, salvarSessao, type UsuarioSessao } from "@/lib/api";
+import { api, salvarSessao, useModoDemo, type UsuarioSessao } from "@/lib/api";
 
 const CONTAS_DEMO = [
   { rotulo: "Fernanda · Técnica do CRAS", telefone: "+5511990000006" },
@@ -14,6 +14,7 @@ const CONTAS_DEMO = [
 /** Login sem senha (RF-102): telefone + código de 6 dígitos. Operadores do painel. */
 export default function Entrar() {
   const router = useRouter();
+  const modoDemo = useModoDemo();
   const [telefone, setTelefone] = useState("");
   const [codigo, setCodigo] = useState("");
   const [etapa, setEtapa] = useState<"telefone" | "codigo">("telefone");
@@ -87,16 +88,19 @@ export default function Entrar() {
             <Botao type="submit" disabled={enviando}>
               {enviando ? "Enviando…" : "Receber código"}
             </Botao>
-            <fieldset className="mt-2 rounded-md border border-borda p-3">
-              <legend className="px-1 text-sm font-bold text-texto-2">Contas de demonstração (fictícias)</legend>
-              <div className="flex flex-col gap-2">
-                {CONTAS_DEMO.map((c) => (
-                  <button key={c.telefone} type="button" onClick={() => setTelefone(c.telefone)} className="min-h-11 rounded-md bg-fundo px-3 text-left font-semibold text-brand-900 hover:bg-brand-50">
-                    {c.rotulo} · {c.telefone}
-                  </button>
-                ))}
-              </div>
-            </fieldset>
+            {/* Só no modo demonstração: em produção não existem contas de teste */}
+            {modoDemo && (
+              <fieldset className="mt-2 rounded-md border border-borda p-3">
+                <legend className="px-1 text-sm font-bold text-texto-2">Contas de demonstração (fictícias)</legend>
+                <div className="flex flex-col gap-2">
+                  {CONTAS_DEMO.map((c) => (
+                    <button key={c.telefone} type="button" onClick={() => setTelefone(c.telefone)} className="min-h-11 rounded-md bg-fundo px-3 text-left font-semibold text-brand-900 hover:bg-brand-50">
+                      {c.rotulo} · {c.telefone}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+            )}
           </form>
         ) : (
           <form onSubmit={entrar} className="flex flex-col gap-4">

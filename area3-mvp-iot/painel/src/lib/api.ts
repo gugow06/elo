@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3333";
 
 export type Perfil = "cidadao" | "voluntario" | "tecnico" | "gestor";
@@ -73,4 +75,16 @@ export function assinarEventos(caminho: string, aoReceber: (tipo: string, dados:
     fonte.addEventListener(tipo, (e) => aoReceber(tipo, JSON.parse((e as MessageEvent).data)));
   }
   return () => fonte.close();
+}
+
+let configCache: Promise<{ modo_demo: boolean }> | null = null;
+
+/** Modo demonstração da API (contas de teste e avisos). Em produção (MODO_DEMO=false) é false. */
+export function useModoDemo(): boolean {
+  const [demo, setDemo] = useState(false);
+  useEffect(() => {
+    configCache ??= fetch(`${API_URL}/config`).then((r) => r.json()).catch(() => ({ modo_demo: false }));
+    configCache.then((c) => setDemo(c.modo_demo === true));
+  }, []);
+  return demo;
 }

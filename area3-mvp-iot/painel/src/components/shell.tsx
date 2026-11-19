@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
-import { lerSessao, sair, type UsuarioSessao } from "@/lib/api";
+import { lerSessao, sair, useModoDemo, type UsuarioSessao } from "@/lib/api";
 
 const MENU = [
   { href: "/fila", rotulo: "Fila do CRAS", icone: "📋", perfis: ["tecnico"] },
@@ -17,6 +17,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const [usuario, setUsuario] = useState<UsuarioSessao | null>(null);
   const router = useRouter();
   const caminho = usePathname();
+  const modoDemo = useModoDemo();
 
   useEffect(() => {
     const s = lerSessao();
@@ -66,7 +67,7 @@ export function Shell({ children }: { children: ReactNode }) {
         {children}
       </main>
       <footer className="mx-auto max-w-7xl px-4 pb-8 text-sm text-texto-2">
-        ELO · Dados fictícios de demonstração · Nenhum dado pessoal é exibido no módulo de gestão.
+        ELO{modoDemo ? " · Dados fictícios de demonstração" : ""} · Nenhum dado pessoal é exibido no módulo de gestão.
       </footer>
     </div>
   );

@@ -36,6 +36,10 @@ services:
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       RESEND_FROM: ${RESEND_FROM:-}
       GOOGLE_CLIENT_IDS: ${GOOGLE_CLIENT_IDS:-}
+      # Local: true (contas de teste, código na tela, seed fictício). Produção: false nos dois
+      MODO_DEMO: ${MODO_DEMO:-true}
+      SEED_DEMO: ${SEED_DEMO:-true}
+      GEOCODER_URL: ${GEOCODER_URL:-}
     ports:
       - "3333:3333"
     depends_on:

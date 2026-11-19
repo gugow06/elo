@@ -48,6 +48,19 @@ class Api {
   String? _token;
   Usuario? usuario;
 
+  /// Modo demonstração da API (contas de teste, código na tela). Em produção, false.
+  bool modoDemo = false;
+
+  /// Lê /config. Sem conexão, segue como produção (sem atalhos de demonstração).
+  Future<void> carregarConfig() async {
+    try {
+      final r = await _req('GET', '/config');
+      modoDemo = r['modo_demo'] == true;
+    } on ErroApi {
+      modoDemo = false;
+    }
+  }
+
   Future<void> carregarSessao() async {
     final p = await SharedPreferences.getInstance();
     _token = p.getString('elo.token');

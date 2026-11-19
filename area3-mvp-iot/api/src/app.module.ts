@@ -9,6 +9,7 @@ import { LocaisController } from './locais/locais.controller';
 import { PerfilController } from './perfil/perfil.controller';
 import { RedeController } from './rede/rede.controller';
 import { SlaService } from './rede/sla.service';
+import { ConfigController } from './saude/config.controller';
 import { SaudeController } from './saude/saude.controller';
 import { classificadorProvider } from './solicitacoes/classificador.provider';
 import { SolicitacoesController } from './solicitacoes/solicitacoes.controller';
@@ -19,6 +20,7 @@ import { TecnicoController } from './tecnico/tecnico.controller';
   imports: [BancoModule],
   controllers: [
     SaudeController,
+    ConfigController,
     AuthController,
     SolicitacoesController,
     TecnicoController,

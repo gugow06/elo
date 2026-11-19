@@ -43,6 +43,22 @@ describe('autenticação: e-mail + código e Google', () => {
     return r.json().codigo_demo as string;
   };
 
+  it('config pública diz se está em modo demonstração', async () => {
+    const r = await app.inject({ method: 'GET', url: '/config' });
+    expect(r.json()).toEqual({ modo_demo: true, google: true });
+    process.env.MODO_DEMO = 'false';
+    expect((await app.inject({ method: 'GET', url: '/config' })).json().modo_demo).toBe(false);
+    process.env.MODO_DEMO = 'true';
+  });
+
+  it('fora do modo demonstração o código só vai por e-mail, nunca na resposta', async () => {
+    process.env.MODO_DEMO = 'false';
+    const r = await app.inject({ method: 'POST', url: '/auth/codigo', payload: { email: 'maria.lima@example.com' } });
+    process.env.MODO_DEMO = 'true';
+    expect(r.statusCode).toBe(200);
+    expect(r.json().codigo_demo).toBeUndefined();
+  });
+
   it('lista bairros sem precisar de sessão', async () => {
     const r = await app.inject({ method: 'GET', url: '/auth/bairros' });
     expect(r.statusCode).toBe(200);
