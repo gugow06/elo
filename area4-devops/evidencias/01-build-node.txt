@@ -1,0 +1,32 @@
+# 01-build-node — executado em 2026-11-19 00:43:10
+$ pnpm -r build
+
+Scope: 3 of 4 workspace projects
+area1-ia/triagem build$ tsc -p tsconfig.json
+area3-mvp-iot/painel build$ next build
+area1-ia/triagem build: Done
+area3-mvp-iot/painel build: ▲ Next.js 16.4.6 (Turbopack)
+area3-mvp-iot/painel build: ✓ Running next.config.ts took 203ms
+area3-mvp-iot/painel build:   Creating an optimized production build ...
+area3-mvp-iot/painel build: ✓ Compiled successfully in 2.4s
+area3-mvp-iot/painel build:   Running TypeScript ...
+area3-mvp-iot/painel build:   Finished TypeScript in 3.0s ...
+area3-mvp-iot/painel build:   Collecting page data using 8 workers ...
+area3-mvp-iot/painel build:   Generating static pages using 8 workers (0/6) ...
+area3-mvp-iot/painel build:   Generating static pages using 8 workers (1/6) 
+area3-mvp-iot/painel build:   Generating static pages using 8 workers (2/6) 
+area3-mvp-iot/painel build:   Generating static pages using 8 workers (4/6) 
+area3-mvp-iot/painel build: ✓ Generating static pages using 8 workers (6/6) in 1452ms
+area3-mvp-iot/painel build:   Finalizing page optimization ...
+area3-mvp-iot/painel build: Route (app)
+area3-mvp-iot/painel build: ┌ ○ /
+area3-mvp-iot/painel build: ├ ○ /_not-found
+area3-mvp-iot/painel build: ├ ○ /entrar
+area3-mvp-iot/painel build: ├ ○ /fila
+area3-mvp-iot/painel build: ├ ƒ /fila/[id]
+area3-mvp-iot/painel build: └ ○ /gestao
+area3-mvp-iot/painel build: ○  (Static)   prerendered as static content
+area3-mvp-iot/painel build: ƒ  (Dynamic)  server-rendered on demand
+area3-mvp-iot/painel build: Done
+area3-mvp-iot/api build$ tsc -p tsconfig.build.json
+area3-mvp-iot/api build: Done
