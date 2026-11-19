@@ -15,9 +15,11 @@
     "db:seed": "tsx db/seed.ts"
   },
   "dependencies": {
+    "@elo/triagem": "workspace:^",
     "@nestjs/common": "^12.5.1",
     "@nestjs/core": "^12.5.1",
     "@nestjs/platform-fastify": "^12.5.1",
+    "jose": "^6.2.18",
     "pg": "^8.23.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
