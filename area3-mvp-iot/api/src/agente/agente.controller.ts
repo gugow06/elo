@@ -136,7 +136,7 @@ export class AgenteController {
         `SELECT id, status, cidadao_id, municipio_id, codigo_retirada FROM solicitacao WHERE municipio_id = $1 AND protocolo = $2 FOR UPDATE`,
         [sessao.municipioId, protocolo],
       )).rows[0];
-      if (!s) throw new NotFoundException('Protocolo não encontrado neste município. Confira os 6 números com a pessoa.');
+      if (!s) throw await this.naoEncontrado(sessao.municipioId, protocolo);
       if (!RECEBE.includes(s.status)) throw new BadRequestException(`Este pedido não recebe mais doações: ${STATUS_PARA_CIDADAO[s.status].toLowerCase()}.`);
 
       const ponto = (await c.query<{ id: string; nome: string }>(
@@ -234,7 +234,7 @@ export class AgenteController {
       'SELECT id, status, cidadao_id, municipio_id, codigo_retirada FROM solicitacao WHERE municipio_id = $1 AND protocolo = $2',
       [sessao.municipioId, protocolo],
     )).rows[0];
-    if (!s) throw new NotFoundException('Protocolo não encontrado neste município. Confira os 6 números com a pessoa.');
+    if (!s) throw await this.naoEncontrado(sessao.municipioId, protocolo);
     if (!RECEBE.includes(s.status)) throw new BadRequestException(`Este pedido já foi encerrado: ${STATUS_PARA_CIDADAO[s.status].toLowerCase()}.`);
     // Fora da transação: a tentativa errada fica registrada e conta para o limite
     if (!(await conferirCodigo(this.pool, s, d.codigo, sessao.usuarioId))) {
@@ -281,7 +281,7 @@ export class AgenteController {
        WHERE s.municipio_id = $1 AND s.protocolo = $2`,
       [municipioId, protocolo],
     )).rows[0];
-    if (!s) throw new NotFoundException('Protocolo não encontrado neste município. Confira os 6 números com a pessoa.');
+    if (!s) throw await this.naoEncontrado(municipioId, protocolo);
 
     const itens = (await this.pool.query<ItemAgente>(
       `SELECT i.id, i.descricao, i.quantidade_entregue AS quantidade,
@@ -328,5 +328,25 @@ export class AgenteController {
       ajudantes,
       entregas,
     };
+  }
+
+  /**
+   * Protocolo que não é deste município. Se ele existe em outra cidade, diz qual: o agente vê só os
+   * pedidos do município da própria conta (e a pessoa pode ter vindo ao ponto errado).
+   */
+  private async naoEncontrado(municipioId: string, protocolo: string): Promise<NotFoundException> {
+    const { rows } = await this.pool.query<{ cidade: string; uf: string }>(
+      `SELECT m.nome AS cidade, m.uf FROM solicitacao s JOIN municipio m ON m.id = s.municipio_id
+       WHERE s.protocolo = $1 AND s.municipio_id <> $2 ORDER BY s.criado_em DESC LIMIT 1`,
+      [protocolo, municipioId],
+    );
+    const aqui = (await this.pool.query<{ nome: string; uf: string }>('SELECT nome, uf FROM municipio WHERE id = $1', [municipioId])).rows[0];
+    if (rows[0] && aqui) {
+      return new NotFoundException(
+        `Este protocolo é de um pedido de ${rows[0].cidade} - ${rows[0].uf}, e este painel atende ${aqui.nome} - ${aqui.uf}. ` +
+          'A doação precisa ir a um ponto de coleta da cidade do pedido.',
+      );
+    }
+    return new NotFoundException('Protocolo não encontrado neste município. Confira os 6 números com a pessoa.');
   }
 }
