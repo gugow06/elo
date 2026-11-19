@@ -32,13 +32,21 @@ export const CHAVES_DEMO = {
   'ponto-campo-centro': 'demo-chave-ponto-campo-centro',
 } as const;
 
+/** Identificadores fictícios do provedor (o "sub" que Google/Apple/Facebook devolveriam). */
+export const CONTAS_SOCIAIS_DEMO = {
+  ana: 'demo-google-ana',
+  roberto: 'demo-google-roberto',
+  claudia: 'demo-apple-claudia',
+  maria: 'demo-facebook-maria',
+} as const;
+
 export async function seed(url?: string): Promise<void> {
   const pool = criarPool(url);
   const c = await pool.connect();
   try {
     await c.query('BEGIN');
     await c.query(`TRUNCATE evento_auditoria, notificacao, evento_iot, entrega, oferta, classificacao, relato,
-                   solicitacao, codigo_acesso, usuario, ponto_coleta, bairro, municipio RESTART IDENTITY CASCADE`);
+                   solicitacao, codigo_acesso, conta_social, usuario, ponto_coleta, bairro, municipio RESTART IDENTITY CASCADE`);
 
     const mun = async (nome: string, uf: string, populacao: number) =>
       (await c.query<{ id: string }>('INSERT INTO municipio (nome, uf, populacao) VALUES ($1,$2,$3) RETURNING id', [nome, uf, populacao])).rows[0].id;
@@ -66,11 +74,21 @@ export async function seed(url?: string): Promise<void> {
     await ponto(m1, vilaNova, 'ponto-vila-nova', 'Ponto de Coleta Vila Nova', 'Escola Municipal Vila Nova, portão lateral', 300, 84);
     await ponto(m1, jardim, 'ponto-jardim', 'Ponto de Coleta CRAS Jardim', 'CRAS Jardim, recepção', 400, 36);
 
-    await usr(m1, jardimSP, 'cidadao', 'Ana Paula Ribeiro', '123456789', '+5511990000001', '1997-03-14');
+    const ana = await usr(m1, jardimSP, 'cidadao', 'Ana Paula Ribeiro', '123456789', '+5511990000001', '1997-03-14');
     const maria = await usr(m1, vilaNova, 'cidadao', 'Maria das Dores Lima', '234567891', '+5511990000002', '1954-08-02');
     const jose = await usr(m1, centro, 'cidadao', 'José Carlos Souza', '345678912', '+5511990000003', '1992-11-20');
-    await usr(m1, vilaNova, 'voluntario', 'Cláudia Martins', '456789123', '+5511990000004', '1985-05-09');
-    await usr(m1, jardim, 'voluntario', 'Roberto Alves', '567891234', '+5511990000005', '1979-01-30');
+    const claudia = await usr(m1, vilaNova, 'voluntario', 'Cláudia Martins', '456789123', '+5511990000004', '1985-05-09');
+    const roberto = await usr(m1, jardim, 'voluntario', 'Roberto Alves', '567891234', '+5511990000005', '1979-01-30');
+
+    // Contas sociais fictícias (login social simulado no protótipo; ver CONTAS_SOCIAIS_DEMO)
+    for (const [usuarioId, provedor, sujeito, email] of [
+      [ana, 'google', CONTAS_SOCIAIS_DEMO.ana, 'ana.ribeiro@example.com'],
+      [roberto, 'google', CONTAS_SOCIAIS_DEMO.roberto, 'roberto.alves@example.com'],
+      [claudia, 'apple', CONTAS_SOCIAIS_DEMO.claudia, 'claudia.martins@example.com'],
+      [maria, 'facebook', CONTAS_SOCIAIS_DEMO.maria, 'maria.lima@example.com'],
+    ]) {
+      await c.query('INSERT INTO conta_social (usuario_id, provedor, sujeito, email) VALUES ($1,$2,$3,$4)', [usuarioId, provedor, sujeito, email]);
+    }
     await usr(m1, jardim, 'tecnico', 'Fernanda Costa', '678912345', '+5511990000006', '1988-07-17');
     await usr(m1, centro, 'gestor', 'Secretaria de Assistência Social', '789123456', '+5511990000007', '1975-04-01');
 

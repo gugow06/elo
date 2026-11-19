@@ -36,6 +36,9 @@ Contraprova: um relato com indício de violência vai direto para a fila do téc
 | Método | Rota | Perfil | Função |
 | --- | --- | --- | --- |
 | POST | `/auth/codigo`, `/auth/entrar` | público | Login sem senha |
+| POST | `/auth/cadastro` | público | Cria conta de cidadão ou voluntário (com ou sem conta social) |
+| POST | `/auth/social` | público, só com `MODO_DEMO` | Login com Google, Apple ou Facebook (provedor simulado) |
+| GET | `/auth/bairros` | público | Bairros para a tela de criar conta |
 | POST | `/solicitacoes` | cidadão | Pedir ajuda (com triagem) |
 | GET | `/solicitacoes/minhas` | cidadão | Acompanhar |
 | GET | `/solicitacoes/consulta/{protocolo}?nascimento=` | público | Consulta sem login |

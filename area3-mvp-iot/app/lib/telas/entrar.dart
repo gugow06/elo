@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import '../api.dart';
 import '../tema.dart';
 import '../widgets/comum.dart';
+import '../widgets/login.dart';
+import 'criar_conta.dart';
 import 'shell.dart';
 
 const _contasDemo = [
@@ -13,20 +15,22 @@ const _contasDemo = [
   ('Roberto · voluntário · Jardim', '+5511990000005'),
 ];
 
-/// Login sem senha: telefone → código de 6 dígitos (RF-102).
+/// Entrar na conta ELO sem senha: telefone → código de 6 dígitos (RF-102).
+/// Vindo da criação de conta, já abre na etapa do código ([telefone] e [codigoDemo]).
 class Entrar extends StatefulWidget {
-  const Entrar({super.key, required this.viaGovBr});
-  final bool viaGovBr;
+  const Entrar({super.key, this.telefone, this.codigoDemo});
+  final String? telefone;
+  final String? codigoDemo;
   @override
   State<Entrar> createState() => _EntrarState();
 }
 
 class _EntrarState extends State<Entrar> {
-  final _telefone = TextEditingController();
+  late final _telefone = TextEditingController(text: widget.telefone);
   final _codigo = TextEditingController();
-  bool _etapaCodigo = false;
+  late bool _etapaCodigo = widget.telefone != null;
   bool _enviando = false;
-  String? _codigoDemo;
+  late String? _codigoDemo = widget.codigoDemo;
   String? _erro;
 
   Future<void> _pedirCodigo() async {
@@ -58,24 +62,10 @@ class _EntrarState extends State<Entrar> {
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     return Scaffold(
-      appBar: AppBar(title: Text(widget.viaGovBr ? 'Entrar com gov.br' : 'Entrar com código')),
+      appBar: AppBar(title: const Text('Entrar na minha conta')),
       body: SafeArea(
         child: ListView(padding: const EdgeInsets.all(24), children: [
-          if (widget.viaGovBr)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: Text('Protótipo: o gov.br é simulado. Você confirma o acesso com um código no celular.', style: t.bodyMedium),
-            ),
-          if (_erro != null)
-            Semantics(
-              liveRegion: true,
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 16),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(color: const Color(0xFFFDE4E4), borderRadius: BorderRadius.circular(EloRaio.md)),
-                child: Text(_erro!, style: const TextStyle(color: EloCores.erro, fontWeight: FontWeight.w700)),
-              ),
-            ),
+          if (_erro != null) AvisoErro(_erro!),
           if (!_etapaCodigo) ...[
             Text('Qual é o seu telefone?', style: t.titleLarge),
             const SizedBox(height: 16),
@@ -88,6 +78,11 @@ class _EntrarState extends State<Entrar> {
             ),
             const SizedBox(height: 20),
             FilledButton(onPressed: _enviando ? null : _pedirCodigo, child: Text(_enviando ? 'Enviando…' : 'Receber código')),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: () => Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const CriarConta())),
+              child: const Text('Ainda não tem conta? Criar uma conta'),
+            ),
             const SizedBox(height: 28),
             Text('Contas de demonstração (fictícias)', style: t.titleMedium),
             const SizedBox(height: 8),

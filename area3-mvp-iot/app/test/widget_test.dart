@@ -18,12 +18,37 @@ final _pedido = {
 };
 
 void main() {
-  testWidgets('boas-vindas: login por gov.br e por código, sem login social', (tester) async {
+  testWidgets('boas-vindas: entrar, criar conta e Google, Apple e Facebook', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2340);
+    tester.view.devicePixelRatio = 2.625;
+    addTearDown(tester.view.reset);
+    final semantica = tester.ensureSemantics();
     await tester.pumpWidget(_app(const BoasVindas()));
-    expect(find.text('Entrar com gov.br'), findsOneWidget);
-    expect(find.text('Receber código por SMS'), findsOneWidget);
-    expect(find.textContaining('Google'), findsNothing);
-    expect(find.textContaining('Facebook'), findsNothing);
+    expect(find.text('Entrar na minha conta'), findsOneWidget);
+    expect(find.text('Criar uma conta'), findsOneWidget);
+    expect(find.text('Ou continue com'), findsOneWidget);
+    for (final p in ['Google', 'Apple', 'Facebook']) {
+      expect(find.bySemanticsLabel('Continuar com $p'), findsOneWidget);
+    }
+    expect(find.textContaining('gov.br'), findsNothing);
+    // Ordem do mockup: entrar acima de criar conta, sociais por último
+    expect(tester.getTopLeft(find.text('Entrar na minha conta')).dy, lessThan(tester.getTopLeft(find.text('Criar uma conta')).dy));
+    expect(tester.getTopLeft(find.text('Criar uma conta')).dy, lessThan(tester.getTopLeft(find.text('Ou continue com')).dy));
+    semantica.dispose();
+  });
+
+  testWidgets('botão social abre a escolha de conta do provedor', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2340);
+    tester.view.devicePixelRatio = 2.625;
+    addTearDown(tester.view.reset);
+    final semantica = tester.ensureSemantics();
+    await tester.pumpWidget(_app(const BoasVindas()));
+    await tester.tap(find.bySemanticsLabel('Continuar com Apple'));
+    await tester.pumpAndSettle();
+    expect(find.text('Escolha uma conta Apple'), findsOneWidget);
+    expect(find.text('Cláudia Martins'), findsOneWidget);
+    expect(find.text('Usar outra conta'), findsOneWidget);
+    semantica.dispose();
   });
 
   testWidgets('boas-vindas atende contraste, alvo de toque e rótulos (celular em retrato)', (tester) async {

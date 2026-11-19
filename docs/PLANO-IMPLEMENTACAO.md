@@ -287,7 +287,7 @@ Essas funções são testadas com dados de seed conhecidos (ex.: 10 pedidos verd
 
 | # | Tela | Onde | Base no mockup |
 | --- | --- | --- | --- |
-| 1 | Entrar (login simulado: "Entrar com gov.br" e "Receber código"; o código aparece no console da API) | App | Tela 1, sem os logins sociais |
+| 1 | Entrar: "Entrar na minha conta" (telefone + código; o código aparece no console da API), "Criar uma conta" e "Ou continue com" Google, Apple e Facebook (simulados, contas fictícias) | App | Tela 1 |
 | 2 | Início (saudação, 4 atalhos, pedidos próximos) | App | Tela 2 |
 | 3 | Pedir ajuda (relato em texto, bairro, ponto de coleta) → confirmação com protocolo de 6 dígitos | App | Novo, no ELO DS |
 | 4 | Mural do bairro, em lista (com alternância para mapa se der tempo) | App | Tela 3; pedidos agregados por bairro, nunca pino na casa |
@@ -687,8 +687,8 @@ O visual vale como guia; estes pontos precisam mudar na implementação:
 
 | Tela | Elemento do mockup | Conflito | Ajuste proposto |
 | --- | --- | --- | --- |
-| Login | "Continue com Google / Apple / Facebook" | PRD: gov.br + OTP (RF-101/102). Login social não serve como identidade de política pública. No iOS, oferecer login social obriga a oferecer também o Sign in with Apple | **"Entrar com gov.br"** e **"Receber código por SMS/WhatsApp"**; remover os sociais |
-| Login | "Criar uma conta" (sugere senha) | Cidadão não cria senha (persona Ana) | O primeiro acesso por OTP já cria o cadastro |
+| Login | "Continue com Google / Apple / Facebook" | Login social não comprova identidade para política pública (PRD: gov.br + OTP) | **Mantido como no mockup.** No protótipo os provedores são simulados (só com `MODO_DEMO`); a conta social é vinculada a um cadastro com telefone e bairro. Verificação forte (gov.br) fica para o roadmap |
+| Login | "Criar uma conta" (sugere senha) | Cidadão não cria senha (persona Ana) | Mantido, sem senha: nome, telefone, bairro e perfil; o telefone é confirmado por código |
 | Mapa | Pinos de pedido em ponto exato da rua | **P3 / RS-01**: endereço nunca público | O mapa mostra só equipamentos públicos e pontos de coleta; pedidos aparecem **agregados por bairro** ("3 pedidos em Vila Nova") |
 | Mapa | Sem lista equivalente visível | RNF-A10 / RF-402 | Alternar **Mapa / Lista** no topo, com a lista como padrão quando o leitor de tela está ativo; distância e direção por extenso ("2,4 km ao norte") |
 | Pedido | Botão compartilhar | Espalha o pedido para fora do território e da moderação | Remover, ou compartilhar só o link do mural do bairro, sem o pedido |

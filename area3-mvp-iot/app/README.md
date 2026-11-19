@@ -4,7 +4,7 @@ O app segue o mockup oficial ([`images/representacao das telas elo.png`](../../i
 
 | # | Tela | Mockup | Ajuste do PRD |
 | --- | --- | --- | --- |
-| 1 | Boas-vindas e login | Tela 1 | gov.br (simulado) e código por SMS no lugar dos logins sociais; sem senha |
+| 1 | Boas-vindas e login | Tela 1 | "Entrar na minha conta" (telefone + código, sem senha), "Criar uma conta" e Google, Apple e Facebook (simulados no protótipo, com contas fictícias) |
 | 2 | Início: saudação, busca, 4 atalhos, pedidos próximos | Tela 2 | Atalho "Oportunidades" marcado como "em breve" (fase 3) |
 | 3 | Mapa da rede com alternativa em lista | Tela 3 | Pedidos **agregados por bairro**, nunca pino na casa. Lista com distância e direção por extenso; lista é o padrão com leitor de tela |
 | 4 | Pedido de ajuda + "Quero ajudar" | Tela 4 | Sem compartilhar e sem foto de voluntários. Mostra o protocolo para digitar no ponto de coleta |

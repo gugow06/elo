@@ -27,6 +27,26 @@ class Usuario {
   factory Usuario.fromJson(Map<String, dynamic> j) => Usuario(id: j['id'], nome: j['nome'], perfil: j['perfil']);
 }
 
+enum Provedor {
+  google('Google'),
+  apple('Apple'),
+  facebook('Facebook');
+
+  const Provedor(this.nome);
+  final String nome;
+}
+
+/// Conta escolhida no provedor social. No protótipo o provedor é simulado (ver telas/conta_social.dart).
+class IdentidadeSocial {
+  const IdentidadeSocial({required this.provedor, required this.sujeito, required this.nome, this.email});
+  final Provedor provedor;
+  final String sujeito; // identificador estável do provedor ("sub")
+  final String nome;
+  final String? email;
+
+  Map<String, dynamic> toJson() => {'provedor': provedor.name, 'sujeito': sujeito, 'email': ?email};
+}
+
 /// Cliente da API do ELO. Guarda a sessão localmente (token de 8 h).
 class Api {
   Api._();
@@ -72,14 +92,52 @@ class Api {
     return dado;
   }
 
-  // ---------- autenticação (login sem senha)
+  // ---------- autenticação
+  /// Conta ELO: pede o código de 6 dígitos para o telefone.
   Future<String?> pedirCodigo(String telefone) async {
     final r = await _req('POST', '/auth/codigo', {'telefone': telefone});
     return r['codigo_demo'] as String?;
   }
 
-  Future<Usuario> entrar(String telefone, String codigo) async {
-    final r = await _req('POST', '/auth/entrar', {'telefone': telefone, 'codigo': codigo});
+  /// Conta ELO: telefone + código.
+  Future<Usuario> entrar(String telefone, String codigo) async =>
+      _guardarSessao(await _req('POST', '/auth/entrar', {'telefone': telefone, 'codigo': codigo}));
+
+  /// Login social. Devolve null quando a identidade ainda não tem conta no ELO.
+  Future<Usuario?> entrarSocial(IdentidadeSocial id) async {
+    final r = await _req('POST', '/auth/social', id.toJson());
+    if (r['cadastro_necessario'] == true) return null;
+    return _guardarSessao(r);
+  }
+
+  /// Cria a conta. Com [social], já entra e devolve o usuário; sem ele, o telefone
+  /// precisa ser confirmado: devolve null e [aoPedirCodigo] recebe o código de demonstração.
+  Future<Usuario?> cadastrar({
+    required String nome,
+    required String telefone,
+    required String bairroId,
+    required String perfil,
+    IdentidadeSocial? social,
+    void Function(String? codigoDemo)? aoPedirCodigo,
+  }) async {
+    final r = await _req('POST', '/auth/cadastro', {
+      'nome': nome,
+      'telefone': telefone,
+      'bairro_id': bairroId,
+      'perfil': perfil,
+      'social': ?social?.toJson(),
+    });
+    if (r['token'] == null) {
+      aoPedirCodigo?.call(r['codigo_demo'] as String?);
+      return null;
+    }
+    return _guardarSessao(r);
+  }
+
+  /// Bairros atendidos (público), para a tela de criar conta.
+  Future<List<dynamic>> bairrosCadastro() async => await _req('GET', '/auth/bairros') as List;
+
+  Future<Usuario> _guardarSessao(dynamic r) async {
     final u = Usuario.fromJson(r['usuario']);
     if (u.perfil != 'cidadao' && u.perfil != 'voluntario') {
       throw ErroApi(403, 'Este app é para cidadãos e voluntários. A equipe do CRAS usa o painel web.');
