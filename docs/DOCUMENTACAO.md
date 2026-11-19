@@ -552,11 +552,14 @@ Todos vieram com a correção indicada. `[Atualizar este parágrafo com as corre
 | T13 | Escalonamento por SLA | Pedido verde sem voluntário vai ao CRAS |
 | T14 | Papel somente leitura | Lê a camada ouro e recebe `permission denied` em `public` |
 | T15 | Acessibilidade do app | Contraste, alvo de toque e rótulos dentro das diretrizes |
-| T16 | Retirada | Código errado não libera; 5 erros bloqueiam; ninguém além de quem pediu vê o código |
-| T17 | Conversas e exclusão de conta | Só os participantes leem a conversa; conta excluída perde o acesso e tem os dados apagados |
-| T18 | Mural por distância | Pedidos ordenados e filtrados pelo raio a partir da posição do aparelho |
+| T16 | Login | Entra com e-mail + código; e-mail desconhecido não revela a conta; fora do modo demonstração o código nunca vem na resposta; Google recusa token de outro aplicativo |
+| T17 | Retirada com código | Só quem pediu vê o código; não retira o que não chegou; 5 erros bloqueiam por 1 hora |
+| T18 | Registro (log) | Entrega, retirada e código errado ficam salvos, com quem registrou e onde |
+| T19 | Conversas, termos e exclusão de conta | Ninguém de fora lê a conversa; criar conta exige aceitar os termos; excluir a conta apaga os dados e encerra a sessão |
+| T20 | Localização do aparelho | Posição vira cidade e bairro; o bairro novo ganha posição aproximada (~1 km); "Mais perto de mim" usa a posição |
+| T21 | Agente do ponto | Vê só o primeiro nome de quem ajuda; protocolo de outra cidade diz de qual cidade é |
 
-**Totais atuais:** 11 testes da triagem, 140 da API, 9 do pipeline e 24 do app. `[Conferir os números com a saída de scripts/testar-tudo.sh na véspera da entrega.]` As saídas ficam em `area4-devops/evidencias/` e podem entrar como apêndice.
+**Totais da última execução no CI (`main`, 19/11/2026):** 11 testes da triagem, 143 da API, 9 do pipeline e 24 do app, num total de 187 testes passando. As saídas ficam em `area4-devops/evidencias/` e podem entrar como apêndice.
 
 > **[FIGURA 40, opcional]** Saída dos testes no terminal · **Arquivo:** `docs/figuras/fig40-testes.png` · **Status:** capturar · **Como obter:** print do final de `bash scripts/testar-tudo.sh`.
 

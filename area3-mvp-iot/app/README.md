@@ -100,11 +100,11 @@ Com Apple ID gratuito, o app expira em 7 dias: reinstale na véspera da apresent
 
 ## Contas de demonstração (fictícias)
 
-| Pessoa | Perfil | Telefone |
+| Pessoa | Uso na demonstração | E-mail |
 | --- | --- | --- |
-| Ana | Cidadã | `+5511990000001` |
-| Maria | Cidadã | `+5511990000002` |
-| Cláudia | Voluntária | `+5511990000004` |
-| Roberto | Voluntário | `+5511990000005` |
+| Ana | Pede ajuda | `ana.ribeiro@example.com` |
+| Maria | Pede ajuda | `maria.lima@example.com` |
+| Cláudia | Ajuda | `claudia.martins@example.com` |
+| Roberto | Ajuda | `roberto.alves@example.com` |
 
-O código de acesso aparece na própria tela (modo demonstração).
+Toda conta pede e oferece ajuda. Em "Entrar na minha conta", informe o e-mail: o código de acesso aparece na própria tela (modo demonstração).

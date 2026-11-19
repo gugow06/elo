@@ -49,8 +49,8 @@ bash scripts/testar-tudo.sh      # salva as saídas em area4-devops/evidencias/
 
 | # | Prática | Onde |
 | --- | --- | --- |
-| 1 | **Autenticação sem senha**: código de 6 dígitos de uso único, validade de 10 min, guardado como hash SHA-256. Não revela se o telefone existe | [`auth.controller.ts`](../area3-mvp-iot/api/src/auth/auth.controller.ts) |
-| 2 | **JWT HS256** com expiração de 8 h e emissor verificado; **autorização por perfil** (cidadão, voluntário, técnico, gestor) em cada rota | [`sessao.ts`](../area3-mvp-iot/api/src/auth/sessao.ts), [`auth.guard.ts`](../area3-mvp-iot/api/src/auth/auth.guard.ts) |
+| 1 | **Autenticação sem senha**: código de 6 dígitos de uso único por e-mail, validade de 10 min, guardado como hash SHA-256, sem revelar se o e-mail existe; ou conta Google, com o ID token conferido. Verificação em duas etapas opcional | [`auth.controller.ts`](../area3-mvp-iot/api/src/auth/auth.controller.ts) |
+| 2 | **JWT HS256** com expiração de 8 h e emissor verificado; **autorização por perfil** (cidadão, técnico, gestor, agente do ponto) em cada rota; conta excluída perde o acesso na hora | [`sessao.ts`](../area3-mvp-iot/api/src/auth/sessao.ts), [`auth.guard.ts`](../area3-mvp-iot/api/src/auth/auth.guard.ts) |
 | 3 | **Validação de toda entrada** com Zod, com erro 400 e mensagem em português | [`validacao.ts`](../area3-mvp-iot/api/src/infra/validacao.ts) |
 | 4 | **Dispositivo IoT autenticado** por chave do ponto (hash + comparação em tempo constante) | [`iot.controller.ts`](../area3-mvp-iot/api/src/iot/iot.controller.ts) |
 | 5 | **Proteção de dados (LGPD)**: mural sem endereço, nome ou relato; relato em tabela separada; faixa de risco nunca exibida ao cidadão; pedido vermelho nunca no mural | [`rede.controller.ts`](../area3-mvp-iot/api/src/rede/rede.controller.ts) |
@@ -59,6 +59,10 @@ bash scripts/testar-tudo.sh      # salva as saídas em area4-devops/evidencias/
 | 8 | **Anonimização no pipeline** e **papel somente leitura** `elo_leitura_ouro` para o dashboard | [`etl.py`](../area2-dados/pipeline/etl.py), [`ouro_funcoes.sql`](../area2-dados/sql/ouro_funcoes.sql) |
 | 9 | **Isolamento entre municípios**: todas as consultas filtram pelo município da sessão | Testes de isolamento |
 | 10 | **Segredos fora do Git**: `.env` no `.gitignore`; só `.env.example` sem chaves é versionado | [`.gitignore`](../.gitignore) |
+| 11 | **Retirada protegida**: código de 4 números que só quem pediu vê; 5 erros bloqueiam o pedido por 1 hora; entregas, retiradas e códigos errados ficam no registro | [`retirada.ts`](../area3-mvp-iot/api/src/rede/retirada.ts), [`agente.controller.ts`](../area3-mvp-iot/api/src/agente/agente.controller.ts) |
+| 12 | **Direitos do titular (LGPD)**: aceite dos Termos e da Política de Privacidade com versão registrada; exclusão de conta que apaga os dados pessoais e anonimiza o histórico | [`perfil.controller.ts`](../area3-mvp-iot/api/src/perfil/perfil.controller.ts), [`exclusao.ts`](../area3-mvp-iot/api/src/perfil/exclusao.ts) |
+
+Em 19/11/2026, o código também passou por uma auditoria automatizada de segurança (skill aberta [security-audit](https://github.com/cloudflare/security-audit-skill) da Cloudflare, perfil rápido, só código e sandbox local sem rede).
 
 ## Plano de testes
 
@@ -81,13 +85,18 @@ Execução registrada em [`evidencias/`](evidencias/) (gerado por `scripts/testa
 | T13 | Escalonamento por SLA | Integração | Pedido verde sem voluntário vai ao CRAS | `rede-iot.test.ts` | ✅ |
 | T14 | Papel somente leitura | Integração | Lê a camada ouro e recebe `permission denied` em `public.usuario` | `test_pipeline.py` | ✅ |
 | T15 | Acessibilidade do app | Widget | Contraste, alvo de toque (Android e iOS) e rótulos dentro das guidelines | `widget_test.dart` | ✅ |
-| T16 | App sem login social | Widget | Só gov.br e código por SMS | `widget_test.dart` | ✅ |
+| T16 | Login | Integração | Entra com e-mail + código; e-mail desconhecido não revela que a conta não existe; fora do modo demonstração o código nunca vem na resposta; Google recusa token de outro aplicativo | `auth.test.ts` | ✅ |
+| T17 | Retirada com código | Integração | Só quem pediu vê o código; não retira o que não chegou ao ponto; 5 erros bloqueiam por 1 hora, mesmo com o código certo | `retirada.test.ts` | ✅ |
+| T18 | Registro (log) | Integração | Entrega, retirada e código errado ficam salvos, com quem registrou e onde | `retirada.test.ts` | ✅ |
+| T19 | Conversas, termos e exclusão de conta | Integração | Ninguém de fora lê ou escreve na conversa; criar conta exige aceitar os termos; excluir a conta apaga os dados e encerra a sessão | `conversas-conta.test.ts` | ✅ |
+| T20 | Localização do aparelho | Integração | Posição vira cidade do IBGE e bairro; o bairro novo ganha posição aproximada (~1 km), não a da casa; "Mais perto de mim" usa a posição | `localizacao.test.ts` | ✅ |
+| T21 | Agente do ponto | Integração | Vê só o primeiro nome de quem ajuda; protocolo de outra cidade diz de qual cidade é | `agente.test.ts` | ✅ |
 
-**Totais da última execução:** triagem 11 testes · API 24 testes · pipeline 9 testes · app 5 testes: **49 testes passando**.
+**Totais da última execução no CI (`main`, 19/11/2026):** triagem 11 testes · API 143 testes · pipeline 9 testes · app 24 testes: **187 testes passando**.
 
 ### Roteiro de teste manual (leitor de tela)
 
-1. Android: ative o **TalkBack**. Abra o app → "Receber código por SMS" → entre como Ana.
+1. Android: ative o **TalkBack**. Abra o app → "Entrar na minha conta" → entre como Ana (`ana.ribeiro@example.com`, código na tela no modo demonstração).
 2. Navegue por gestos: cada atalho da tela Início deve ser anunciado com o nome ("Pedir ajuda, botão").
 3. Em "Mapa da rede", confirme que a **lista** é a visão padrão e que cada item fala a distância e a direção.
 4. Peça ajuda: o protocolo de 6 dígitos deve ser lido **dígito por dígito**.
