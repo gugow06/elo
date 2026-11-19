@@ -253,24 +253,45 @@ class _Pino extends StatelessWidget {
         child: SizedBox(
           width: 52,
           height: 64,
-          child: Stack(alignment: Alignment.topCenter, children: [
-            Icon(Icons.location_on, size: selecionado ? 64 : 56, color: cor),
-            Padding(
-              padding: const EdgeInsets.only(top: 12),
+          child: Column(children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              width: selecionado ? 50 : 44,
+              height: selecionado ? 50 : 44,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: cor,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 3),
+                boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 6, offset: Offset(0, 2))],
+              ),
               child: pedido
-                  ? Container(
-                      width: 26,
-                      height: 22,
-                      alignment: Alignment.center,
-                      child: Text('${marcador.contagem}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15)),
-                    )
+                  ? Row(mainAxisSize: MainAxisSize.min, children: [
+                      const Icon(Icons.favorite, color: Colors.white, size: 16),
+                      const SizedBox(width: 2),
+                      Text('${marcador.contagem}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15)),
+                    ])
                   : const Icon(Icons.account_balance, color: Colors.white, size: 22),
             ),
+            CustomPaint(size: const Size(14, 10), painter: _Ponta(cor)),
           ]),
         ),
       ),
     );
   }
+}
+
+class _Ponta extends CustomPainter {
+  const _Ponta(this.cor);
+  final Color cor;
+  @override
+  void paint(Canvas canvas, Size s) {
+    final path = Path()..moveTo(0, 0)..lineTo(s.width, 0)..lineTo(s.width / 2, s.height)..close();
+    canvas.drawPath(path, Paint()..color = cor);
+  }
+
+  @override
+  bool shouldRepaint(covariant _Ponta old) => old.cor != cor;
 }
 
 class _CartaoSelecionado extends StatelessWidget {

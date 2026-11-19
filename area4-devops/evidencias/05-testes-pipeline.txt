@@ -1,0 +1,36 @@
+# 05-testes-pipeline — executado em 2026-11-19 00:43:10
+$ bash -c cd area2-dados && '/c/Users/cpspe/OneDrive/Documents/Dev/elo/area2-dados/.venv/Scripts/python' -m pytest -v
+
+============================= test session starts =============================
+platform win32 -- Python 3.14.0, pytest-9.2.0, pluggy-1.7.0 -- C:\Users\cpspe\OneDrive\Documents\Dev\elo\area2-dados\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\cpspe\OneDrive\Documents\Dev\elo\area2-dados
+plugins: Faker-40.54.0
+collecting ... collected 9 items
+
+tests/test_pipeline.py::test_pseudonimo_e_estavel_e_nao_reversivel PASSED [ 11%]
+tests/test_pipeline.py::test_qualidade_reprova_coluna_pessoal PASSED     [ 22%]
+tests/test_pipeline.py::test_qualidade_reprova_texto_com_formato_de_cpf PASSED [ 33%]
+tests/test_pipeline.py::test_qualidade_reprova_datas_incoerentes PASSED  [ 44%]
+tests/test_pipeline.py::test_qualidade_aceita_dado_limpo PASSED          [ 55%]
+tests/test_pipeline.py::TestIntegracao::test_t7_prata_e_ouro_sem_dado_pessoal PASSED [ 66%]
+tests/test_pipeline.py::TestIntegracao::test_t8_taxa_de_absorcao_bate_com_o_calculo_direto PASSED [ 77%]
+tests/test_pipeline.py::TestIntegracao::test_filtro_por_canal_reduz_o_total PASSED [ 88%]
+tests/test_pipeline.py::TestIntegracao::test_papel_de_leitura_nao_acessa_dado_operacional PASSED [100%]
+
+============================== warnings summary ===============================
+tests/test_pipeline.py: 12 warnings
+  C:\Users\cpspe\OneDrive\Documents\Dev\elo\area2-dados\pipeline\etl.py:146: Pandas4Warning: For backward compatibility, 'str' dtypes are included by select_dtypes when 'object' dtype is specified. This behavior is deprecated and will be removed in a future version. Explicitly pass 'str' to `include` to select them, or to `exclude` to remove them and silence this warning.
+  See https://pandas.pydata.org/docs/dev/user_guide/migration.html#string-migration-select-dtypes for details on how to write code that works with pandas 2 and 3.
+    for col in df.select_dtypes(include="object").columns:
+
+tests/test_pipeline.py::TestIntegracao::test_t7_prata_e_ouro_sem_dado_pessoal
+  C:\Users\cpspe\OneDrive\Documents\Dev\elo\area2-dados\.venv\Lib\site-packages\_pytest\fixtures.py:1392: PytestRemovedIn10Warning: Class-scoped fixtures defined as instance methods are deprecated.
+  Instance attributes set in the 'rodar_pipeline' fixture will NOT be visible to test methods,
+  as each test gets a new instance while the fixture runs only once per class.
+  Use a @classmethod decorator below @pytest.fixture and set attributes on cls instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#class-scoped-fixture-as-instance-method
+    fixturefunc = resolve_fixture_function(fixturedef, request)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================= 9 passed, 13 warnings in 11.33s =======================

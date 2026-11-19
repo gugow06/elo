@@ -1,0 +1,16 @@
+# 02-testes-triagem — executado em 2026-11-19 00:43:10
+$ pnpm --filter @elo/triagem test
+
+
+> @elo/triagem@0.1.0 test C:\Users\cpspe\OneDrive\Documents\Dev\elo\area1-ia\triagem
+> vitest run
+
+
+ RUN  v5.1.1 C:/Users/cpspe/OneDrive/Documents/Dev/elo/area1-ia/triagem
+
+
+ Test Files  1 passed (1)
+      Tests  11 passed (11)
+   Start at  00:43:33
+   Duration  608ms (transform 63%, import 25%, tests 8%, worker 4%)
+

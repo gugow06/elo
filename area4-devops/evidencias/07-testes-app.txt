@@ -1,0 +1,10 @@
+# 07-testes-app — executado em 2026-11-19 00:43:10
+$ bash -c cd area3-mvp-iot/app && flutter test
+
+00:00 +0: loading C:/Users/cpspe/OneDrive/Documents/Dev/elo/area3-mvp-iot/app/test/widget_test.dart
+00:00 +0: boas-vindas: login por gov.br e por código, sem login social
+00:00 +1: boas-vindas atende contraste, alvo de toque e rótulos
+00:00 +2: cartão do mural é lido como um bloco, sem endereço nem nome
+00:01 +3: tag de categoria usa texto escuro sobre âmbar
+00:01 +4: mapa descreve distância e direção por extenso
+00:01 +5: All tests passed!

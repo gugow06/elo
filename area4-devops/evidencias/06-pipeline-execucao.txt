@@ -1,0 +1,49 @@
+# 06-pipeline-execucao â€” executado em 2026-11-19 00:43:10
+$ bash -c cd area2-dados && '/c/Users/cpspe/OneDrive/Documents/Dev/elo/area2-dados/.venv/Scripts/python' -m pipeline.gerador --forcar && '/c/Users/cpspe/OneDrive/Documents/Dev/elo/area2-dados/.venv/Scripts/python' -m pipeline.etl
+
+{'gerado': True, 'usuarios': 5097, 'solicitacoes': 5000, 'ofertas': 2207, 'entregas': 2207, 'leituras_iot': 540}
+[00:44:12] bronze  solicitacao: 5002 linhas
+[00:44:12] bronze  classificacao: 5002 linhas
+[00:44:12] bronze  oferta: 2207 linhas
+[00:44:13] bronze  entrega: 2207 linhas
+[00:44:13] bronze  evento_iot: 540 linhas
+[00:44:13] bronze  usuario: 5106 linhas
+[00:44:14] bronze  bairro: 6 linhas
+[00:44:14] bronze  municipio: 2 linhas
+[00:44:14] bronze  ponto_coleta: 3 linhas
+C:\Users\cpspe\OneDrive\Documents\Dev\elo\area2-dados\pipeline\etl.py:146: Pandas4Warning: For backward compatibility, 'str' dtypes are included by select_dtypes when 'object' dtype is specified. This behavior is deprecated and will be removed in a future version. Explicitly pass 'str' to `include` to select them, or to `exclude` to remove them and silence this warning.
+See https://pandas.pydata.org/docs/dev/user_guide/migration.html#string-migration-select-dtypes for details on how to write code that works with pandas 2 and 3.
+  for col in df.select_dtypes(include="object").columns:
+C:\Users\cpspe\OneDrive\Documents\Dev\elo\area2-dados\pipeline\etl.py:146: Pandas4Warning: For backward compatibility, 'str' dtypes are included by select_dtypes when 'object' dtype is specified. This behavior is deprecated and will be removed in a future version. Explicitly pass 'str' to `include` to select them, or to `exclude` to remove them and silence this warning.
+See https://pandas.pydata.org/docs/dev/user_guide/migration.html#string-migration-select-dtypes for details on how to write code that works with pandas 2 and 3.
+  for col in df.select_dtypes(include="object").columns:
+C:\Users\cpspe\OneDrive\Documents\Dev\elo\area2-dados\pipeline\etl.py:146: Pandas4Warning: For backward compatibility, 'str' dtypes are included by select_dtypes when 'object' dtype is specified. This behavior is deprecated and will be removed in a future version. Explicitly pass 'str' to `include` to select them, or to `exclude` to remove them and silence this warning.
+See https://pandas.pydata.org/docs/dev/user_guide/migration.html#string-migration-select-dtypes for details on how to write code that works with pandas 2 and 3.
+  for col in df.select_dtypes(include="object").columns:
+C:\Users\cpspe\OneDrive\Documents\Dev\elo\area2-dados\pipeline\etl.py:146: Pandas4Warning: For backward compatibility, 'str' dtypes are included by select_dtypes when 'object' dtype is specified. This behavior is deprecated and will be removed in a future version. Explicitly pass 'str' to `include` to select them, or to `exclude` to remove them and silence this warning.
+See https://pandas.pydata.org/docs/dev/user_guide/migration.html#string-migration-select-dtypes for details on how to write code that works with pandas 2 and 3.
+  for col in df.select_dtypes(include="object").columns:
+C:\Users\cpspe\OneDrive\Documents\Dev\elo\area2-dados\pipeline\etl.py:146: Pandas4Warning: For backward compatibility, 'str' dtypes are included by select_dtypes when 'object' dtype is specified. This behavior is deprecated and will be removed in a future version. Explicitly pass 'str' to `include` to select them, or to `exclude` to remove them and silence this warning.
+See https://pandas.pydata.org/docs/dev/user_guide/migration.html#string-migration-select-dtypes for details on how to write code that works with pandas 2 and 3.
+  for col in df.select_dtypes(include="object").columns:
+[00:44:14] prata   qualidade OK: sem dado pessoal, faixas preenchidas, datas coerentes
+[00:44:14] prata   solicitacao: 5002 linhas
+[00:44:15] prata   classificacao: 5002 linhas
+[00:44:15] prata   oferta: 2207 linhas
+[00:44:16] prata   entrega: 2207 linhas
+[00:44:16] prata   leitura_sensor: 540 linhas
+[00:44:16] prata   voluntario: 99 linhas
+[00:44:16] prata   bairro: 6 linhas
+[00:44:16] prata   municipio: 2 linhas
+[00:44:16] prata   ponto_coleta: 3 linhas
+[00:44:17] ouro    fato_solicitacao: 5002 linhas
+[00:44:17] ouro    fato_entrega: 2207 linhas
+[00:44:17] ouro    fato_leitura_sensor: 540 linhas
+[00:44:17] ouro    fato_consumo_diario: 540 linhas
+[00:44:17] ouro    dim_tempo: 181 linhas
+[00:44:17] ouro    dim_bairro: 6 linhas
+[00:44:17] ouro    dim_municipio: 2 linhas
+[00:44:17] ouro    dim_ponto_coleta: 3 linhas
+[00:44:17] ouro    dim_voluntario: 99 linhas
+[00:44:17] ouro    views, funções analíticas e permissões criadas
+[00:44:17] fim     pipeline concluído em 6.6 s

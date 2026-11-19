@@ -76,7 +76,7 @@ O documento tem duas partes:
 | App cidadão/voluntário | Flutter (APK Android) | 3 |
 | Painel técnico + Gestão | Next.js + Tailwind + Apache ECharts | 2 e 3 |
 | API | Node.js + NestJS + Zod | 1, 3, 4 |
-| Banco | PostgreSQL 16 (Drizzle ORM) | 2 |
+| Banco | PostgreSQL 16 (driver `pg`, SQL explícito e migrações versionadas) | 2 |
 | Triagem | Regras determinísticas em TypeScript + LLM via API, com modo offline determinístico para a demo nunca depender de rede | 1 |
 | Pipeline de dados | Python (pandas + SQLAlchemy + Faker) | 2 |
 | IoT | Tinkercad (Arduino Uno) + simulador Python (HTTP) | 3 |
@@ -503,7 +503,7 @@ A arquitetura abaixo é o ELO como plataforma municipal, conforme o PRD. Ela nã
 | API | **NestJS sobre o adapter Fastify** | Guards, interceptors e injeção de dependência resolvem RBAC por território, auditoria de **leitura** (RNF-S05) e adaptadores trocáveis (LLM, transcrição, WhatsApp, SMS). Fastify puro exigiria montar tudo isso à mão |
 | Contratos | **Zod** em `packages/contracts` → **OpenAPI 3.1** como fonte da verdade → client TS (orval) e client Dart (openapi-generator `dart-dio`) | Um contrato, gerado para todos os consumidores; o CI quebra se o client estiver desatualizado |
 | Banco | **PostgreSQL 16 com RLS** (`FORCE ROW LEVEL SECURITY`) | ADR-02: isolamento no banco, não em filtro de aplicação |
-| ORM | **Drizzle ORM** | Declara políticas RLS no próprio schema (`pgPolicy`, `enableRLS`) e as migrações já saem com elas; SQL explícito facilita auditar o que roda sobre dado sensível; sem engine binária. O Prisma só se justificava pelo padrão da casa |
+| Acesso a dados | **Driver `pg` com SQL explícito** e migrações `.sql` versionadas (no protótipo). Drizzle ORM é a opção para a versão de produção, com políticas RLS declaradas no schema | SQL explícito facilita auditar o que roda sobre dado sensível; sem camada extra para o prazo da entrega |
 | Jobs / filas | **pg-boss** (fila no próprio Postgres) | Enfileirar na **mesma transação** que cria a solicitação: nada se perde se um worker cair (RNF-O04). Dispensa Redis na fase 1 |
 | Tempo real | WebSocket (gateway do NestJS) para chat e alerta vermelho; push via **FCM/APNs** (firebase_messaging; opcional no protótipo) | |
 | Painéis (técnico, gestor, admin) | **Next.js (App Router) + Tailwind + primitivos Radix**, com componentes próprios do **ELO Design System** | Radix entrega foco, teclado e ARIA corretos; a aparência é 100% ELO (seção 3). shadcn pode servir de ponto de partida de código, sem o visual padrão |

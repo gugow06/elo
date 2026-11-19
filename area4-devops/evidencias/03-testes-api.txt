@@ -1,0 +1,22 @@
+# 03-testes-api — executado em 2026-11-19 00:43:10
+$ pnpm --filter @elo/api test
+
+
+> @elo/api@0.1.0 test C:\Users\cpspe\OneDrive\Documents\Dev\elo\area3-mvp-iot\api
+> vitest run
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v5.1.1 C:/Users/cpspe/OneDrive/Documents/Dev/elo/area3-mvp-iot/api
+
+
+ Test Files  4 passed (4)
+      Tests  24 passed (24)
+   Start at  00:43:35
+   Duration  11.21s (import 71%, tests 24%, transform 4%)
+
+    Isolate  4 workers spawned · ~268ms startup each (spawn + environment, per file)
+             at least ~805ms faster with isolate: false — reuses workers across files instead of one per file
+
