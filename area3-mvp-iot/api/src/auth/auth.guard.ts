@@ -1,5 +1,6 @@
 import {
   CanActivate,
+  Inject,
   createParamDecorator,
   ExecutionContext,
   ForbiddenException,
@@ -8,6 +9,8 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { Pool } from 'pg';
+import { POOL } from '../infra/banco.module';
 import { lerToken, Perfil, Sessao } from './sessao';
 
 const CHAVE_PERFIS = 'elo:perfis';
@@ -23,6 +26,8 @@ export const SessaoAtual = createParamDecorator((_: unknown, ctx: ExecutionConte
 @Injectable()
 export class AuthGuard implements CanActivate {
   private readonly reflector = new Reflector();
+
+  constructor(@Inject(POOL) private readonly pool: Pool) {}
 
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
     const req = ctx.switchToHttp().getRequest();
@@ -43,6 +48,9 @@ export class AuthGuard implements CanActivate {
     if (permitidos?.length && !permitidos.includes(sessao.perfil)) {
       throw new ForbiddenException('Seu perfil não tem acesso a este recurso.');
     }
+    // Conta excluída: a sessão que ainda estava aberta deixa de valer na hora
+    const conta = await this.pool.query<{ excluido_em: Date | null }>('SELECT excluido_em FROM usuario WHERE id = $1', [sessao.usuarioId]);
+    if (!conta.rows[0] || conta.rows[0].excluido_em) throw new UnauthorizedException('Esta conta foi excluída.');
     req.sessao = sessao;
     return true;
   }

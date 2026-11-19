@@ -1,8 +1,15 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3333";
 
-export type Perfil = "cidadao" | "voluntario" | "tecnico" | "gestor";
+export type Perfil = "cidadao" | "voluntario" | "tecnico" | "gestor" | "agente";
+
+/** Primeira tela de cada perfil do painel. */
+export const INICIO_POR_PERFIL: Partial<Record<Perfil, string>> = { tecnico: "/fila", gestor: "/gestao", agente: "/receber" };
+
+export const NOME_PERFIL: Partial<Record<Perfil, string>> = { tecnico: "Técnica do CRAS", gestor: "Gestão", agente: "Agente do ponto de coleta" };
 
 export interface UsuarioSessao {
   id: string;
@@ -39,14 +46,21 @@ export class ErroApi extends Error {
 
 export async function api<T = unknown>(caminho: string, opcoes: RequestInit = {}): Promise<T> {
   const sessao = lerSessao();
-  const resposta = await fetch(`${API_URL}${caminho}`, {
-    ...opcoes,
-    headers: {
-      "content-type": "application/json",
-      ...(sessao ? { authorization: `Bearer ${sessao.token}` } : {}),
-      ...opcoes.headers,
-    },
-  });
+  let resposta: Response;
+  try {
+    resposta = await fetch(`${API_URL}${caminho}`, {
+      ...opcoes,
+      headers: {
+        // Só com corpo: o Fastify recusa JSON vazio (ex.: DELETE sem corpo)
+        ...(opcoes.body ? { "content-type": "application/json" } : {}),
+        ...(sessao ? { authorization: `Bearer ${sessao.token}` } : {}),
+        ...opcoes.headers,
+      },
+    });
+  } catch {
+    // "Failed to fetch": API fora do ar, sem rede ou bloqueio do navegador (CORS)
+    throw new ErroApi(0, "Não foi possível falar com a API do ELO. Confira se ela está no ar e tente de novo.");
+  }
   if (resposta.status === 401 && sessao) {
     sair();
     throw new ErroApi(401, "Sessão expirada");
@@ -73,4 +87,16 @@ export function assinarEventos(caminho: string, aoReceber: (tipo: string, dados:
     fonte.addEventListener(tipo, (e) => aoReceber(tipo, JSON.parse((e as MessageEvent).data)));
   }
   return () => fonte.close();
+}
+
+let configCache: Promise<{ modo_demo: boolean }> | null = null;
+
+/** Modo demonstração da API (contas de teste e avisos). Em produção (MODO_DEMO=false) é false. */
+export function useModoDemo(): boolean {
+  const [demo, setDemo] = useState(false);
+  useEffect(() => {
+    configCache ??= fetch(`${API_URL}/config`).then((r) => r.json()).catch(() => ({ modo_demo: false }));
+    configCache.then((c) => setDemo(c.modo_demo === true));
+  }, []);
+  return demo;
 }

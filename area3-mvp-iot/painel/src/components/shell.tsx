@@ -4,11 +4,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
-import { lerSessao, sair, type UsuarioSessao } from "@/lib/api";
+import { lerSessao, NOME_PERFIL, sair, useModoDemo, type UsuarioSessao } from "@/lib/api";
 
 const MENU = [
+  { href: "/receber", rotulo: "Receber doação", icone: "📦", perfis: ["agente", "tecnico", "gestor"] },
   { href: "/fila", rotulo: "Fila do CRAS", icone: "📋", perfis: ["tecnico"] },
   { href: "/gestao", rotulo: "Gestão da rede", icone: "📊", perfis: ["gestor", "tecnico"] },
+  { href: "/locais", rotulo: "Locais da rede", icone: "📍", perfis: ["gestor", "tecnico"] },
+  { href: "/equipe", rotulo: "Equipe", icone: "👥", perfis: ["gestor"] },
 ];
 
 /** Layout autenticado do painel: cabeçalho, navegação e proteção de rota por perfil. */
@@ -16,6 +19,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const [usuario, setUsuario] = useState<UsuarioSessao | null>(null);
   const router = useRouter();
   const caminho = usePathname();
+  const modoDemo = useModoDemo();
 
   useEffect(() => {
     const s = lerSessao();
@@ -53,7 +57,7 @@ export function Shell({ children }: { children: ReactNode }) {
           <div className="flex items-center gap-3">
             <div className="text-right">
               <p className="font-bold leading-tight">{usuario.nome}</p>
-              <p className="text-sm text-texto-2">{usuario.perfil === "tecnico" ? "Técnica do CRAS" : "Gestão"}</p>
+              <p className="text-sm text-texto-2">{NOME_PERFIL[usuario.perfil] ?? ""}</p>
             </div>
             <button onClick={sair} className="min-h-12 rounded-full border-2 border-borda px-4 font-bold text-brand-900 hover:border-brand-700">
               Sair
@@ -65,7 +69,7 @@ export function Shell({ children }: { children: ReactNode }) {
         {children}
       </main>
       <footer className="mx-auto max-w-7xl px-4 pb-8 text-sm text-texto-2">
-        ELO · Dados fictícios de demonstração · Nenhum dado pessoal é exibido no módulo de gestão.
+        ELO{modoDemo ? " · Dados fictícios de demonstração" : ""} · Nenhum dado pessoal é exibido no módulo de gestão.
       </footer>
     </div>
   );

@@ -1,7 +1,13 @@
 // Testes de interface e acessibilidade do app ELO (guidelines nativas do Flutter).
+import 'package:elo_app/api.dart';
+import 'package:elo_app/localizacao.dart';
 import 'package:elo_app/tema.dart';
 import 'package:elo_app/telas/boas_vindas.dart';
-import 'package:elo_app/telas/mapa.dart';
+import 'package:elo_app/geo.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:elo_app/telas/perfil.dart';
+import 'package:elo_app/telas/documento_legal.dart';
+import 'package:elo_app/textos_legais.dart';
 import 'package:elo_app/widgets/comum.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -59,6 +65,35 @@ void main() {
     semantica.dispose();
   });
 
+  testWidgets('verificação da conta: selo só com duas etapas ativa; SMS fora; o resto "em breve"', (tester) async {
+    final semantica = tester.ensureSemantics();
+    var toques = 0;
+    Widget secao(Map<String, dynamic> p) => _app(Scaffold(body: SingleChildScrollView(child: SecaoVerificacao(perfil: p, aoAlternarDoisFatores: () => toques++))));
+
+    await tester.pumpWidget(secao({'email_confirmado': true, 'dois_fatores': false, 'verificado': false}));
+    expect(find.text('Verificação em duas etapas por e-mail'), findsOneWidget);
+    expect(find.text('Ativar'), findsOneWidget);
+    expect(find.text('Em breve'), findsNWidgets(2)); // aplicativo autenticador e gov.br (a foto já existe, no topo do Perfil)
+    expect(find.textContaining('SMS'), findsNothing);
+    await tester.tap(find.text('Ativar'));
+    expect(toques, 1);
+    await expectLater(tester, meetsGuideline(textContrastGuideline));
+    await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+
+    await tester.pumpWidget(secao({'email_confirmado': true, 'dois_fatores': true, 'verificado': true}));
+    expect(find.text('Desativar'), findsOneWidget);
+    expect(find.text('Seu perfil é verificado.'), findsOneWidget);
+    semantica.dispose();
+  });
+
+  testWidgets('selo de perfil verificado tem rótulo para leitor de tela', (tester) async {
+    final semantica = tester.ensureSemantics();
+    await tester.pumpWidget(_app(const Scaffold(body: Center(child: SeloVerificado()))));
+    expect(find.bySemanticsLabel('Perfil verificado'), findsOneWidget);
+    await expectLater(tester, meetsGuideline(textContrastGuideline));
+    semantica.dispose();
+  });
+
   testWidgets('cartão do mural é lido como um bloco, sem endereço nem nome', (tester) async {
     final semantica = tester.ensureSemantics();
     await tester.pumpWidget(_app(Scaffold(body: Padding(padding: const EdgeInsets.all(16), child: CartaoPedido(pedido: _pedido, onTap: () {})))));
@@ -77,9 +112,68 @@ void main() {
     expect(texto.style?.color, EloCores.brand900);
   });
 
-  test('mapa descreve distância e direção por extenso', () {
-    expect(distancia(const Offset(0.5, 0.5), const Offset(0.5, 0.1)), contains('ao norte'));
-    expect(distancia(const Offset(0.5, 0.5), const Offset(0.9, 0.5)), contains('a leste'));
-    expect(distancia(const Offset(0.5, 0.5), const Offset(0.5, 0.5)), 'perto de você');
+  test('lista de pedidos monta os filtros do mural', () {
+    expect(Api.caminhoMural(), '/mural');
+    expect(Api.caminhoMural(brasil: true), '/mural?abrangencia=brasil');
+    expect(Api.caminhoMural(brasil: true, perto: (latitude: -22.89, longitude: -47.05)), '/mural?abrangencia=brasil&lat=-22.89&lon=-47.05');
+    expect(Api.caminhoMural(brasil: true, uf: 'BA'), '/mural?uf=BA'); // estado escolhido vale mais
+    expect(Api.caminhoMural(uf: 'BA', ordem: 'aguardando'), '/mural?uf=BA&ordem=aguardando');
+    expect(Api.caminhoMural(municipio: 'abc', categoria: 'roupa', pagina: 2), '/mural?municipio=abc&categoria=roupa&pagina=2');
+    expect(Api.caminhoMural(pagina: 0), '/mural');
+    // Início: só pedidos no raio, e o raio só vale com a localização
+    expect(Api.caminhoMural(brasil: true, perto: (latitude: -22.89, longitude: -47.05), raioKm: 30),
+        '/mural?abrangencia=brasil&lat=-22.89&lon=-47.05&raio_km=30');
+    expect(Api.caminhoMural(raioKm: 30), '/mural');
+  });
+
+  testWidgets('aceite dos termos: caixa marca e desmarca; os documentos têm seções', (tester) async {
+    var aceito = false;
+    await tester.pumpWidget(MaterialApp(
+      theme: temaElo(fontesGoogle: false),
+      home: Scaffold(body: StatefulBuilder(builder: (_, set) => CaixaAceite(aceito: aceito, aoMudar: (v) => set(() => aceito = v)))),
+    ));
+    expect(find.textContaining('Termos de uso', findRichText: true), findsOneWidget);
+    await tester.tap(find.byType(Checkbox));
+    await tester.pump();
+    expect(aceito, isTrue);
+
+    await tester.pumpWidget(MaterialApp(theme: temaElo(fontesGoogle: false), home: const DocumentoLegal(titulo: 'Política de privacidade', secoes: politicaPrivacidade)));
+    expect(find.text('1. Quem somos'), findsOneWidget);
+    expect(find.textContaining('LGPD'), findsWidgets);
+    expect(termosUso.any((s) => s.titulo == 'Excluir a conta'), isTrue);
+    expect(politicaPrivacidade.any((s) => s.paragrafos.any((p) => p.contains('Excluir minha conta'))), isTrue);
+  });
+
+  test('distância do pedido em texto', () {
+    expect(distanciaTexto(0.04), 'a 100 m');
+    expect(distanciaTexto(0.8), 'a 800 m');
+    expect(distanciaTexto(2.44), 'a 2,4 km');
+    expect(distanciaTexto(35.4), 'a 35 km');
+  });
+
+  testWidgets('cartão mostra a cidade só na lista de todos os pedidos', (tester) async {
+    final p = {..._pedido, 'municipio': 'Salvador', 'uf': 'BA'};
+    await tester.pumpWidget(_app(Scaffold(body: CartaoPedido(pedido: p, onTap: () {}))));
+    expect(find.textContaining('Salvador'), findsNothing);
+    await tester.pumpWidget(_app(Scaffold(body: CartaoPedido(pedido: p, onTap: () {}, mostrarCidade: true))));
+    expect(find.text('Bairro Vila Nova · Salvador - BA'), findsOneWidget);
+  });
+
+  test('mapa descreve distância e direção por extenso (latitude e longitude reais)', () {
+    const se = LatLng(-23.5505, -46.6333); // Praça da Sé, São Paulo
+    expect(distanciaPorExtenso(se, const LatLng(-23.5300, -46.6333)), '2,3 km ao norte');
+    expect(distanciaPorExtenso(se, const LatLng(-23.5505, -46.6290)), contains('a leste'));
+    expect(distanciaPorExtenso(se, const LatLng(-23.5505, -46.6290)), endsWith('m a leste'));
+    expect(distanciaPorExtenso(se, se), 'perto de você');
+    expect(distanciaKm(se, const LatLng(-22.9068, -43.1729)), closeTo(357, 5)); // São Paulo → Rio
+  });
+
+  test('área do mapa vai para a API limitada ao Brasil', () {
+    expect(caixaApi(oeste: -46.7, sul: -23.6, leste: -46.6, norte: -23.5), '-46.70000,-23.60000,-46.60000,-23.50000');
+    expect(caixaApi(oeste: -180, sul: -90, leste: 180, norte: 90), '-74.90000,-34.90000,-30.10000,5.90000');
+  });
+
+  test('localização para ordenar vai arredondada a ~1 km', () {
+    expect(Localizacao.aproximada((latitude: -22.87654, longitude: -47.12345)), (latitude: -22.88, longitude: -47.12));
   });
 }

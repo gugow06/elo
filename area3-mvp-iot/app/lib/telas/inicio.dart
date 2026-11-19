@@ -1,9 +1,11 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../api.dart';
+import '../localizacao.dart';
 import '../tema.dart';
 import '../widgets/comum.dart';
 import 'pedido_detalhe.dart';
+import 'todos_pedidos.dart';
 import 'shell.dart';
 
 /// Tela 2 do mockup: saudação, busca, 4 atalhos e pedidos próximos.
@@ -19,6 +21,11 @@ class _InicioState extends State<Inicio> {
   late Future<List<dynamic>> _pedidos;
   int _naoLidas = 0;
   String _busca = '';
+  /// Pedidos pela localização do aparelho (true) ou pelo bairro da conta (false).
+  bool _pelaLocalizacao = false;
+
+  /// Raio dos "pedidos próximos" quando há localização.
+  static const raioKm = 30;
 
   @override
   void initState() {
@@ -27,11 +34,23 @@ class _InicioState extends State<Inicio> {
   }
 
   void _carregar() {
-    _pedidos = Api.i.mural();
+    _pedidos = _buscarPedidos();
     Api.i.notificacoes().then((n) {
       if (mounted) setState(() => _naoLidas = n.where((x) => x['lida'] != true).length);
     }).catchError((_) {});
     setState(() {});
+  }
+
+  /// Com a localização do aparelho (a pessoa autoriza): pedidos até [raioKm] km, os mais perto primeiro.
+  /// Sem ela: os do município da conta, o bairro primeiro.
+  Future<List<dynamic>> _buscarPedidos() async {
+    final aqui = await Localizacao.i.obter(pedir: true);
+    if (aqui != null) {
+      _pelaLocalizacao = true;
+      return Api.i.mural(brasil: true, perto: Localizacao.aproximada(aqui), raioKm: raioKm);
+    }
+    _pelaLocalizacao = false;
+    return Api.i.mural();
   }
 
   String get _saudacao {
@@ -102,7 +121,7 @@ class _InicioState extends State<Inicio> {
           const SizedBox(height: 24),
           Row(children: [
             Expanded(child: Text('Pedidos próximos de você', style: t.titleMedium, semanticsLabel: 'Pedidos próximos de você')),
-            TextButton(onPressed: widget.aoAbrirMapa, child: const Text('Ver todos  ›', style: TextStyle(color: EloCores.brand700, fontWeight: FontWeight.w800))),
+            TextButton(onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TodosPedidos())), child: const Text('Ver todos  ›', style: TextStyle(color: EloCores.brand700, fontWeight: FontWeight.w800))),
           ]),
           const SizedBox(height: 8),
           FutureBuilder<List<dynamic>>(
@@ -115,7 +134,10 @@ class _InicioState extends State<Inicio> {
                   .where((p) => _busca.isEmpty || '${p['titulo']} ${p['bairro']} ${categorias[p['categoria']]}'.toLowerCase().contains(_busca))
                   .take(5)
                   .toList();
-              if (lista.isEmpty) return Text('Nenhum pedido aberto no seu bairro agora. 💚', style: t.bodyLarge);
+              if (lista.isEmpty) {
+                return Text(_pelaLocalizacao ? 'Nenhum pedido aberto até $raioKm km de você agora. 💚' : 'Nenhum pedido aberto no seu bairro agora. 💚',
+                    style: t.bodyLarge);
+              }
               return Column(children: [
                 for (final p in lista)
                   Padding(

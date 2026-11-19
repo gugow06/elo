@@ -87,22 +87,25 @@ class _EntrarState extends State<Entrar> {
               onPressed: () => Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const CriarConta())),
               child: const Text('Ainda não tem conta? Criar uma conta'),
             ),
-            const SizedBox(height: 28),
-            Text('Contas de demonstração (fictícias)', style: t.titleMedium),
-            const SizedBox(height: 8),
-            for (final (rotulo, email) in _contasDemo)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Cartao(
-                  onTap: () => setState(() => _email.text = email),
-                  rotulo: 'Usar a conta $rotulo',
-                  child: Row(children: [
-                    const Icon(Icons.person_outline, color: EloCores.brand700),
-                    const SizedBox(width: 12),
-                    Expanded(child: Text(rotulo, style: const TextStyle(fontWeight: FontWeight.w700))),
-                  ]),
+            // Só no modo demonstração: em produção não existem contas de teste
+            if (Api.i.modoDemo) ...[
+              const SizedBox(height: 28),
+              Text('Contas de demonstração (fictícias)', style: t.titleMedium),
+              const SizedBox(height: 8),
+              for (final (rotulo, email) in _contasDemo)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Cartao(
+                    onTap: () => setState(() => _email.text = email),
+                    rotulo: 'Usar a conta $rotulo',
+                    child: Row(children: [
+                      const Icon(Icons.person_outline, color: EloCores.brand700),
+                      const SizedBox(width: 12),
+                      Expanded(child: Text(rotulo, style: const TextStyle(fontWeight: FontWeight.w700))),
+                    ]),
+                  ),
                 ),
-              ),
+            ],
           ] else ...[
             Text('Digite o código de 6 dígitos', style: t.titleLarge),
             const SizedBox(height: 8),

@@ -84,24 +84,30 @@ class Cartao extends StatelessWidget {
 
 /// Cartão de pedido do mural: categoria, bairro, título e situação. Nunca mostra endereço ou nome.
 class CartaoPedido extends StatelessWidget {
-  const CartaoPedido({super.key, required this.pedido, this.onTap});
+  const CartaoPedido({super.key, required this.pedido, this.onTap, this.mostrarCidade = false});
   final Map<String, dynamic> pedido;
+  final bool mostrarCidade;
   final VoidCallback? onTap;
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final cat = pedido['categoria'] as String;
     final bairro = pedido['bairro'] as String;
+    // Na lista de todos os pedidos, que pode misturar cidades, mostra também cidade e UF
+    final onde = mostrarCidade && pedido['municipio'] != null ? 'Bairro $bairro · ${pedido['municipio']} - ${pedido['uf']}' : 'Bairro $bairro';
+    // Distância até o bairro do pedido, quando a lista veio pela localização do aparelho
+    final km = pedido['distancia_km'] as num?;
+    final quando = km == null ? tempoRelativo(pedido['criado_em']) : '${distanciaTexto(km)} · ${tempoRelativo(pedido['criado_em'])}';
     return Cartao(
       onTap: onTap,
-      rotulo: '${categorias[cat]}. ${pedido['titulo']}. Bairro $bairro. Publicado ${tempoRelativo(pedido['criado_em'])}. Aguardando voluntário.',
+      rotulo: '${categorias[cat]}. ${pedido['titulo']}. $onde.${km == null ? '' : ' ${distanciaTexto(km)} de você.'} Publicado ${tempoRelativo(pedido['criado_em'])}. Aguardando voluntário.',
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           TagCategoria(cat),
           const Spacer(),
           const Icon(Icons.location_on_outlined, size: 18, color: EloCores.texto2),
           const SizedBox(width: 4),
-          Flexible(child: Text('Bairro $bairro', style: t.bodyMedium, overflow: TextOverflow.ellipsis)),
+          Flexible(child: Text(onde, style: t.bodyMedium, overflow: TextOverflow.ellipsis)),
         ]),
         const SizedBox(height: 10),
         Text(pedido['titulo'], style: t.titleMedium),
@@ -114,11 +120,18 @@ class CartaoPedido extends StatelessWidget {
         Row(children: [
           const Selo('Aguardando voluntário'),
           const Spacer(),
-          Text(tempoRelativo(pedido['criado_em']), style: t.bodyMedium?.copyWith(fontSize: 13)),
+          Text(quando, style: t.bodyMedium?.copyWith(fontSize: 13)),
         ]),
       ]),
     );
   }
+}
+
+/// "a 800 m", "a 2,4 km", "a 35 km" (distância aproximada até o bairro do pedido).
+String distanciaTexto(num km) {
+  if (km < 1) return 'a ${((km * 1000) / 100).round().clamp(1, 9) * 100} m';
+  if (km < 10) return 'a ${km.toStringAsFixed(1).replaceAll('.', ',')} km';
+  return 'a ${km.round()} km';
 }
 
 void avisar(BuildContext context, String mensagem, {bool erro = false}) {

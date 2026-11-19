@@ -1,19 +1,23 @@
 /*
  * ELO — Ponto de Coleta Inteligente (Arduino Uno / Tinkercad)
  *
- * Sensores:
- *   - Peso (balança): sensor de força FSR no A0 (no Tinkercad representa a célula de carga)
- *   - Temperatura: TMP36 no A1
- * Interface:
- *   - Teclado 4x4 nos pinos 2..9: voluntário digita o protocolo de 6 dígitos e confirma com '#'
- *   - LCD 16x2 I2C (A4/A5): mensagens para o voluntário
- *   - LED (pino 10) e buzzer (pino 11): alerta de temperatura alta ou estoque baixo
+ * Gerado a partir de ../wokwi/sketch.ino (mesma lógica), com as peças que o Tinkercad tem:
+ *   - Peso (balança): sensor de força FSR no A0 (no hardware real, célula de carga + HX711)
+ *   - Temperatura: TMP36 no A1 (no Wokwi, sensor NTC)
+ *   - LCD 16x2 I2C (Adafruit_LiquidCrystal, A4/A5)
+ *   - Teclado 4x4 nos pinos 2..9, LED no 10, buzzer no 11
  *
- * Saída: cada evento é impresso no Serial como uma linha JSON, no MESMO formato que a API
- * recebe em POST /iot/pontos/{id}/eventos. Com hardware real, ponte_serial.py repassa
- * essas linhas para a API. No Tinkercad (sem rede), o simulador Python faz esse papel.
+ * Fluxos no teclado:
+ *   - Entrega (padrão): protocolo de 6 dígitos + '#', depois a doação na balança (peso sobe e fica
+ *     estável por 3 s) → evento "entrega_depositada".
+ *   - Retirada: 'B', protocolo + '#', código de retirada (4 dígitos, só de quem pediu) + '#'
+ *     → evento "retirada". A API confere o código e marca o que estava no ponto como recebido
+ *     (o código aparece como **** no visor).
+ *   - '*' cancela e volta ao início.
+ * As teclas também podem vir pelo Serial Monitor.
  *
- * Nenhum dado pessoal é captado: apenas peso, temperatura e o número do protocolo.
+ * Saída: cada evento é uma linha JSON no Serial, no MESMO formato que a API recebe em
+ * POST /iot/pontos/{id}/eventos. Nenhum dado pessoal é captado.
  */
 #include <Keypad.h>
 #include <Adafruit_LiquidCrystal.h>
@@ -29,7 +33,7 @@ const float CAPACIDADE_KG = 300.0;     // fundo de escala da balança
 const float DELTA_MINIMO_KG = 0.5;     // variação mínima para considerar depósito
 const float TEMPERATURA_MAX_C = 30.0;
 const float ESTOQUE_BAIXO_PCT = 15.0;
-const unsigned long ESTABILIZAR_MS = 3000;   // peso precisa ficar estável por 3 s
+const unsigned long ESTABILIZAR_MS = 3000;     // peso precisa ficar estável por 3 s
 const unsigned long TEMPO_DEPOSITO_MS = 60000; // sem depósito em 60 s: pendente
 const unsigned long INTERVALO_LEITURA_MS = 60000;
 
@@ -47,10 +51,11 @@ Keypad teclado = Keypad(makeKeymap(teclas), pinosLinhas, pinosColunas, LINHAS, C
 
 Adafruit_LiquidCrystal lcd(0);
 
-enum Estado { AGUARDANDO_PROTOCOLO, AGUARDANDO_DEPOSITO };
+enum Estado { AGUARDANDO_PROTOCOLO, AGUARDANDO_DEPOSITO, RETIRADA_PROTOCOLO, RETIRADA_CODIGO };
 Estado estado = AGUARDANDO_PROTOCOLO;
 
 String protocolo = "";
+String codigo = "";
 float pesoAntes = 0;
 unsigned long inicioDeposito = 0;
 unsigned long inicioEstavel = 0;
@@ -104,10 +109,34 @@ void enviarEntrega(float delta, float pesoDepois) {
   Serial.println("}");
 }
 
+/** A API confere o código e responde; aqui o visor só diz que a retirada foi enviada. */
+void enviarRetirada() {
+  float peso = lerPesoKg();
+  Serial.print("{\"tipo\":\"retirada\",\"protocolo\":\"");
+  Serial.print(protocolo);
+  Serial.print("\",\"codigo\":\"");
+  Serial.print(codigo);
+  Serial.print("\",\"delta_peso_kg\":0,\"peso_kg\":");
+  Serial.print(peso, 2);
+  Serial.println("}");
+}
+
 void reiniciar() {
   protocolo = "";
+  codigo = "";
   estado = AGUARDANDO_PROTOCOLO;
   mostrar("ELO Ponto Coleta", "Protocolo + #");
+}
+
+/** Teclado ou Serial Monitor. */
+char proximaTecla() {
+  char t = teclado.getKey();
+  if (t) return t;
+  while (Serial.available()) {
+    char c = Serial.read();
+    if ((c >= '0' && c <= '9') || c == '#' || c == '*' || (c >= 'A' && c <= 'D')) return c;
+  }
+  return 0;
 }
 
 void setup() {
@@ -130,14 +159,20 @@ void loop() {
     ultimaLeitura = agora;
   }
 
-  char tecla = teclado.getKey();
+  char tecla = proximaTecla();
+  if (tecla == '*') {
+    reiniciar();
+    return;
+  }
 
+  // ----- Entrega: protocolo + '#' -----
   if (estado == AGUARDANDO_PROTOCOLO && tecla) {
-    if (tecla >= '0' && tecla <= '9' && protocolo.length() < 6) {
+    if (tecla == 'B') {
+      estado = RETIRADA_PROTOCOLO;
+      mostrar("Retirada:", "Protocolo + #");
+    } else if (tecla >= '0' && tecla <= '9' && protocolo.length() < 6) {
       protocolo += tecla;
       mostrar("Protocolo:", protocolo);
-    } else if (tecla == '*') {
-      reiniciar();
     } else if (tecla == '#') {
       if (protocolo.length() == 6) {
         // Na versão em rede, aqui o dispositivo chama GET /iot/pontos/{id}/protocolos/{protocolo}
@@ -178,6 +213,45 @@ void loop() {
       delay(2000);
       reiniciar();
     }
-    if (tecla == '*') reiniciar();
+    return;
+  }
+
+  // ----- Retirada: 'B', protocolo + '#', código de retirada + '#' -----
+  if (estado == RETIRADA_PROTOCOLO && tecla) {
+    if (tecla >= '0' && tecla <= '9' && protocolo.length() < 6) {
+      protocolo += tecla;
+      mostrar("Ret. protocolo:", protocolo);
+    } else if (tecla == '#') {
+      if (protocolo.length() == 6) {
+        estado = RETIRADA_CODIGO;
+        mostrar("Codigo retirada", "4 digitos + #");
+      } else {
+        mostrar("Protocolo tem", "6 digitos");
+        delay(1500);
+        reiniciar();
+      }
+    }
+    return;
+  }
+
+  if (estado == RETIRADA_CODIGO && tecla) {
+    if (tecla >= '0' && tecla <= '9' && codigo.length() < 4) {
+      codigo += tecla;
+      String oculto = "";
+      for (unsigned int i = 0; i < codigo.length(); i++) oculto += '*';  // não mostra o código
+      mostrar("Codigo retirada", oculto);
+    } else if (tecla == '#') {
+      if (codigo.length() == 4) {
+        enviarRetirada();
+        mostrar("Retirada enviada", "Aguarde o agente");
+        tone(PINO_BUZZER, 1500, 150);
+        delay(2500);
+        reiniciar();
+      } else {
+        mostrar("Codigo tem", "4 digitos");
+        delay(1500);
+        reiniciar();
+      }
+    }
   }
 }

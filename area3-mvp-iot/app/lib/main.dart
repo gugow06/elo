@@ -8,6 +8,7 @@ import 'telas/shell.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Api.i.carregarSessao();
+  await Api.i.carregarConfig();
   runApp(const EloApp());
 }
 

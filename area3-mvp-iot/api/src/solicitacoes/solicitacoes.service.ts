@@ -1,6 +1,7 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Classificacao, ClassificadorModelo, triar } from '@elo/triagem';
 import { randomInt } from 'node:crypto';
+import { gerarItens, sqlItens } from '../rede/itens';
 import { Pool, PoolClient } from 'pg';
 import { auditar } from '../infra/auditoria';
 import { POOL } from '../infra/banco.module';
@@ -41,14 +42,16 @@ export class SolicitacoesService {
       const status = classificacao.faixa === 'verde' ? 'no_mural' : 'na_fila_tecnica';
       const protocolo = await this.novoProtocolo(cliente, sessao.municipioId);
 
-      const { rows } = await cliente.query<{ id: string }>(
+      const { rows } = await cliente.query<{ id: string; codigo_retirada: string }>(
         `INSERT INTO solicitacao (municipio_id, protocolo, cidadao_id, bairro_id, ponto_coleta_id, canal, faixa, categoria, status, titulo)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id, codigo_retirada`,
         [sessao.municipioId, protocolo, sessao.usuarioId, bairroId, ponto?.id ?? null, dados.canal, classificacao.faixa,
           classificacao.categoria, status, TITULO_POR_CATEGORIA[classificacao.categoria]],
       );
       const id = rows[0].id;
+      const codigoRetirada = rows[0].codigo_retirada;
       await cliente.query('INSERT INTO relato (solicitacao_id, texto) VALUES ($1,$2)', [id, dados.relato]);
+      await gerarItens(cliente, id, classificacao.categoria, TITULO_POR_CATEGORIA[classificacao.categoria]);
       await this.registrarClassificacao(cliente, id, classificacao);
       await auditar(cliente, { usuarioId: sessao.usuarioId, acao: 'abrir_solicitacao', entidade: 'solicitacao', entidadeId: id, detalhe: { canal: dados.canal } });
 
@@ -67,7 +70,8 @@ export class SolicitacoesService {
         id,
         protocolo,
         status: STATUS_PARA_CIDADAO[status],
-        mensagem: mensagemDeRecebimento(protocolo, ponto?.nome),
+        mensagem: mensagemDeRecebimento(protocolo, ponto?.nome, codigoRetirada),
+        codigo_retirada: codigoRetirada,
         ponto_coleta: ponto ? { nome: ponto.nome, endereco: ponto.endereco } : null,
       };
     } catch (erro) {
@@ -119,7 +123,7 @@ export class SolicitacoesService {
   /** Pedidos do próprio cidadão, com status em linguagem simples (sem faixa). */
   async minhas(sessao: Sessao) {
     const { rows } = await this.pool.query(
-      `SELECT s.id, s.protocolo, s.titulo, s.status, s.criado_em, p.nome AS ponto_coleta
+      `SELECT s.id, s.protocolo, s.codigo_retirada, s.titulo, s.categoria, s.status, s.criado_em, p.nome AS ponto_coleta, ${sqlItens('$1')}
        FROM solicitacao s LEFT JOIN ponto_coleta p ON p.id = s.ponto_coleta_id
        WHERE s.cidadao_id = $1 ORDER BY s.criado_em DESC`,
       [sessao.usuarioId],
