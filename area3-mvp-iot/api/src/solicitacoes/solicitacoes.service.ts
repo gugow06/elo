@@ -1,6 +1,7 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Classificacao, ClassificadorModelo, triar } from '@elo/triagem';
 import { randomInt } from 'node:crypto';
+import { gerarItens, sqlItens } from '../rede/itens';
 import { Pool, PoolClient } from 'pg';
 import { auditar } from '../infra/auditoria';
 import { POOL } from '../infra/banco.module';
@@ -49,6 +50,7 @@ export class SolicitacoesService {
       );
       const id = rows[0].id;
       await cliente.query('INSERT INTO relato (solicitacao_id, texto) VALUES ($1,$2)', [id, dados.relato]);
+      await gerarItens(cliente, id, classificacao.categoria, TITULO_POR_CATEGORIA[classificacao.categoria]);
       await this.registrarClassificacao(cliente, id, classificacao);
       await auditar(cliente, { usuarioId: sessao.usuarioId, acao: 'abrir_solicitacao', entidade: 'solicitacao', entidadeId: id, detalhe: { canal: dados.canal } });
 
@@ -119,7 +121,7 @@ export class SolicitacoesService {
   /** Pedidos do próprio cidadão, com status em linguagem simples (sem faixa). */
   async minhas(sessao: Sessao) {
     const { rows } = await this.pool.query(
-      `SELECT s.id, s.protocolo, s.titulo, s.status, s.criado_em, p.nome AS ponto_coleta
+      `SELECT s.id, s.protocolo, s.titulo, s.categoria, s.status, s.criado_em, p.nome AS ponto_coleta, ${sqlItens('$1')}
        FROM solicitacao s LEFT JOIN ponto_coleta p ON p.id = s.ponto_coleta_id
        WHERE s.cidadao_id = $1 ORDER BY s.criado_em DESC`,
       [sessao.usuarioId],

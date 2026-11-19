@@ -5,6 +5,7 @@
  */
 import { criarPool } from './conexao';
 import { importarIbge } from './importar-ibge';
+import { gerarItens } from '../src/rede/itens';
 import { sha256 } from '../src/infra/hash';
 
 /** Gera um CPF fictício com dígitos verificadores válidos a partir de 9 dígitos base. */
@@ -39,7 +40,7 @@ export async function seed(url?: string): Promise<void> {
   try {
     await c.query('BEGIN');
     await c.query(`TRUNCATE evento_auditoria, notificacao, evento_iot, entrega, oferta, classificacao, relato,
-                   solicitacao, codigo_acesso, conta_social, usuario, local_rede, ponto_coleta, bairro, municipio RESTART IDENTITY CASCADE`);
+                   oferta_item, item_solicitacao, solicitacao, codigo_acesso, conta_social, usuario, local_rede, ponto_coleta, bairro, municipio RESTART IDENTITY CASCADE`);
 
     const mun = async (nome: string, uf: string, populacao: number) =>
       (await c.query<{ id: string }>('INSERT INTO municipio (nome, uf, populacao) VALUES ($1,$2,$3) RETURNING id', [nome, uf, populacao])).rows[0].id;
@@ -97,6 +98,7 @@ export async function seed(url?: string): Promise<void> {
         [m1, protocolo, cidadao, bairro, ponto, categoria, titulo, horasAtras],
       );
       await c.query('INSERT INTO relato (solicitacao_id, texto) VALUES ($1,$2)', [rows[0].id, relato]);
+      await gerarItens(c, rows[0].id, categoria, titulo);
       await c.query(
         `INSERT INTO classificacao (solicitacao_id, faixa, categoria, confianca, origem, justificativa)
          VALUES ($1,'verde',$2,0.9,'offline','Seed de demonstração')`,
