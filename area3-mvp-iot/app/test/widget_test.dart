@@ -26,7 +26,10 @@ void main() {
     expect(find.textContaining('Facebook'), findsNothing);
   });
 
-  testWidgets('boas-vindas atende contraste, alvo de toque e rótulos', (tester) async {
+  testWidgets('boas-vindas atende contraste, alvo de toque e rótulos (celular em retrato)', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2340);
+    tester.view.devicePixelRatio = 2.625;
+    addTearDown(tester.view.reset);
     final semantica = tester.ensureSemantics();
     await tester.pumpWidget(_app(const BoasVindas()));
     await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
