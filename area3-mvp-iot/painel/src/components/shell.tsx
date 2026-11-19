@@ -10,6 +10,7 @@ const MENU = [
   { href: "/fila", rotulo: "Fila do CRAS", icone: "📋", perfis: ["tecnico"] },
   { href: "/gestao", rotulo: "Gestão da rede", icone: "📊", perfis: ["gestor", "tecnico"] },
   { href: "/locais", rotulo: "Locais da rede", icone: "📍", perfis: ["gestor", "tecnico"] },
+  { href: "/equipe", rotulo: "Equipe", icone: "👥", perfis: ["gestor"] },
 ];
 
 /** Layout autenticado do painel: cabeçalho, navegação e proteção de rota por perfil. */
