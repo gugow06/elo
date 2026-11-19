@@ -1,0 +1,3 @@
+# Bibliotecas do Ponto de Coleta no Wokwi (uma por linha)
+Keypad
+LiquidCrystal I2C

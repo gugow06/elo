@@ -25,8 +25,13 @@ Ligação dos sensores analógicos:
 2. Adicione: Arduino Uno R3, Keypad 4×4, LCD 16×2 (I2C), Force Sensor (FSR), Temperature Sensor (TMP36), LED, Piezo, resistores de 10 kΩ e 220 Ω.
 3. Ligue conforme a tabela acima.
 4. Em **Code** → **Text**, cole o conteúdo de [`ponto-coleta/ponto_coleta.ino`](ponto-coleta/ponto_coleta.ino).
-5. **Start Simulation**. Abra o **Serial Monitor**, digite um protocolo de 6 dígitos + `#` e aumente a força no FSR: depois de 3 s estável, o LCD mostra "Entrega OK!" e o Serial imprime o evento `entrega_depositada` em JSON.
-6. Aqueça o TMP36 acima de 30 °C: o LED acende e o buzzer toca.
+5. **Start Simulation**. Digite um protocolo de 6 dígitos + `#` no teclado (ou no **Serial Monitor**) e aumente a força no FSR: depois de 3 s estável, o LCD mostra "Entrega OK!" e o Serial imprime o evento `entrega_depositada` em JSON.
+6. **Retirada:** `B`, o protocolo + `#` e o código de retirada (4 números) + `#`. O LCD mostra o código como `****` e o Serial imprime o evento `retirada`.
+7. Aqueça o TMP36 acima de 30 °C: o LED acende e o buzzer toca.
+
+## Como abrir no Wokwi
+
+Mesma lógica, com as peças que o Wokwi tem (potenciômetro como balança, sensor NTC como temperatura): veja [`wokwi/README.md`](wokwi/README.md). O projeto já vem montado (`diagram.json`) e tem teste automático pelo Wokwi CLI. O sketch do Tinkercad é gerado a partir do sketch do Wokwi (`python iot/wokwi/gerar_tinkercad.py`), para os dois não se separarem.
 
 Para a entrega: print do circuito e o link público da simulação vão no PDF.
 

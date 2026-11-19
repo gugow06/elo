@@ -1,0 +1,6 @@
+# Wokwi CLI / extensão do VS Code: firmware compilado com
+#   arduino-cli compile --fqbn arduino:avr:uno --output-dir build sketch
+[wokwi]
+version = 1
+firmware = 'build/sketch.ino.hex'
+elf = 'build/sketch.ino.elf'

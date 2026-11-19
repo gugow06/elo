@@ -1,0 +1,24 @@
+# Teste automático no Wokwi CLI: entrega e retirada no Ponto de Coleta.
+#   wokwi-cli . --scenario cenario-entrega.yaml --timeout 30000
+# Precisa de WOKWI_CLI_TOKEN (conta do Wokwi). As teclas vão pelo Serial, porque o teclado
+# membrana não tem controle de automação no Wokwi; o sketch aceita as duas formas.
+name: 'ELO: entrega e retirada no Ponto de Coleta'
+version: 1
+author: 'ELO'
+steps:
+  # Liga: leitura inicial dos sensores
+  - wait-serial: '"tipo":"leitura_sensor"'
+
+  # Entrega: protocolo + '#', depois o peso sobe e fica estável por 3 s
+  - write-serial: '204815#'
+  - delay: 500ms
+  - set-control:
+      part-id: balanca
+      name: position
+      value: 0.6
+  - wait-serial: '"tipo":"entrega_depositada","protocolo":"204815"'
+
+  # Retirada: 'B', protocolo + '#', código de retirada + '#'
+  - delay: 3000ms
+  - write-serial: 'B204815#4821#'
+  - wait-serial: '"tipo":"retirada","protocolo":"204815","codigo":"4821"'
