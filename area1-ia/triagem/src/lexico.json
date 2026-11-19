@@ -1,0 +1,61 @@
+{
+  "versao": "2026-11-19.2",
+  "descricao": "Regras determinísticas de faixa vermelha (RT-03). Avaliadas sobre o texto normalizado (minúsculas, sem acento), ANTES de qualquer modelo. Qualquer acerto força VERMELHA.",
+  "regras": [
+    {
+      "id": "violencia_fisica",
+      "motivo": "Indício de violência física",
+      "padrao": "\\b(bate|bateu|batendo|batia|me bater|apanh\\w*|agred\\w*|agress\\w*|espanc\\w*|violen\\w*|socos?|chutes?|machucou|machucando)\\b"
+    },
+    {
+      "id": "violencia_sexual",
+      "motivo": "Indício de violência ou abuso sexual",
+      "padrao": "\\b(abus\\w*|estupr\\w*|assedi\\w*|molest\\w*|tocou em mim|me forc\\w*)\\b"
+    },
+    {
+      "id": "ameaca_arma",
+      "motivo": "Ameaça ou menção a arma",
+      "padrao": "\\b(ameac\\w*|arma|armas|revolver|pistola|faca|facada|tiros?|matar voce|vai me matar)\\b"
+    },
+    {
+      "id": "violencia_domestica",
+      "motivo": "Indício de violência doméstica",
+      "padrao": "\\b(medida protetiva|lei maria da penha|maria da penha)\\b|\\b(marido|companheiro|namorado|ex)\\b.{0,40}\\b(bate|agride|ameaca|prende|nao deixa (eu )?sair|nao me deixa sair|me tranca)\\b"
+    },
+    {
+      "id": "risco_suicidio",
+      "motivo": "Risco à vida / saúde mental",
+      "padrao": "\\b(suicid\\w*|me matar|tirar minha (propria )?vida|nao quero (mais )?viver|acabar com (tudo|a minha vida)|quero morrer|sem vontade de viver)\\b"
+    },
+    {
+      "id": "drogas",
+      "motivo": "Menção a drogas",
+      "padrao": "\\b(drogas?|crack|cocaina|traficantes?|trafico|usuario de droga)\\b"
+    },
+    {
+      "id": "trabalho_infantil",
+      "motivo": "Indício de trabalho infantil",
+      "padrao": "\\btrabalho infantil\\b|\\b(crianca|criancas|menino|menina|meninos|meninas|garoto|garota|menor|menores|filho|filha|filhos)\\b.{0,30}\\b(trabalhando|trabalha vendendo|trabalha na rua|vendendo no farol|pedindo no farol)\\b"
+    },
+    {
+      "id": "crianca_em_risco",
+      "motivo": "Criança ou adolescente em risco",
+      "padrao": "\\b(crianca|criancas|menino|menina|meninos|meninas|garoto|garota|bebe|bebes|menor|menores|adolescente|filho|filha|filhos|filhas|neto|neta)\\b.{0,40}\\b(sozinh\\w*|abandon\\w*|sem comer|passando fome|machucad\\w*|em risco|trancad\\w*|na rua)\\b"
+    },
+    {
+      "id": "idoso_em_risco",
+      "motivo": "Pessoa idosa em risco",
+      "padrao": "\\b(idos[oa]s?|vo|avo|avos|vovo|minha mae de \\d{2} anos|meu pai de \\d{2} anos)\\b.{0,40}\\b(abandon\\w*|sem comer|caid[oa]|caiu|machucad\\w*|trancad\\w*|maltrat\\w*|largad[oa])\\b"
+    },
+    {
+      "id": "fome_aguda",
+      "motivo": "Fome aguda",
+      "padrao": "\\b(\\d+|dois|tres|varios) dias sem comer\\b|\\bsem comer (ha|desde|faz) \\w+|\\bpassando fome\\b|\\bninguem (aqui )?come (desde|ha)\\b"
+    },
+    {
+      "id": "situacao_de_rua",
+      "motivo": "Situação de rua ou perda de moradia",
+      "padrao": "\\b(moro na rua|morando na rua|dormindo na rua|durmo na rua|situacao de rua|sem onde morar|sem ter onde morar|fui despejad\\w*|despejo)\\b"
+    }
+  ]
+}
