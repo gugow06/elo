@@ -9,7 +9,7 @@ import { POOL } from '../infra/banco.module';
 import { EventosService } from '../infra/eventos.service';
 import { notificar } from '../infra/notificacoes';
 import { STATUS_PARA_CIDADAO } from '../solicitacoes/textos';
-import { CATEGORIAS_INTEIRAS, sqlItens } from './itens';
+import { CATEGORIAS_INTEIRAS, SQL_VISIVEL, sqlItens } from './itens';
 import { validar } from '../infra/validacao';
 
 const FiltroMural = z.object({
@@ -55,7 +55,7 @@ export class RedeController {
     const f = validar(FiltroMural, query);
     const municipio = f.municipio ?? (f.uf ? null : sessao.municipioId);
     const { rows } = await this.pool.query(
-      `SELECT s.id, s.titulo, s.categoria, s.criado_em,
+      `SELECT s.id, s.titulo, s.categoria, s.criado_em, s.status,
               b.nome AS bairro, b.slug AS bairro_slug, m.nome AS municipio, m.uf,
               p.nome AS ponto_coleta, p.endereco AS ponto_coleta_endereco,
               round(extract(epoch FROM now() - s.criado_em) / 3600, 1) AS horas_no_mural, ${sqlItens('$4')}
@@ -63,7 +63,7 @@ export class RedeController {
        JOIN bairro b ON b.id = s.bairro_id
        JOIN municipio m ON m.id = s.municipio_id
        LEFT JOIN ponto_coleta p ON p.id = s.ponto_coleta_id
-       WHERE s.status = 'no_mural' AND s.faixa = 'verde'
+       WHERE ${SQL_VISIVEL}
          AND ($1::uuid IS NULL OR s.municipio_id = $1)
          AND ($5::text IS NULL OR m.uf = $5)
          AND ($2::text IS NULL OR b.slug = $2)
@@ -83,7 +83,7 @@ export class RedeController {
     const { rows } = await this.pool.query(
       `SELECT b.nome AS bairro, b.slug, count(s.id)::int AS pedidos
        FROM bairro b
-       LEFT JOIN solicitacao s ON s.bairro_id = b.id AND s.status = 'no_mural' AND s.faixa = 'verde'
+       LEFT JOIN solicitacao s ON s.bairro_id = b.id AND ${SQL_VISIVEL}
        WHERE b.municipio_id = $1
        GROUP BY b.nome, b.slug ORDER BY pedidos DESC, b.nome`,
       [sessao.municipioId],
@@ -94,7 +94,8 @@ export class RedeController {
   /**
    * Ajudar com um pedido (RF-403), menos o próprio. Oferta por item (D3): a pessoa escolhe os itens
    * que vai levar; sem escolha, leva todos os que estão abertos. Móvel: uma pessoa leva tudo.
-   * O pedido sai do mural quando todos os itens têm alguém levando.
+   * Com todos os itens com alguém levando, o pedido fica em atendimento, mas continua visível até
+   * quem pediu encerrar.
    */
   @Post('mural/:id/ofertas')
   @Perfis('voluntario', 'cidadao')
@@ -106,7 +107,7 @@ export class RedeController {
       const { rows } = await cliente.query<{ id: string; protocolo: string; cidadao_id: string; municipio_id: string; titulo: string; categoria: string; ponto: string | null; endereco: string | null }>(
         `SELECT s.id, s.protocolo, s.cidadao_id, s.municipio_id, s.titulo, s.categoria, p.nome AS ponto, p.endereco
          FROM solicitacao s LEFT JOIN ponto_coleta p ON p.id = s.ponto_coleta_id
-         WHERE s.id = $1 AND s.status = 'no_mural' AND s.faixa = 'verde'
+         WHERE s.id = $1 AND ${SQL_VISIVEL}
          FOR UPDATE OF s`,
         [id],
       );
@@ -181,26 +182,39 @@ export class RedeController {
   async minhasOfertas(@SessaoAtual() sessao: Sessao) {
     const { rows } = await this.pool.query(
       `SELECT o.id AS oferta_id, s.id AS solicitacao_id, s.protocolo, s.titulo, s.status, s.criado_em, o.criado_em AS assumido_em,
-              b.nome AS bairro, p.nome AS ponto_coleta, p.endereco AS ponto_coleta_endereco,
+              b.nome AS bairro, m.nome AS municipio, m.uf, p.nome AS ponto_coleta, p.endereco AS ponto_coleta_endereco,
+              l.horario AS ponto_coleta_horario, l.telefone AS ponto_coleta_telefone,
+              l.latitude::float AS ponto_coleta_latitude, l.longitude::float AS ponto_coleta_longitude,
               e.criado_em AS entregue_em, e.origem AS entrega_origem, ${sqlItens('$1')}
        FROM oferta o
        JOIN solicitacao s ON s.id = o.solicitacao_id
        JOIN bairro b ON b.id = s.bairro_id
+       JOIN municipio m ON m.id = s.municipio_id
        LEFT JOIN ponto_coleta p ON p.id = s.ponto_coleta_id
+       LEFT JOIN local_rede l ON l.ponto_coleta_id = p.id
        LEFT JOIN LATERAL (SELECT criado_em, origem FROM entrega WHERE solicitacao_id = s.id ORDER BY criado_em DESC LIMIT 1) e ON true
        WHERE o.voluntario_id = $1 AND o.ativa
        ORDER BY o.criado_em DESC`,
       [sessao.usuarioId],
     );
-    return rows.map((r) => ({
-      ...r,
-      desfecho_texto:
-        r.status === 'concluida'
-          ? 'Sua ajuda chegou! A família já retirou a doação. Obrigado.'
-          : r.status === 'entregue'
-            ? 'Sua ajuda chegou ao ponto de coleta. A família foi avisada para retirar.'
-            : 'Aguardando você levar a doação ao ponto de coleta.',
-    }));
+    return rows.map((r) => {
+      const itens = r.itens as { descricao: string; meu: boolean; status: string }[];
+      const meus = itens.filter((i) => i.meu).map((i) => i.descricao);
+      // Concluído sem entrega nem item meu recebido = quem pediu encerrou antes de a doação chegar
+      const chegou = !!r.entregue_em || itens.some((i) => i.meu && i.status === 'obtido');
+      return {
+        ...r,
+        desfecho_texto:
+          r.status === 'concluida' && chegou
+            ? 'Sua ajuda chegou! A família já retirou a doação. Obrigado.'
+            : r.status === 'concluida' || r.status === 'cancelada'
+              ? 'Quem pediu encerrou o pedido. Se você ainda não levou a doação, não precisa mais levar. Obrigado!'
+              : r.status === 'entregue'
+                ? 'Sua ajuda chegou ao ponto de coleta. A família foi avisada para retirar.'
+                : 'Aguardando você levar a doação ao ponto de coleta.',
+        instrucoes: `Leve ${meus.length ? meus.join(', ') : 'a doação'} ao ${r.ponto_coleta ?? 'ponto de coleta'}. Lá, digite o protocolo ${r.protocolo} no teclado do ponto e coloque a doação na balança.`,
+      };
+    });
   }
 
   /** Cidadão confirma que retirou a doação (RF-407). Fecha o pedido e avisa o voluntário. */
@@ -218,6 +232,47 @@ export class RedeController {
     await this.avisarQuemAjudou(id, r.rows[0].protocolo);
     this.eventos.emitir({ tipo: 'solicitacao_atualizada', municipioId: sessao.municipioId, solicitacaoId: id, protocolo: r.rows[0].protocolo });
     return { ok: true, status: STATUS_PARA_CIDADAO.concluida };
+  }
+
+  /**
+   * Quem pediu encerra o pedido ("Já consegui o que precisava"). Sai do mural e do mapa.
+   * Com alguma ajuda (alguém levando ou item recebido): concluído; sem nenhuma: cancelado.
+   * Quem estava ajudando é avisado de que não precisa mais levar.
+   */
+  @Post('solicitacoes/:id/encerrar')
+  @HttpCode(200)
+  @Perfis('cidadao', 'voluntario')
+  async encerrar(@SessaoAtual() sessao: Sessao, @Param('id') id: string) {
+    if (!z.string().uuid().safeParse(id).success) throw new NotFoundException('Pedido não encontrado.');
+    const s = await this.pool.query<{ protocolo: string; status: string; municipio_id: string; ajudou: boolean }>(
+      `SELECT s.protocolo, s.status, s.municipio_id,
+              (EXISTS (SELECT 1 FROM oferta o WHERE o.solicitacao_id = s.id AND o.ativa)
+               OR EXISTS (SELECT 1 FROM item_solicitacao i WHERE i.solicitacao_id = s.id AND i.obtido_em IS NOT NULL)) AS ajudou
+       FROM solicitacao s WHERE s.id = $1 AND s.cidadao_id = $2`,
+      [id, sessao.usuarioId],
+    );
+    const p = s.rows[0];
+    if (!p) throw new NotFoundException('Pedido não encontrado.');
+    if (!['no_mural', 'em_atendimento', 'entregue'].includes(p.status)) {
+      throw new BadRequestException('Este pedido já foi encerrado ou está com a equipe do CRAS.');
+    }
+    const status = p.ajudou ? 'concluida' : 'cancelada';
+    await this.pool.query(
+      `UPDATE solicitacao SET status = $2::status_pedido, desfecho = $3::desfecho_pedido, fechado_em = now() WHERE id = $1`,
+      [id, status, p.ajudou ? 'resolvida_rede' : 'cancelada'],
+    );
+    const ofertas = await this.pool.query<{ voluntario_id: string }>('SELECT voluntario_id FROM oferta WHERE solicitacao_id = $1 AND ativa', [id]);
+    for (const o of ofertas.rows) {
+      await notificar(this.pool, {
+        usuarioId: o.voluntario_id,
+        solicitacaoId: id,
+        tipo: 'pedido_encerrado',
+        texto: `Quem pediu encerrou o pedido ${p.protocolo}. Se você ainda não levou a doação, não precisa mais levar. Obrigado por ajudar!`,
+      });
+    }
+    await auditar(this.pool, { usuarioId: sessao.usuarioId, acao: 'encerrar_pedido', entidade: 'solicitacao', entidadeId: id, detalhe: { status } });
+    this.eventos.emitir({ tipo: 'solicitacao_atualizada', municipioId: p.municipio_id, solicitacaoId: id, protocolo: p.protocolo });
+    return { ok: true, status, status_texto: STATUS_PARA_CIDADAO[status] };
   }
 
   /**

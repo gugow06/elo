@@ -70,10 +70,12 @@ describe('pedido com itens: várias pessoas ajudando e checklist de quem pediu',
     expect(r.statusCode).toBe(409);
   });
 
-  it('quando ninguém mais precisa escolher, o pedido sai do mural', async () => {
+  it('com todos os itens com alguém levando, o pedido continua visível até quem pediu encerrar', async () => {
     const r = await ajudar(roberto);
     expect(r.json().itens).toEqual(['Óleo', 'Leite', 'Itens de higiene básica']);
-    expect(await doMural(claudia)).toBeUndefined();
+    const visto = (await doMural(claudia))!;
+    expect(visto.status).toBe('em_atendimento');
+    expect(visto.itens.every((i) => i.status !== 'aberto')).toBe(true);
     const p = await meu();
     expect(p.status).toBe('em_atendimento');
     expect(p.pessoas_ajudando).toBe(2);
@@ -118,6 +120,60 @@ describe('pedido com itens: várias pessoas ajudando e checklist de quem pediu',
     const p = cat.json().find((x: { id: string }) => x.id === movel);
     if (p.categoria !== 'movel' || p.status !== 'no_mural') return; // a triagem decide a categoria; só vale se cair em móvel no mural
     expect((await app.inject({ method: 'POST', url: `/mural/${movel}/ofertas`, headers: auth(claudia), payload: { itens: [p.itens[0].id] } })).statusCode).toBe(201);
-    expect((await app.inject({ method: 'POST', url: `/mural/${movel}/ofertas`, headers: auth(roberto), payload: {} })).statusCode).toBe(404);
+    expect((await app.inject({ method: 'POST', url: `/mural/${movel}/ofertas`, headers: auth(roberto), payload: {} })).statusCode).toBe(409);
+  });
+});
+
+describe('quem pediu encerra o pedido ("Já consegui o que precisava")', () => {
+  let app: NestFastifyApplication;
+  let ana: string;
+  let claudia: string;
+
+  beforeAll(async () => {
+    app = await criarApp();
+    ana = await entrar(app, TELEFONES.ana);
+    claudia = await entrar(app, TELEFONES.claudia);
+  });
+  afterAll(() => app.close());
+
+  const publicar = async () =>
+    (await app.inject({ method: 'POST', url: '/solicitacoes', headers: auth(ana), payload: { relato: 'Preciso de arroz e feijão para a família esta semana.' } })).json() as { id: string; protocolo: string };
+  const noMural = async (id: string) =>
+    ((await app.inject({ method: 'GET', url: '/mural', headers: auth(claudia) })).json() as { id: string }[]).some((p) => p.id === id);
+
+  it('com alguém ajudando: conclui, sai do mural e avisa quem ia levar', async () => {
+    const p = await publicar();
+    expect(await noMural(p.id)).toBe(true);
+    expect((await app.inject({ method: 'POST', url: `/mural/${p.id}/ofertas`, headers: auth(claudia), payload: {} })).statusCode).toBe(201);
+    expect(await noMural(p.id)).toBe(true); // tudo comprometido, mas ainda aparece
+
+    const r = await app.inject({ method: 'POST', url: `/solicitacoes/${p.id}/encerrar`, headers: auth(ana) });
+    expect(r.statusCode).toBe(200);
+    expect(r.json().status).toBe('concluida');
+    expect(await noMural(p.id)).toBe(false);
+
+    const avisos = (await app.inject({ method: 'GET', url: '/notificacoes', headers: auth(claudia) })).json() as { tipo: string; texto: string }[];
+    expect(avisos.some((n) => n.tipo === 'pedido_encerrado' && n.texto.includes(p.protocolo))).toBe(true);
+    const ajuda = ((await app.inject({ method: 'GET', url: '/voluntario/ofertas', headers: auth(claudia) })).json() as { solicitacao_id: string; desfecho_texto: string }[])
+      .find((o) => o.solicitacao_id === p.id)!;
+    expect(ajuda.desfecho_texto).toContain('não precisa mais levar');
+  });
+
+  it('sem ninguém ajudando: cancela; só quem pediu encerra, e uma vez só', async () => {
+    const p = await publicar();
+    expect((await app.inject({ method: 'POST', url: `/solicitacoes/${p.id}/encerrar`, headers: auth(claudia) })).statusCode).toBe(404);
+    const r = await app.inject({ method: 'POST', url: `/solicitacoes/${p.id}/encerrar`, headers: auth(ana) });
+    expect(r.json().status).toBe('cancelada');
+    expect((await app.inject({ method: 'POST', url: `/solicitacoes/${p.id}/encerrar`, headers: auth(ana) })).statusCode).toBe(400);
+  });
+
+  it('"Minhas ajudas" traz o endereço do ponto, o que levar e o protocolo de novo', async () => {
+    const p = await publicar();
+    await app.inject({ method: 'POST', url: `/mural/${p.id}/ofertas`, headers: auth(claudia), payload: {} });
+    const ajuda = ((await app.inject({ method: 'GET', url: '/voluntario/ofertas', headers: auth(claudia) })).json() as Record<string, unknown>[])
+      .find((o) => o.solicitacao_id === p.id)!;
+    expect(ajuda).toEqual(expect.objectContaining({ protocolo: p.protocolo, ponto_coleta: expect.any(String), ponto_coleta_endereco: expect.any(String), municipio: expect.any(String) }));
+    expect(ajuda.instrucoes).toContain(p.protocolo);
+    expect(ajuda.instrucoes).toContain('Arroz');
   });
 });

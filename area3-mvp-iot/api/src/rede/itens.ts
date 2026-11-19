@@ -50,5 +50,12 @@ export const SQL_ITENS = `
     ) a
   ), '[]'::json) AS ajudantes`;
 
+/**
+ * Pedido visível para quem quer ajudar (mural, "perto de você" e mapa): do momento em que entra no
+ * mural até quem pediu encerrar (concluir ou cancelar). Continua visível mesmo com todos os itens
+ * com alguém levando: quem vê sabe que o pedido existe e quantas pessoas já ajudam.
+ */
+export const SQL_VISIVEL = `s.status IN ('no_mural', 'em_atendimento', 'entregue') AND s.faixa = 'verde'`;
+
 /** SQL_ITENS com o parâmetro do usuário no lugar de $USUARIO. */
 export const sqlItens = (parametroUsuario: string) => SQL_ITENS.replaceAll('$USUARIO', parametroUsuario);

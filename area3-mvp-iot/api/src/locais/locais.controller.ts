@@ -7,6 +7,7 @@ import { Sessao } from '../auth/sessao';
 import { auditar } from '../infra/auditoria';
 import { POOL } from '../infra/banco.module';
 import { sha256 } from '../infra/hash';
+import { SQL_VISIVEL } from '../rede/itens';
 import { validar } from '../infra/validacao';
 
 export const TIPOS_LOCAL = ['ponto_coleta', 'assistencia', 'abrigo', 'distribuicao', 'saude'] as const;
@@ -152,7 +153,7 @@ export class LocaisController {
        FROM solicitacao s
        JOIN bairro b ON b.id = s.bairro_id
        JOIN municipio m ON m.id = s.municipio_id
-       WHERE s.status = 'no_mural' AND s.faixa = 'verde'
+       WHERE ${SQL_VISIVEL}
          AND coalesce(b.latitude, m.latitude) BETWEEN $1 AND $2
          AND coalesce(b.longitude, m.longitude) BETWEEN $3 AND $4
        GROUP BY b.id, b.nome, m.id, m.nome, m.uf, b.latitude, b.longitude, m.latitude, m.longitude

@@ -19,6 +19,9 @@ class _PedidoDetalheState extends State<PedidoDetalhe> {
   Map<String, dynamic>? _assumido;
   late final List<ItemPedido> _itens = ItemPedido.daLista(widget.pedido['itens']);
   // Começa com todos os itens abertos escolhidos; a pessoa desmarca o que não vai levar
+  /// O pedido continua visível até quem pediu encerrar, mesmo com tudo já tendo alguém levando.
+  bool get _completo => _itens.isNotEmpty && _itens.every((i) => !i.aberto);
+
   late final Set<String> _escolhidos = {for (final i in _itens) if (i.aberto) i.id};
   bool get _movel => widget.pedido['categoria'] == 'movel';
 
@@ -160,11 +163,13 @@ class _PedidoDetalheState extends State<PedidoDetalhe> {
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
           child: _assumido == null
               ? FilledButton.icon(
-                  onPressed: _enviando || (_itens.isNotEmpty && !_movel && _escolhidos.isEmpty) ? null : _quero,
+                  onPressed: _enviando || _completo || (_itens.isNotEmpty && !_movel && _escolhidos.isEmpty) ? null : _quero,
                   icon: const Icon(Icons.volunteer_activism),
                   label: Text(_enviando
                       ? 'Enviando…'
-                      : _itens.isEmpty || _movel
+                      : _completo
+                          ? 'Todos os itens já têm alguém levando'
+                          : _itens.isEmpty || _movel
                           ? 'Quero ajudar'
                           : _escolhidos.isEmpty
                               ? 'Escolha o que vai levar'

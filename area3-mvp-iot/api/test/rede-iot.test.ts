@@ -64,7 +64,7 @@ describe.skipIf(!process.env.DATABASE_URL)('rede cidadã e Ponto de Coleta Intel
     expect(r.statusCode).toBe(201);
     expect(r.json().protocolo).toBe(protocolo);
     const de_novo = await app.inject({ method: 'POST', url: `/mural/${solicitacaoId}/ofertas`, headers: auth(claudia) });
-    expect(de_novo.statusCode).toBe(404);
+    expect(de_novo.statusCode).toBe(409); // continua visível, mas já tem alguém levando tudo
   });
 
   it('dispositivo com chave inválida é recusado', async () => {

@@ -66,9 +66,10 @@ O ELO roda local, mas pronto para produção: tudo é configurado por variável 
 | GET | `/solicitacoes/consulta/{protocolo}?nascimento=` | público | Consulta sem login |
 | POST | `/solicitacoes/{id}/confirmar-recebimento` | usuário do app | Retirada confirmada |
 | PATCH | `/solicitacoes/{id}/itens/{itemId}` | quem pediu | Marca o item como recebido; com tudo marcado, o pedido conclui |
+| POST | `/solicitacoes/{id}/encerrar` | quem pediu | "Já consegui o que precisava": encerra o pedido (sai do mural e do mapa) e avisa quem estava ajudando |
 | GET | `/mural?uf=&municipio=&categoria=&ordem=&pagina=` | usuário do app | Pedidos com itens, "N pessoas ajudando" e primeiro nome + foto de até 5 delas, em qualquer lugar do Brasil (sem dados pessoais, sem faixa de risco, sem os próprios pedidos) |
 | POST | `/mural/{id}/ofertas` | usuário do app | Quero ajudar com os itens escolhidos (nunca no próprio pedido; móvel: uma pessoa) |
-| GET | `/voluntario/ofertas` | usuário do app | Minhas ajudas, itens que vou levar e desfecho |
+| GET | `/voluntario/ofertas` | usuário do app | Minhas ajudas: o que levar, endereço, horário e telefone do ponto, protocolo, instruções e desfecho |
 | GET | `/mapa/locais?bbox=`, `/mapa/pedidos?bbox=` | logado | Locais da rede na área do mapa; pedidos só agregados por bairro |
 | GET/POST/PATCH | `/gestao/locais` | gestor (técnico só lê) | Locais da rede: ponto de coleta, assistência, abrigo, distribuição, saúde |
 | GET/POST | `/gestao/equipe` | gestor | Equipe do painel: convida técnicos e gestores |

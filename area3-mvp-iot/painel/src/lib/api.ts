@@ -41,14 +41,21 @@ export class ErroApi extends Error {
 
 export async function api<T = unknown>(caminho: string, opcoes: RequestInit = {}): Promise<T> {
   const sessao = lerSessao();
-  const resposta = await fetch(`${API_URL}${caminho}`, {
-    ...opcoes,
-    headers: {
-      "content-type": "application/json",
-      ...(sessao ? { authorization: `Bearer ${sessao.token}` } : {}),
-      ...opcoes.headers,
-    },
-  });
+  let resposta: Response;
+  try {
+    resposta = await fetch(`${API_URL}${caminho}`, {
+      ...opcoes,
+      headers: {
+        // Só com corpo: o Fastify recusa JSON vazio (ex.: DELETE sem corpo)
+        ...(opcoes.body ? { "content-type": "application/json" } : {}),
+        ...(sessao ? { authorization: `Bearer ${sessao.token}` } : {}),
+        ...opcoes.headers,
+      },
+    });
+  } catch {
+    // "Failed to fetch": API fora do ar, sem rede ou bloqueio do navegador (CORS)
+    throw new ErroApi(0, "Não foi possível falar com a API do ELO. Confira se ela está no ar e tente de novo.");
+  }
   if (resposta.status === 401 && sessao) {
     sair();
     throw new ErroApi(401, "Sessão expirada");

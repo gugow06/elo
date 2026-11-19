@@ -31,7 +31,8 @@ export class SlaService implements OnModuleInit, OnModuleDestroy {
   async escalar(horas = Number(process.env.SLA_MURAL_HORAS ?? 48)): Promise<number> {
     const { rows } = await this.pool.query<{ id: string; municipio_id: string; protocolo: string; cidadao_id: string }>(
       `UPDATE solicitacao SET status = 'na_fila_tecnica', escalado = true
-       WHERE status = 'no_mural' AND criado_em < now() - make_interval(secs => $1 * 3600)
+       WHERE status = 'no_mural' AND primeira_resposta_em IS NULL -- só quem ninguém respondeu
+         AND criado_em < now() - make_interval(secs => $1 * 3600)
        RETURNING id, municipio_id, protocolo, cidadao_id`,
       [horas],
     );

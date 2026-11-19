@@ -200,6 +200,10 @@ class Api {
   Future<List<dynamic>> meusPedidos() async => await _req('GET', '/solicitacoes/minhas') as List;
   Future<void> confirmarRecebimento(String id) async => _req('POST', '/solicitacoes/$id/confirmar-recebimento');
 
+  /// Quem pediu encerra o pedido: sai do mural e do mapa; quem ajudava é avisado.
+  Future<Map<String, dynamic>> encerrarPedido(String id) async =>
+      Map<String, dynamic>.from(await _req('POST', '/solicitacoes/$id/encerrar'));
+
   // ---------- rede cidadã
   Future<List<dynamic>> mural({String? bairro, String? uf, String? municipio, String? categoria, String? ordem, int? pagina}) async =>
       await _req('GET', caminhoMural(bairro: bairro, uf: uf, municipio: municipio, categoria: categoria, ordem: ordem, pagina: pagina)) as List;

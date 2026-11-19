@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { AppModule } from '../src/app.module';
+import { OPCOES_CORS } from '../src/infra/cors';
 import { LIMITE_CORPO } from '../src/perfil/fotos';
 import { definirBuscador } from '../src/geo/geocodificador';
 import { migrar } from '../db/migrar';
@@ -26,6 +27,7 @@ export async function criarApp(): Promise<NestFastifyApplication> {
   await migrar();
   await seed();
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter({ bodyLimit: LIMITE_CORPO }), { logger: false });
+  app.enableCors(OPCOES_CORS);
   await app.init();
   await app.getHttpAdapter().getInstance().ready();
   return app;
