@@ -43,7 +43,13 @@ class _Marca {
   TipoLocal get tipo => tiposLocal[dados['tipo']] ?? tiposLocal['assistencia']!;
   int get quantidade => (dados['pedidos'] as num?)?.toInt() ?? 0;
   String get titulo => pedidos ? '$quantidade ${quantidade == 1 ? 'pedido' : 'pedidos'} em ${dados['bairro']}' : dados['nome'] as String;
-  String get subtitulo => pedidos ? 'Pedidos de ajuda do bairro · ${dados['municipio']} - ${dados['uf']}' : tipo.rotulo;
+  /// O bairro ainda não tem posição no mapa: o marcador fica no centro da cidade.
+  bool get aproximado => pedidos && dados['aproximado'] == true;
+  String get subtitulo => !pedidos
+      ? tipo.rotulo
+      : aproximado
+          ? 'Posição aproximada: centro de ${dados['municipio']} - ${dados['uf']} (o bairro ainda não está no mapa)'
+          : 'Pedidos de ajuda do bairro · ${dados['municipio']} - ${dados['uf']}';
 }
 
 /// Tela 3 do mockup: mapa da rede com lista equivalente (RF-402).

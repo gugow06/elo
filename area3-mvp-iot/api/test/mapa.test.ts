@@ -24,7 +24,7 @@ describe('mapa: pedidos só agregados por bairro, nunca no endereço', () => {
     const r = await app.inject({ method: 'GET', url: '/mapa/pedidos?bbox=-38.6,-13.05,-38.4,-12.9', headers: auth(ana) });
     expect(r.statusCode).toBe(200);
     expect(r.json()).toEqual([
-      { bairro_id: expect.any(String), bairro: 'Vila Nova', municipio_id: expect.any(String), municipio: 'São Bento do Vale', uf: 'SP', latitude: -12.9711, longitude: -38.5108, pedidos: 1 },
+      { bairro_id: expect.any(String), bairro: 'Vila Nova', municipio_id: expect.any(String), municipio: 'São Bento do Vale', uf: 'SP', latitude: -12.9711, longitude: -38.5108, aproximado: false, pedidos: 1 },
     ]);
   });
 

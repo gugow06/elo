@@ -147,6 +147,7 @@ export class LocaisController {
     const { rows } = await this.pool.query(
       `SELECT b.id AS bairro_id, b.nome AS bairro, m.id AS municipio_id, m.nome AS municipio, m.uf,
               coalesce(b.latitude, m.latitude)::float AS latitude, coalesce(b.longitude, m.longitude)::float AS longitude,
+              (b.latitude IS NULL) AS aproximado,
               count(*)::int AS pedidos
        FROM solicitacao s
        JOIN bairro b ON b.id = s.bairro_id

@@ -3,6 +3,7 @@ import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { AppModule } from '../src/app.module';
 import { LIMITE_CORPO } from '../src/perfil/fotos';
+import { definirBuscador } from '../src/geo/geocodificador';
 import { migrar } from '../db/migrar';
 import { seed } from '../db/seed';
 
@@ -20,6 +21,8 @@ export async function criarApp(): Promise<NestFastifyApplication> {
   process.env.SLA_DESLIGADO = 'true';
   delete process.env.LLM_URL; // testes usam sempre o classificador offline
   delete process.env.RESEND_API_KEY; // testes nunca enviam e-mail de verdade
+  // Testes nunca consultam o buscador de endereços de verdade (geo.test.ts troca por um falso próprio)
+  definirBuscador(async () => new Response(JSON.stringify({ features: [] }), { status: 200 }));
   await migrar();
   await seed();
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter({ bodyLimit: LIMITE_CORPO }), { logger: false });

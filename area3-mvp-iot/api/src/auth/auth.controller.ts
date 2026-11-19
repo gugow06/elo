@@ -19,6 +19,7 @@ import { auditar } from '../infra/auditoria';
 import { POOL } from '../infra/banco.module';
 import { validar } from '../infra/validacao';
 import { AuthGuard, SessaoAtual } from './auth.guard';
+import { completarBairro } from '../geo/bairros';
 import { consumirCodigo, gerarCodigo, mascararEmail } from './codigos';
 import { GoogleNaoConfigurado, IdentidadeGoogle, verificarTokenGoogle } from './google';
 import { emitirDesafio, emitirToken, lerDesafio, Perfil, Sessao } from './sessao';
@@ -199,6 +200,8 @@ export class AuthController {
         resposta = { confirmar_email: true, ...(await gerarCodigo(c, u.id, { email: emailConta })) };
       }
       await c.query('COMMIT');
+      // Bairro digitado chega sem posição: procura no OpenStreetMap em segundo plano
+      void completarBairro(this.pool, bairro.rows[0].id).catch((e) => this.log.warn(`Posição do bairro: ${(e as Error).message}`));
       return resposta;
     } catch (erro) {
       await c.query('ROLLBACK');

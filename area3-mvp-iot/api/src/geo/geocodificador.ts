@@ -58,14 +58,19 @@ function paraLugar(f: Feature): Lugar | null {
   return { nome, endereco, bairro, cidade, uf, cep: p.postcode ?? null, latitude: c[1], longitude: c[0] };
 }
 
-export async function buscarLugares(q: string): Promise<Lugar[]> {
-  const chave = q.trim().toLowerCase();
+/** `perto`: prioriza resultados perto deste ponto. `soLugares`: só bairros, cidades etc. (osm_tag=place). */
+export type OpcoesBusca = { perto?: { latitude: number; longitude: number }; soLugares?: boolean };
+
+export async function buscarLugares(q: string, opcoes: OpcoesBusca = {}): Promise<Lugar[]> {
+  const extra =
+    (opcoes.perto ? `&lat=${opcoes.perto.latitude}&lon=${opcoes.perto.longitude}` : '') + (opcoes.soLugares ? '&osm_tag=place' : '');
+  const chave = q.trim().toLowerCase() + extra;
   const guardado = cache.get(chave);
   if (guardado && Date.now() - guardado.em < CACHE_MS) return guardado.lugares;
 
   const base = process.env.GEOCODER_URL || 'https://photon.komoot.io/api/';
   // Só Brasil (caixa aproximada do território)
-  const url = `${base}?q=${encodeURIComponent(q)}&limit=6&bbox=-74.0,-34.0,-34.7,5.3`;
+  const url = `${base}?q=${encodeURIComponent(q)}&limit=${opcoes.soLugares ? 10 : 6}&bbox=-74.0,-34.0,-34.7,5.3${extra}`;
   const tarefa = fila.then(async () => {
     const espera = ultima + 1000 - Date.now();
     if (espera > 0) await new Promise((r) => setTimeout(r, espera));
