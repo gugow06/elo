@@ -2,6 +2,9 @@ import { Module } from '@nestjs/common';
 import { AuthController } from './auth/auth.controller';
 import { BancoModule } from './infra/banco.module';
 import { EventosService } from './infra/eventos.service';
+import { IotController, PontosController } from './iot/iot.controller';
+import { RedeController } from './rede/rede.controller';
+import { SlaService } from './rede/sla.service';
 import { SaudeController } from './saude/saude.controller';
 import { classificadorProvider } from './solicitacoes/classificador.provider';
 import { SolicitacoesController } from './solicitacoes/solicitacoes.controller';
@@ -10,7 +13,15 @@ import { TecnicoController } from './tecnico/tecnico.controller';
 
 @Module({
   imports: [BancoModule],
-  controllers: [SaudeController, AuthController, SolicitacoesController, TecnicoController],
-  providers: [EventosService, classificadorProvider, SolicitacoesService],
+  controllers: [
+    SaudeController,
+    AuthController,
+    SolicitacoesController,
+    TecnicoController,
+    RedeController,
+    IotController,
+    PontosController,
+  ],
+  providers: [EventosService, classificadorProvider, SolicitacoesService, SlaService],
 })
 export class AppModule {}

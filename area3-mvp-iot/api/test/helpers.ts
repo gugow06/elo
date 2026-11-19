@@ -16,6 +16,7 @@ export const TELEFONES = {
 export async function criarApp(): Promise<NestFastifyApplication> {
   process.env.JWT_SECRET ??= 'segredo-de-teste-com-mais-de-16';
   process.env.MODO_DEMO = 'true';
+  process.env.SLA_DESLIGADO = 'true';
   delete process.env.LLM_URL; // testes usam sempre o classificador offline
   await migrar();
   await seed();
