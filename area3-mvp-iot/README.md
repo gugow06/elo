@@ -3,15 +3,15 @@
 | Pasta | O que é | Como rodar |
 | --- | --- | --- |
 | [`api/`](api/) | API NestJS + Fastify + PostgreSQL: login sem senha, solicitações com triagem, mural, ofertas, entregas, IoT, gestão | `docker compose up -d` (raiz) · `pnpm --filter @elo/api dev` |
-| [`painel/`](painel/) | Painel web Next.js: fila do técnico do CRAS e dashboard de gestão | http://localhost:3000 · `pnpm --filter @elo/painel dev` |
-| [`app/`](app/) | App Flutter (Android, iOS e web) para cidadão e voluntário, seguindo o mockup | [`app/README.md`](app/README.md) |
-| [`iot/`](iot/) | Ponto de Coleta Inteligente: sketch Arduino (Tinkercad), simulador e ponte serial | [`iot/README.md`](iot/README.md) |
+| [`painel/`](painel/) | Painel web Next.js: fila do técnico do CRAS, gestão, e receber/retirar doação e registro para o agente do ponto | http://localhost:3000 · `pnpm --filter @elo/painel dev` |
+| [`app/`](app/) | App Flutter (Android, iOS e web) para o cidadão, que pede e ajuda, seguindo o mockup | [`app/README.md`](app/README.md) |
+| [`iot/`](iot/) | Ponto de Coleta Inteligente: sketch Arduino (Wokwi e Tinkercad), simulador e ponte serial | [`iot/README.md`](iot/README.md) |
 
 ## Telas (mais de 4, rubrica item 01)
 
-**App:** boas-vindas, login, início, mapa da rede (mapa e lista), pedido de ajuda, pedir ajuda, confirmação com protocolo, meus pedidos / minhas ajudas, mensagens e perfil.
+**App:** boas-vindas, entrar, criar conta (com aceite dos termos), início pela localização (banners, atalhos e pedidos próximos), mapa da rede ("Você está aqui", mapa e lista), todos os pedidos, detalhe do pedido e "Quero ajudar", pedir ajuda, confirmação com protocolo e código de retirada, meus pedidos / minhas ajudas, mensagens (conversas e notificações do sistema), conversa, perfil (privacidade, termos, política e excluir conta).
 
-**Painel:** login, fila do CRAS, ficha do pedido (relato, histórico, reclassificação, conclusão) e gestão (5 abas).
+**Painel:** entrar, fila do CRAS, ficha do pedido (relato, histórico, reclassificação, conclusão), gestão (5 abas), locais da rede, equipe, receber doação, retirar doação e registro.
 
 ## IoT: 2 sensores (rubrica item 02)
 
@@ -21,9 +21,10 @@ Balança (peso) e temperatura no Ponto de Coleta Inteligente. Veja [`iot/README.
 
 1. **Ana** (app) pede ajuda → a triagem classifica como verde → protocolo de 6 dígitos.
 2. **Cláudia** (app) vê o mural do bairro → "Quero ajudar" → recebe o protocolo e o ponto de coleta.
-3. **Ponto de coleta** (IoT): protocolo no teclado + doação na balança → API registra a entrega.
-4. Ana recebe "Sua doação chegou" e confirma a retirada; Cláudia recebe **"Sua ajuda chegou"**.
-5. **Gestão** (painel) vê o estoque mudar ao vivo e os indicadores do bairro.
+3. **Ponto de coleta** (IoT): protocolo no teclado + doação na balança → API registra a entrega. Sem o sensor, a agente registra em **Receber doação** no painel.
+4. Ana recebe "Sua doação está no ponto"; Cláudia recebe **"Sua ajuda chegou"**. As duas podem conversar pela aba Mensagens.
+5. Ana retira com o **código de retirada** (4 números, só dela), no teclado do ponto ou com a agente em **Retirar doação**. O pedido conclui e tudo fica no **Registro**.
+6. **Gestão** (painel) vê o estoque mudar ao vivo e os indicadores do bairro.
 
 Contraprova: um relato com indício de violência vai direto para a fila do técnico, com alerta, e nunca aparece no mural.
 
@@ -77,6 +78,10 @@ O ELO roda local, mas pronto para produção: tudo é configurado por variável 
 | POST | `/agente/pedidos/{protocolo}/retiradas` | agente, técnico, gestor | Quem pediu retira no ponto: confere o código de retirada (4 números, só de quem pediu; 5 erros = 1 hora de bloqueio) e marca o que foi levado; com tudo retirado, conclui |
 | GET | `/geo/onde-estou?lat=&lon=` | público | Localização do aparelho (com permissão) → cidade do IBGE e bairro, para criar a conta; a posição não é guardada |
 | POST | `/agente/pedidos/{protocolo}/entregas` | agente, técnico, gestor | Registra o que chegou ao ponto, com quantidade (o mesmo item pode chegar de novo); avisa quem pediu e quem trouxe |
+| GET | `/agente/registro` | agente, técnico, gestor | Registro (log) de entregas, retiradas e códigos errados, com quem registrou e onde |
+| GET/POST | `/conversas`, `/conversas/nao-lidas`, `/conversas/{id}/mensagens` | usuário do app | Conversa entre quem pediu e quem está ajudando (só os dois; até 1000 caracteres) |
+| POST | `/perfil/termos` | usuário do app | Aceita a versão atual dos Termos de Uso e da Política de Privacidade (a versão aceita aparece em `GET /perfil`) |
+| POST | `/perfil/excluir/codigo`, `/perfil/excluir` | usuário do app | Exclusão de conta confirmada por código: cancela pedidos e ajudas, apaga os dados pessoais e anonimiza o histórico |
 | GET | `/tecnico/fila`, `/tecnico/solicitacoes/{id}` | técnico | Fila e ficha (leitura auditada) |
 | POST | `/tecnico/solicitacoes/{id}/reclassificar`, `/concluir` | técnico | Reclassificação e desfecho |
 | GET | `/tecnico/eventos` | técnico, gestor | Tempo real (SSE) |
