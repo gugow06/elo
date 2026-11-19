@@ -9,6 +9,7 @@ import {
   Logger,
   NotImplementedException,
   Post,
+  Query,
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
@@ -44,9 +45,12 @@ const Cadastro = z.object({
   nome: z.string().trim().min(2, 'Informe o seu nome').max(80),
   email,
   telefone,
-  bairro_id: z.string().uuid('Escolha o seu bairro'),
+  // Bairro da lista do município (bairro_id) ou digitado (municipio_id + bairro_nome)
+  bairro_id: z.string().uuid('Escolha o seu bairro').optional(),
+  municipio_id: z.string().uuid('Escolha a sua cidade').optional(),
+  bairro_nome: z.string().trim().min(2, 'Informe o seu bairro').max(80).optional(),
   social: social.optional(),
-});
+}).refine((d) => d.bairro_id || (d.municipio_id && d.bairro_nome), { message: 'Escolha a sua cidade e o seu bairro.', path: ['bairro_id'] });
 
 type LinhaUsuario = {
   id: string;
@@ -164,8 +168,7 @@ export class AuthController {
     const c = await this.pool.connect();
     try {
       await c.query('BEGIN');
-      const bairro = await c.query<{ municipio_id: string }>('SELECT municipio_id FROM bairro WHERE id = $1', [dados.bairro_id]);
-      if (!bairro.rows[0]) throw new BadRequestException('Bairro não encontrado.');
+      const bairro = { rows: [await this.resolverBairro(c, dados)] };
       if ((await c.query('SELECT 1 FROM usuario WHERE lower(email) = $1', [emailConta])).rowCount) {
         throw new ConflictException('Este e-mail já tem uma conta. Use "Entrar na minha conta".');
       }
@@ -179,7 +182,7 @@ export class AuthController {
       const { rows } = await c.query<LinhaUsuario>(
         `INSERT INTO usuario (municipio_id, bairro_id, perfil, nome, telefone, email, email_confirmado_em)
          VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING ${COLUNAS}`,
-        [bairro.rows[0].municipio_id, dados.bairro_id, 'cidadao', dados.nome, tel, emailConta, id ? new Date() : null],
+        [bairro.rows[0].municipio_id, bairro.rows[0].id, 'cidadao', dados.nome, tel, emailConta, id ? new Date() : null],
       );
       const u = rows[0];
       await auditar(c, { usuarioId: u.id, acao: 'cadastro', entidade: 'usuario', entidadeId: u.id, detalhe: { via: id ? 'google' : 'email' } });
@@ -203,13 +206,41 @@ export class AuthController {
 
   /** Bairros atendidos, para a tela de criar conta (público: ainda não há sessão). */
   @Get('bairros')
-  async bairros() {
+  async bairros(@Query('municipio') municipio?: string) {
+    if (municipio !== undefined && !z.string().uuid().safeParse(municipio).success) throw new BadRequestException('Cidade inválida.');
     const { rows } = await this.pool.query(
-      `SELECT b.id, b.nome, m.nome AS municipio
+      `SELECT b.id, b.nome, m.nome AS municipio, m.uf
        FROM bairro b JOIN municipio m ON m.id = b.municipio_id
-       ORDER BY m.nome, b.nome`,
+       WHERE ($1::uuid IS NULL OR b.municipio_id = $1)
+       ORDER BY m.nome, b.nome
+       LIMIT 500`,
+      [municipio ?? null],
     );
     return rows;
+  }
+
+  /**
+   * Bairro do cadastro: o escolhido na lista ou, se a pessoa digitou, o bairro com esse nome no
+   * município (cria se ainda não existir, sem posição: o gestor pode completar depois).
+   */
+  private async resolverBairro(c: PoolClient, d: { bairro_id?: string; municipio_id?: string; bairro_nome?: string }) {
+    if (d.bairro_id) {
+      const r = await c.query<{ id: string; municipio_id: string }>('SELECT id, municipio_id FROM bairro WHERE id = $1', [d.bairro_id]);
+      if (!r.rows[0]) throw new BadRequestException('Bairro não encontrado.');
+      return r.rows[0];
+    }
+    const mun = await c.query('SELECT 1 FROM municipio WHERE id = $1', [d.municipio_id]);
+    if (!mun.rowCount) throw new BadRequestException('Cidade não encontrada.');
+    const nome = d.bairro_nome!.replace(/\s+/g, ' ');
+    const slug = nome.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    if (!slug) throw new BadRequestException('Informe o seu bairro.');
+    const r = await c.query<{ id: string; municipio_id: string }>(
+      `INSERT INTO bairro (municipio_id, nome, slug) VALUES ($1, $2, $3)
+       ON CONFLICT (municipio_id, slug) DO UPDATE SET slug = EXCLUDED.slug
+       RETURNING id, municipio_id`,
+      [d.municipio_id, nome, slug],
+    );
+    return r.rows[0];
   }
 
   @Get('eu')

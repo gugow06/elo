@@ -144,7 +144,9 @@ class Api {
     required String nome,
     required String email,
     required String telefone,
-    required String bairroId,
+    String? bairroId,
+    String? municipioId,
+    String? bairroNome,
     IdentidadeGoogle? google,
     void Function(String? codigoDemo)? aoPedirCodigo,
   }) async {
@@ -152,7 +154,9 @@ class Api {
       'nome': nome,
       'email': email,
       'telefone': telefone,
-      'bairro_id': bairroId,
+      'bairro_id': ?bairroId,
+      'municipio_id': ?municipioId,
+      'bairro_nome': ?bairroNome,
       'social': ?google?.toJson(),
     });
     if (r['token'] == null) {
@@ -163,7 +167,9 @@ class Api {
   }
 
   /// Bairros atendidos (público), para a tela de criar conta.
-  Future<List<dynamic>> bairrosCadastro() async => await _req('GET', '/auth/bairros') as List;
+  /// Bairros já cadastrados numa cidade (público, para criar conta).
+  Future<List<dynamic>> bairrosCadastro({String? municipio}) async =>
+      await _req('GET', municipio == null ? '/auth/bairros' : '/auth/bairros?municipio=$municipio') as List;
 
   Future<Usuario> _guardarSessao(dynamic r) async {
     final u = Usuario.fromJson(r['usuario']);

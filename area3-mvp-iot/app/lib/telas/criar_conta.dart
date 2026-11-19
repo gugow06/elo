@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:material_ui/material_ui.dart';
 
 import '../api.dart';
+import '../tema.dart';
 import '../widgets/comum.dart';
 import '../widgets/login.dart';
 import 'entrar.dart';
@@ -19,23 +22,51 @@ class _CriarContaState extends State<CriarConta> {
   late final _nome = TextEditingController(text: widget.google?.nome);
   late final _email = TextEditingController(text: widget.google?.email);
   final _telefone = TextEditingController();
+  final _buscaCidade = TextEditingController();
+  final _bairroNome = TextEditingController();
+  Timer? _espera;
+  List<Map<String, dynamic>> _sugestoes = [];
+  Map<String, dynamic>? _cidade;
   List<dynamic>? _bairros;
-  String? _bairroId;
+  String? _bairroId; // _outro = digitar o bairro
   bool _enviando = false;
   String? _erro;
 
+  static const _outro = '_outro';
+
   @override
-  void initState() {
-    super.initState();
-    _carregarBairros();
+  void dispose() {
+    _espera?.cancel();
+    super.dispose();
   }
 
-  Future<void> _carregarBairros() async {
+  /// Cidades do IBGE enquanto a pessoa digita.
+  void _digitouCidade(String texto) {
+    _espera?.cancel();
+    if (texto.trim().length < 2) {
+      setState(() => _sugestoes = []);
+      return;
+    }
+    _espera = Timer(const Duration(milliseconds: 300), () async {
+      try {
+        final r = await Api.i.localidades(texto.trim());
+        if (!mounted) return;
+        setState(() => _sugestoes = r.map((e) => Map<String, dynamic>.from(e)).where((l) => l['tipo'] == 'municipio').toList());
+      } on ErroApi {
+        // busca é só uma ajuda
+      }
+    });
+  }
+
+  Future<void> _escolherCidade(Map<String, dynamic> c) async {
+    _buscaCidade.text = '${c['nome']}, ${c['uf']}';
+    FocusScope.of(context).unfocus();
+    setState(() { _cidade = c; _sugestoes = []; _bairros = null; _bairroId = null; });
     try {
-      final b = await Api.i.bairrosCadastro();
-      if (mounted) setState(() => _bairros = b);
+      final b = await Api.i.bairrosCadastro(municipio: c['id'] as String);
+      if (mounted) setState(() { _bairros = b; if (b.isEmpty) _bairroId = _outro; });
     } on ErroApi catch (e) {
-      if (mounted) setState(() { _bairros = []; _erro = e.mensagem; });
+      if (mounted) setState(() { _bairros = []; _bairroId = _outro; _erro = e.mensagem; });
     }
   }
 
@@ -44,8 +75,13 @@ class _CriarContaState extends State<CriarConta> {
       setState(() => _erro = 'Informe um e-mail válido.');
       return;
     }
-    if (_bairroId == null) {
-      setState(() => _erro = 'Escolha o seu bairro.');
+    if (_cidade == null) {
+      setState(() => _erro = 'Escolha a sua cidade na lista.');
+      return;
+    }
+    final digitado = _bairroId == _outro;
+    if (_bairroId == null || (digitado && _bairroNome.text.trim().length < 2)) {
+      setState(() => _erro = 'Informe o seu bairro.');
       return;
     }
     setState(() { _enviando = true; _erro = null; });
@@ -55,7 +91,9 @@ class _CriarContaState extends State<CriarConta> {
         nome: _nome.text.trim(),
         email: _email.text.trim(),
         telefone: _telefone.text,
-        bairroId: _bairroId!,
+        bairroId: digitado ? null : _bairroId,
+        municipioId: digitado ? _cidade!['id'] as String : null,
+        bairroNome: digitado ? _bairroNome.text.trim() : null,
         google: widget.google,
         aoPedirCodigo: (c) => codigoDemo = c,
       );
@@ -116,19 +154,52 @@ class _CriarContaState extends State<CriarConta> {
             decoration: const InputDecoration(labelText: 'Telefone com DDD', hintText: '+55 11 99000-0000'),
           ),
           const SizedBox(height: 16),
-          if (_bairros == null)
-            const Carregando(texto: 'Carregando bairros…')
-          else
-            DropdownButtonFormField<String>(
-              initialValue: _bairroId,
-              isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Bairro'),
-              items: [
-                for (final b in _bairros!)
-                  DropdownMenuItem(value: b['id'] as String, child: Text('${b['nome']} · ${b['municipio']}', overflow: TextOverflow.ellipsis)),
-              ],
-              onChanged: (v) => setState(() => _bairroId = v),
+          TextField(
+            controller: _buscaCidade,
+            onChanged: (t) {
+              if (_cidade != null) setState(() { _cidade = null; _bairros = null; _bairroId = null; });
+              _digitouCidade(t);
+            },
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
+              labelText: 'Cidade',
+              hintText: 'Digite e escolha na lista',
+              prefixIcon: const Icon(Icons.location_city_outlined),
+              suffixIcon: _cidade != null ? const Icon(Icons.check_circle, color: EloCores.sucesso) : null,
             ),
+          ),
+          if (_sugestoes.isNotEmpty)
+            Cartao(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Column(children: [
+                for (final c in _sugestoes)
+                  ListTile(title: Text('${c['nome']}, ${c['uf']}'), onTap: () => _escolherCidade(c)),
+              ]),
+            ),
+          if (_cidade != null) ...[
+            const SizedBox(height: 16),
+            if (_bairros == null)
+              const Carregando(texto: 'Carregando bairros…')
+            else if (_bairros!.isNotEmpty)
+              DropdownButtonFormField<String>(
+                initialValue: _bairroId,
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Bairro'),
+                items: [
+                  for (final b in _bairros!) DropdownMenuItem(value: b['id'] as String, child: Text(b['nome'], overflow: TextOverflow.ellipsis)),
+                  const DropdownMenuItem(value: _outro, child: Text('Meu bairro não está na lista')),
+                ],
+                onChanged: (v) => setState(() => _bairroId = v),
+              ),
+            if (_bairroId == _outro) ...[
+              if (_bairros?.isNotEmpty ?? false) const SizedBox(height: 16),
+              TextField(
+                controller: _bairroNome,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(labelText: 'Bairro', hintText: 'Nome do seu bairro'),
+              ),
+            ],
+          ],
           const SizedBox(height: 24),
           FilledButton(onPressed: _enviando ? null : _criar, child: Text(_enviando ? 'Criando…' : 'Criar conta')),
           if (google == null) ...[
