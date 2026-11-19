@@ -2,6 +2,26 @@
 
 Planejamento das próximas entregas do app e do painel. A partir desta fase o ELO **deixa de ser demonstração com dados fictícios**: passa a funcionar com dados e usuários reais. Complementa o [PLANO-IMPLEMENTACAO.md](PLANO-IMPLEMENTACAO.md) e respeita as regras do PRD citadas lá (P3/RS-01: endereço de cidadão nunca é público; RS-02: doação vai para ponto de coleta; RNF-A10/RF-402: o mapa sempre tem lista equivalente; D3: oferta por item).
 
+## Andamento (19/11/2026, madrugada)
+
+Implementado na branch `feat/fase-7` (commits locais, sem push), com testes:
+
+| Frente | Situação |
+| --- | --- |
+| Perfil: seção "Verificação da conta", duas etapas por e-mail, selo "Verificado"; sai o texto "Pede e oferece ajuda no seu bairro" | ✅ Feito |
+| Base geográfica real: 27 UFs e 5.571 municípios do IBGE com coordenadas, busca de localidades, busca de endereço gratuita pela API | ✅ Feito |
+| Locais da rede no painel (5 tipos, busca pelo nome ou endereço, mapa para conferir, chave do sensor) | ✅ Feito |
+| Lista "Todos os pedidos" com busca por estado/cidade, categoria e ordenação; ajudar pedido de outra cidade | ✅ Feito |
+| Pedido com itens, várias pessoas ajudando, checklist de quem pediu | ✅ Feito |
+| Mapa real (`flutter_map`), localização do aparelho, busca, lista por distância | ✅ Feito |
+| Modo demonstração controlado por `MODO_DEMO`/`SEED_DEMO`; painel por e-mail; cadastro em qualquer cidade; comando do primeiro gestor; gestor convida a equipe | ✅ Feito |
+| Foto de perfil | ⏸️ Aguardando F7-D5 (quem vê) e F7-D8 (onde guardar) |
+| Município sem equipe do CRAS (pedido amarelo/vermelho) | ⏸️ Aguardando F7-D10 |
+| LGPD (política, termos, consentimento, exclusão de conta) e publicação do app no Google | ⏸️ Precisa do texto jurídico e de domínio |
+| Domínio verificado no Resend e HTTPS | ⏸️ Precisa de domínio (hospedagem local por enquanto) |
+
+Decisões assumidas por recomendação, para confirmar: F7-D3 (tipos de local), F7-D4 (quem pediu marca o item recebido) e F7-D11 (prioridade = aguardando há mais tempo).
+
 ## 0. Ponto de partida (como está hoje)
 
 | Área | Hoje | Limite para produção |
