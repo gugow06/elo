@@ -36,15 +36,13 @@ class ItemPedido {
 /// Quem está ajudando no pedido: fotos sobrepostas com "+N" e o texto "N pessoas ajudando".
 /// Decisão F7-D5: a foto de perfil é pública; a API manda só o primeiro nome e a foto.
 class PessoasAjudando extends StatelessWidget {
-  const PessoasAjudando(this.quantidade, {super.key, this.ajudantes = const [], this.tamanho});
+  const PessoasAjudando(this.quantidade, {super.key, this.ajudantes = const []});
   final int quantidade;
   final List<Ajudante> ajudantes;
-  /// Tamanho do texto (o card do mural usa um menor).
-  final double? tamanho;
 
   /// A partir do pedido como a API devolve (`pessoas_ajudando` e `ajudantes`).
-  factory PessoasAjudando.doPedido(Map<String, dynamic> p, {double? tamanho}) =>
-      PessoasAjudando((p['pessoas_ajudando'] as num?)?.toInt() ?? 0, ajudantes: ajudantesDe(p['ajudantes']), tamanho: tamanho);
+  factory PessoasAjudando.doPedido(Map<String, dynamic> p) =>
+      PessoasAjudando((p['pessoas_ajudando'] as num?)?.toInt() ?? 0, ajudantes: ajudantesDe(p['ajudantes']));
 
   @override
   Widget build(BuildContext context) {
@@ -65,7 +63,7 @@ class PessoasAjudando extends StatelessWidget {
         else
           Icon(Icons.groups_outlined, size: 20, color: cor),
         const SizedBox(width: 8),
-        Flexible(child: Text(texto, style: TextStyle(fontWeight: FontWeight.w700, color: cor, fontSize: tamanho))),
+        Flexible(child: Text(texto, style: TextStyle(fontWeight: FontWeight.w700, color: cor))),
       ]),
     );
   }
