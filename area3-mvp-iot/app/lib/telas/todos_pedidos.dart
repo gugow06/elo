@@ -35,7 +35,9 @@ const _chave = 'elo.filtro_mural';
 
 /// "Ver todos": pedidos do mural com busca por estado ou cidade, categoria e ordenação.
 class TodosPedidos extends StatefulWidget {
-  const TodosPedidos({super.key});
+  const TodosPedidos({super.key, this.inicial});
+  /// Abre já filtrada (ex.: tocar num bairro no mapa); senão, volta o último filtro usado.
+  final Localidade? inicial;
   @override
   State<TodosPedidos> createState() => _TodosPedidosState();
 }
@@ -76,6 +78,7 @@ class _TodosPedidosState extends State<TodosPedidos> {
       _categoria = j['categoria'] as String?;
       _ordem = ordens.containsKey(j['ordem']) ? j['ordem'] as String : 'bairro';
     }
+    if (widget.inicial != null) _local = widget.inicial;
     await _recarregar();
   }
 

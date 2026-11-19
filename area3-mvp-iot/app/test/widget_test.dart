@@ -2,7 +2,8 @@
 import 'package:elo_app/api.dart';
 import 'package:elo_app/tema.dart';
 import 'package:elo_app/telas/boas_vindas.dart';
-import 'package:elo_app/telas/mapa.dart';
+import 'package:elo_app/geo.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:elo_app/telas/perfil.dart';
 import 'package:elo_app/widgets/comum.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -123,9 +124,17 @@ void main() {
     expect(find.text('Bairro Vila Nova · Salvador - BA'), findsOneWidget);
   });
 
-  test('mapa descreve distância e direção por extenso', () {
-    expect(distancia(const Offset(0.5, 0.5), const Offset(0.5, 0.1)), contains('ao norte'));
-    expect(distancia(const Offset(0.5, 0.5), const Offset(0.9, 0.5)), contains('a leste'));
-    expect(distancia(const Offset(0.5, 0.5), const Offset(0.5, 0.5)), 'perto de você');
+  test('mapa descreve distância e direção por extenso (latitude e longitude reais)', () {
+    const se = LatLng(-23.5505, -46.6333); // Praça da Sé, São Paulo
+    expect(distanciaPorExtenso(se, const LatLng(-23.5300, -46.6333)), '2,3 km ao norte');
+    expect(distanciaPorExtenso(se, const LatLng(-23.5505, -46.6290)), contains('a leste'));
+    expect(distanciaPorExtenso(se, const LatLng(-23.5505, -46.6290)), endsWith('m a leste'));
+    expect(distanciaPorExtenso(se, se), 'perto de você');
+    expect(distanciaKm(se, const LatLng(-22.9068, -43.1729)), closeTo(357, 5)); // São Paulo → Rio
+  });
+
+  test('área do mapa vai para a API limitada ao Brasil', () {
+    expect(caixaApi(oeste: -46.7, sul: -23.6, leste: -46.6, norte: -23.5), '-46.70000,-23.60000,-46.60000,-23.50000');
+    expect(caixaApi(oeste: -180, sul: -90, leste: 180, norte: 90), '-74.90000,-34.90000,-30.10000,5.90000');
   });
 }

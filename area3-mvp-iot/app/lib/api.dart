@@ -192,6 +192,13 @@ class Api {
   Future<List<dynamic>> localidades(String q) async =>
       await _req('GET', Uri(path: '/localidades', queryParameters: {'q': q}).toString()) as List;
   Future<List<dynamic>> muralPorBairro() async => await _req('GET', '/mural/bairros') as List;
+
+  // ---------- mapa (qualquer lugar do Brasil; pedidos só agregados por bairro)
+  Future<List<dynamic>> mapaLocais(String caixa) async => await _req('GET', '/mapa/locais?bbox=$caixa') as List;
+  Future<List<dynamic>> mapaPedidos(String caixa) async => await _req('GET', '/mapa/pedidos?bbox=$caixa') as List;
+  /// Endereço ou nome de lugar → candidatos com coordenadas (busca gratuita pela API).
+  Future<List<dynamic>> buscarLugar(String q) async =>
+      await _req('GET', Uri(path: '/geo/buscar', queryParameters: {'q': q}).toString()) as List;
   /// Ajudar com um pedido. [itens] = ids escolhidos; sem lista, leva todos os itens abertos.
   Future<Map<String, dynamic>> quero(String id, {List<String>? itens}) async =>
       Map<String, dynamic>.from(await _req('POST', '/mural/$id/ofertas', {'itens': ?itens}));

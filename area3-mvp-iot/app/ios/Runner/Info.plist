@@ -71,5 +71,7 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>O ELO usa a sua localização só no celular, para abrir o mapa perto de você e mostrar a distância até os locais. Ela não é enviada nem guardada.</string>
 </dict>
 </plist>
