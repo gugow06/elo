@@ -41,6 +41,7 @@ services:
       SEED_DEMO: ${SEED_DEMO:-true}
       GEOCODER_URL: ${GEOCODER_URL:-}
       NOMINATIM_URL: ${NOMINATIM_URL:-}
+      TOMTOM_API_KEY: ${TOMTOM_API_KEY:-}
       GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY:-}
       PAINEL_URL: ${PAINEL_URL:-http://localhost:3000}
     ports:

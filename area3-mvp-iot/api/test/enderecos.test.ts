@@ -43,6 +43,7 @@ const GOOGLE_BARRETO_LEME = {
 describe('busca de endereço do painel (sem digitar latitude e longitude)', () => {
   afterEach(() => {
     delete process.env.GOOGLE_MAPS_API_KEY;
+    delete process.env.TOMTOM_API_KEY;
     definirBuscador(null);
   });
 
@@ -64,6 +65,38 @@ describe('busca de endereço do painel (sem digitar latitude e longitude)', () =
     expect(l.endereco).toBe('Rua Barreto Leme, 1500, Cambuí, Campinas - SP, 13025-085');
     expect(pedidas).toHaveLength(1);
     expect(pedidas[0]).toContain('components=country:BR');
+  });
+
+  it('com TOMTOM_API_KEY: usa o TomTom (sem cartão), com número e nome de lugar', async () => {
+    process.env.TOMTOM_API_KEY = 'chave-tomtom';
+    const pedidas = servicos({
+      'api.tomtom.com': () => ({
+        results: [
+          {
+            type: 'Point Address',
+            position: { lat: -22.89812, lon: -47.05321 },
+            address: {
+              streetName: 'Rua Barreto Leme', streetNumber: '1500', municipalitySubdivision: 'Cambuí', municipality: 'Campinas',
+              countrySubdivision: 'SP', postalCode: '13025-085', countryCode: 'BR', freeformAddress: 'Rua Barreto Leme, 1500, Campinas',
+            },
+          },
+          { type: 'POI', poi: { name: 'CRAS Norte' }, position: { lat: -22.88, lon: -47.06 }, address: { streetName: 'Rua X', municipality: 'Campinas', countrySubdivision: 'São Paulo', countryCode: 'BR' } },
+          { type: 'Street', position: { lat: -34.6, lon: -58.38 }, address: { municipality: 'Buenos Aires', countryCode: 'AR' } },
+        ],
+      }),
+    });
+    const r = await buscarEndereco('Rua Barreto Leme 1500, Campinas');
+    expect(r).toHaveLength(2);
+    expect(r[0]).toEqual(expect.objectContaining({ nome: 'Rua Barreto Leme, 1500', bairro: 'Cambuí', cidade: 'Campinas', uf: 'SP', latitude: -22.89812 }));
+    expect(r[1]).toEqual(expect.objectContaining({ nome: 'CRAS Norte', uf: 'SP', endereco: 'Rua X, Campinas - SP' }));
+    expect(pedidas[0]).toContain('countrySet=BR');
+    expect(pedidas.some((u) => u.includes('nominatim'))).toBe(false);
+  });
+
+  it('TomTom fora do ar ou sem cota: cai para os serviços abertos', async () => {
+    process.env.TOMTOM_API_KEY = 'chave-tomtom';
+    servicos({ nominatim: () => NOMINATIM_BARRETO_LEME });
+    expect((await buscarEndereco('Rua Barreto Leme, Campinas'))[0].cidade).toBe('Campinas');
   });
 
   it('Google recusando a chave: cai para os serviços abertos', async () => {

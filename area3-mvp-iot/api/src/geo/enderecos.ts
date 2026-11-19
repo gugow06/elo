@@ -5,8 +5,8 @@ import { aoLimparCaches, buscarLugares, Lugar, pedirJson, UFS } from './geocodif
  * Busca de endereço do painel (Locais da rede): o gestor digita o nome do lugar, o endereço ou o CEP
  * e escolhe um resultado; ninguém digita latitude e longitude.
  *
- * 1. Google Geocoding, se houver GOOGLE_MAPS_API_KEY: acerta o número da casa (os gratuitos param na rua).
- *    10 mil consultas grátis por mês; o painel usa muito menos.
+ * 1. Serviço com base própria de endereços, que acerta o número da casa (os abertos param na rua):
+ *    TomTom (TOMTOM_API_KEY; plano gratuito sem cartão) ou Google Geocoding (GOOGLE_MAPS_API_KEY).
  * 2. Sem chave (ou sem resultado): CEP (AwesomeAPI, BrasilAPI) + Nominatim + Photon, de bases abertas
  *    (OpenStreetMap e CEP), com cache de 24 h e fila de uso justo por serviço.
  */
@@ -59,6 +59,43 @@ async function google(q: string, chave: string): Promise<Lugar[]> {
       latitude: g.geometry.location.lat,
       longitude: g.geometry.location.lng,
     };
+  });
+}
+
+// ---------- TomTom Search (busca livre: endereço com número e nome de lugar)
+type ResultadoTomTom = {
+  type: string;
+  poi?: { name?: string };
+  position: { lat: number; lon: number };
+  address: {
+    streetName?: string; streetNumber?: string; municipalitySubdivision?: string; municipality?: string;
+    countrySubdivision?: string; countrySubdivisionCode?: string; postalCode?: string; extendedPostalCode?: string;
+    freeformAddress?: string; countryCode?: string;
+  };
+};
+
+async function tomtom(q: string, chave: string): Promise<Lugar[]> {
+  const url =
+    `https://api.tomtom.com/search/2/search/${encodeURIComponent(q.replace(/[/?#]/g, ' '))}.json` +
+    `?key=${encodeURIComponent(chave)}&countrySet=BR&language=pt-BR&limit=6`;
+  const r = await pedirJson<{ results?: ResultadoTomTom[] }>('tomtom', url, 250);
+  return (r.results ?? []).flatMap((t) => {
+    const a = t.address;
+    if (a.countryCode && a.countryCode !== 'BR') return [];
+    const sub = a.countrySubdivisionCode ?? a.countrySubdivision ?? '';
+    const uf = SIGLAS.has(sub) ? sub : (UFS[sub] ?? null);
+    const rua = junta([a.streetName, a.streetNumber]);
+    const cidade = a.municipality ?? null;
+    const bairro = a.municipalitySubdivision && a.municipalitySubdivision !== cidade ? a.municipalitySubdivision : null;
+    const cep = a.extendedPostalCode ?? a.postalCode ?? null;
+    const nome = t.poi?.name ?? (rua || a.freeformAddress || cidade || 'Local sem nome');
+    return [{
+      nome,
+      endereco: montarEndereco(t.poi?.name ? rua : (rua === nome ? '' : rua), bairro, cidade, uf, cep) || (a.freeformAddress ?? ''),
+      bairro, cidade, uf, cep,
+      latitude: t.position.lat,
+      longitude: t.position.lon,
+    }];
   });
 }
 
@@ -138,12 +175,17 @@ export async function buscarEndereco(q: string): Promise<Lugar[]> {
   if (guardado && Date.now() - guardado.em < CACHE_MS) return guardado.lugares;
 
   let lugares: Lugar[] = [];
-  const chave = process.env.GOOGLE_MAPS_API_KEY;
-  if (chave) {
+  // Serviços com chave, na ordem: o primeiro que responder com resultado vale
+  const comChave: [string, string | undefined, (q: string, chave: string) => Promise<Lugar[]>][] = [
+    ['TomTom', process.env.TOMTOM_API_KEY, tomtom],
+    ['Google Geocoding', process.env.GOOGLE_MAPS_API_KEY, google],
+  ];
+  for (const [nome, chave, servico] of comChave) {
+    if (!chave || lugares.length) continue;
     try {
-      lugares = await google(q, chave);
+      lugares = await servico(q, chave);
     } catch (e) {
-      log.warn(`Google Geocoding falhou, usando os serviços abertos: ${(e as Error).message.replaceAll(chave, '***')}`);
+      log.warn(`${nome} falhou, tentando o próximo serviço: ${(e as Error).message.replaceAll(chave, '***')}`);
     }
   }
   if (!lugares.length) {
