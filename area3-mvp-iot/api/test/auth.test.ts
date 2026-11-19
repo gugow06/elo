@@ -1,13 +1,12 @@
 import { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from 'jose';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { CONTAS_SOCIAIS_DEMO } from '../db/seed';
 import { definirChavesGoogle } from '../src/auth/google';
-import { auth, criarApp } from './helpers';
+import { criarApp } from './helpers';
 
 const CLIENTE_GOOGLE = 'cliente-teste.apps.googleusercontent.com';
 
-describe('autenticação: e-mail + código, Google real e Apple/Facebook simulados', () => {
+describe('autenticação: e-mail + código e Google', () => {
   let app: NestFastifyApplication;
   let bairroId: string;
   let tokenGoogle: (dados: { sub: string; email: string; name?: string; aud?: string }) => Promise<string>;
@@ -109,14 +108,6 @@ describe('autenticação: e-mail + código, Google real e Apple/Facebook simulad
     expect(r.statusCode).toBe(501);
   });
 
-  it('Apple (simulada) entra numa conta vinculada; Facebook sem vínculo pede cadastro', async () => {
-    const apple = await app.inject({ method: 'POST', url: '/auth/social', payload: { provedor: 'apple', sujeito: CONTAS_SOCIAIS_DEMO.claudia } });
-    expect(apple.json().usuario.nome).toBe('Cláudia Martins');
-    const eu = await app.inject({ method: 'GET', url: '/auth/eu', headers: auth(apple.json().token) });
-    expect(eu.statusCode).toBe(200);
-    const fb = await app.inject({ method: 'POST', url: '/auth/social', payload: { provedor: 'facebook', sujeito: 'demo-facebook-nova' } });
-    expect(fb.json().cadastro_necessario).toBe(true);
-  });
 
   it('cadastro sem conta social confirma o e-mail por código', async () => {
     const cad = await app.inject({
@@ -140,6 +131,13 @@ describe('autenticação: e-mail + código, Google real e Apple/Facebook simulad
     expect(porTel.statusCode).toBe(409);
   });
 
+  it('não aceita outros provedores além do Google', async () => {
+    for (const provedor of ['apple', 'facebook']) {
+      const r = await app.inject({ method: 'POST', url: '/auth/social', payload: { provedor, sujeito: 'qualquer' } });
+      expect(r.statusCode).toBe(400);
+    }
+  });
+
   it('cadastro não aceita perfil de equipe', async () => {
     const r = await app.inject({
       method: 'POST', url: '/auth/cadastro',
@@ -148,10 +146,4 @@ describe('autenticação: e-mail + código, Google real e Apple/Facebook simulad
     expect(r.statusCode).toBe(400);
   });
 
-  it('fora do modo demonstração Apple e Facebook simulados são recusados', async () => {
-    process.env.MODO_DEMO = 'false';
-    const r = await app.inject({ method: 'POST', url: '/auth/social', payload: { provedor: 'apple', sujeito: CONTAS_SOCIAIS_DEMO.claudia } });
-    process.env.MODO_DEMO = 'true';
-    expect(r.statusCode).toBe(501);
-  });
 });

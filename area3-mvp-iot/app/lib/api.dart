@@ -27,33 +27,18 @@ class Usuario {
   factory Usuario.fromJson(Map<String, dynamic> j) => Usuario(id: j['id'], nome: j['nome'], perfil: j['perfil']);
 }
 
-enum Provedor {
-  google('Google'),
-  apple('Apple'),
-  facebook('Facebook');
-
-  const Provedor(this.nome);
-  final String nome;
-}
-
-/// Conta do provedor social.
-/// Google: real, leva o [idToken] que a API confere. Apple e Facebook: simulados no protótipo,
-/// levam o [sujeito] fictício (ver telas/conta_social.dart).
-class IdentidadeSocial {
-  const IdentidadeSocial({required this.provedor, this.sujeito, this.idToken, this.nome, this.email});
-  final Provedor provedor;
-  final String? sujeito;
-  final String? idToken;
+/// Conta Google confirmada pelo "Fazer login com o Google". A API confere o [idToken].
+class IdentidadeGoogle {
+  const IdentidadeGoogle({required this.idToken, this.nome, this.email});
+  final String idToken;
   final String? nome;
   final String? email;
 
-  Map<String, dynamic> toJson() => provedor == Provedor.google
-      ? {'provedor': 'google', 'id_token': idToken}
-      : {'provedor': provedor.name, 'sujeito': sujeito, 'email': ?email};
+  Map<String, dynamic> toJson() => {'provedor': 'google', 'id_token': idToken};
 }
 
-/// Resposta do login social: a sessão, ou os dados para criar a conta.
-typedef ResultadoSocial = ({Usuario? usuario, String? nome, String? email});
+/// Resposta do login com Google: a sessão, ou os dados para criar a conta.
+typedef ResultadoGoogle = ({Usuario? usuario, String? nome, String? email});
 
 /// Cliente da API do ELO. Guarda a sessão localmente (token de 8 h).
 class Api {
@@ -111,14 +96,14 @@ class Api {
   Future<Usuario> entrar(String email, String codigo) async =>
       _guardarSessao(await _req('POST', '/auth/entrar', {'email': email, 'codigo': codigo}));
 
-  /// Login social. Sem conta no ELO, devolve nome e e-mail para a criação de conta.
-  Future<ResultadoSocial> entrarSocial(IdentidadeSocial id) async {
+  /// Login com Google. Sem conta no ELO, devolve nome e e-mail para a criação de conta.
+  Future<ResultadoGoogle> entrarGoogle(IdentidadeGoogle id) async {
     final r = await _req('POST', '/auth/social', id.toJson());
     if (r['cadastro_necessario'] == true) return (usuario: null, nome: r['nome'] as String?, email: r['email'] as String?);
     return (usuario: await _guardarSessao(r), nome: null, email: null);
   }
 
-  /// Cria a conta. Com [social], já entra e devolve o usuário; sem ele, o e-mail
+  /// Cria a conta. Com [google], já entra e devolve o usuário; sem ele, o e-mail
   /// precisa ser confirmado: devolve null e [aoPedirCodigo] recebe o código de demonstração.
   Future<Usuario?> cadastrar({
     required String nome,
@@ -126,7 +111,7 @@ class Api {
     required String telefone,
     required String bairroId,
     required String perfil,
-    IdentidadeSocial? social,
+    IdentidadeGoogle? google,
     void Function(String? codigoDemo)? aoPedirCodigo,
   }) async {
     final r = await _req('POST', '/auth/cadastro', {
@@ -135,7 +120,7 @@ class Api {
       'telefone': telefone,
       'bairro_id': bairroId,
       'perfil': perfil,
-      'social': ?social?.toJson(),
+      'social': ?google?.toJson(),
     });
     if (r['token'] == null) {
       aoPedirCodigo?.call(r['codigo_demo'] as String?);

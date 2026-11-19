@@ -32,12 +32,6 @@ export const CHAVES_DEMO = {
   'ponto-campo-centro': 'demo-chave-ponto-campo-centro',
 } as const;
 
-/** Identificadores fictícios do provedor (o "sub" que Google/Apple/Facebook devolveriam). */
-export const CONTAS_SOCIAIS_DEMO = {
-  claudia: 'demo-apple-claudia',
-  maria: 'demo-facebook-maria',
-} as const;
-
 export async function seed(url?: string): Promise<void> {
   const pool = criarPool(url);
   const c = await pool.connect();
@@ -80,16 +74,9 @@ export async function seed(url?: string): Promise<void> {
     await usr(m1, jardimSP, 'cidadao', 'Ana Paula Ribeiro', '123456789', '+5511990000001', '1997-03-14');
     const maria = await usr(m1, vilaNova, 'cidadao', 'Maria das Dores Lima', '234567891', '+5511990000002', '1954-08-02');
     const jose = await usr(m1, centro, 'cidadao', 'José Carlos Souza', '345678912', '+5511990000003', '1992-11-20');
-    const claudia = await usr(m1, vilaNova, 'voluntario', 'Cláudia Martins', '456789123', '+5511990000004', '1985-05-09');
+    await usr(m1, vilaNova, 'voluntario', 'Cláudia Martins', '456789123', '+5511990000004', '1985-05-09');
     await usr(m1, jardim, 'voluntario', 'Roberto Alves', '567891234', '+5511990000005', '1979-01-30');
 
-    // Contas Apple e Facebook fictícias (esses dois provedores são simulados no protótipo; o Google é real)
-    for (const [usuarioId, provedor, sujeito, email] of [
-      [claudia, 'apple', CONTAS_SOCIAIS_DEMO.claudia, 'claudia.martins@example.com'],
-      [maria, 'facebook', CONTAS_SOCIAIS_DEMO.maria, 'maria.lima@example.com'],
-    ]) {
-      await c.query('INSERT INTO conta_social (usuario_id, provedor, sujeito, email) VALUES ($1,$2,$3,$4)', [usuarioId, provedor, sujeito, email]);
-    }
     await usr(m1, jardim, 'tecnico', 'Fernanda Costa', '678912345', '+5511990000006', '1988-07-17');
     await usr(m1, centro, 'gestor', 'Secretaria de Assistência Social', '789123456', '+5511990000007', '1975-04-01');
 

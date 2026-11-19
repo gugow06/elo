@@ -287,7 +287,7 @@ Essas funções são testadas com dados de seed conhecidos (ex.: 10 pedidos verd
 
 | # | Tela | Onde | Base no mockup |
 | --- | --- | --- | --- |
-| 1 | Entrar: "Entrar na minha conta" (e-mail + código enviado pelo Resend), "Criar uma conta" e "Ou continue com" Google (real), Apple e Facebook (simulados, contas fictícias) | App | Tela 1 |
+| 1 | Entrar: "Entrar na minha conta" (e-mail + código enviado pelo Resend), "Criar uma conta" e "Ou continue com" Google | App | Tela 1, sem Apple e Facebook |
 | 2 | Início (saudação, 4 atalhos, pedidos próximos) | App | Tela 2 |
 | 3 | Pedir ajuda (relato em texto, bairro, ponto de coleta) → confirmação com protocolo de 6 dígitos | App | Novo, no ELO DS |
 | 4 | Mural do bairro, em lista (com alternância para mapa se der tempo) | App | Tela 3; pedidos agregados por bairro, nunca pino na casa |
@@ -687,7 +687,7 @@ O visual vale como guia; estes pontos precisam mudar na implementação:
 
 | Tela | Elemento do mockup | Conflito | Ajuste proposto |
 | --- | --- | --- | --- |
-| Login | "Continue com Google / Apple / Facebook" | Login social não comprova identidade para política pública (PRD: gov.br + OTP) | **Mantido como no mockup.** Google real (ID token conferido na API); Apple e Facebook simulados no protótipo (só com `MODO_DEMO`). A conta social é vinculada a um cadastro com e-mail, telefone e bairro. Verificação forte (gov.br) fica para o roadmap |
+| Login | "Continue com Google / Apple / Facebook" | Login social não comprova identidade para política pública (PRD: gov.br + OTP) | **Só Google** (ID token conferido na API), vinculado a um cadastro com e-mail, telefone e bairro. Apple e Facebook saem. Verificação forte (gov.br) fica para o roadmap |
 | Login | "Criar uma conta" (sugere senha) | Cidadão não cria senha (persona Ana) | Mantido, sem senha: nome, e-mail, telefone, bairro e perfil; o e-mail é confirmado por código |
 | Mapa | Pinos de pedido em ponto exato da rua | **P3 / RS-01**: endereço nunca público | O mapa mostra só equipamentos públicos e pontos de coleta; pedidos aparecem **agregados por bairro** ("3 pedidos em Vila Nova") |
 | Mapa | Sem lista equivalente visível | RNF-A10 / RF-402 | Alternar **Mapa / Lista** no topo, com a lista como padrão quando o leitor de tela está ativo; distância e direção por extenso ("2,4 km ao norte") |

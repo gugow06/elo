@@ -38,11 +38,8 @@ const identificador = z
   .object({ email: email.optional(), telefone: telefone.optional() })
   .refine((d) => d.email || d.telefone, { message: 'Informe o e-mail.', path: ['email'] });
 
-/** Google: ID token real. Apple e Facebook: provedor simulado (só com MODO_DEMO). */
-const social = z.discriminatedUnion('provedor', [
-  z.object({ provedor: z.literal('google'), id_token: z.string().min(20) }),
-  z.object({ provedor: z.enum(['apple', 'facebook']), sujeito: z.string().trim().min(1).max(255), email: email.optional() }),
-]);
+/** Login com Google: ID token do "Fazer login com o Google", conferido na API. */
+const social = z.object({ provedor: z.literal('google'), id_token: z.string().min(20) });
 
 const SolicitarCodigo = identificador;
 const Entrar = identificador.and(z.object({ codigo }));
@@ -56,9 +53,6 @@ const Cadastro = z.object({
 });
 
 type LinhaUsuario = { id: string; perfil: Perfil; municipio_id: string; bairro_id: string | null; nome: string };
-type Social = z.infer<typeof social>;
-/** Identidade social já conferida: sujeito estável do provedor e e-mail. */
-type SocialConferida = { provedor: Social['provedor']; sujeito: string; email: string | null; nome: string | null };
 
 const COLUNAS = 'id, perfil, municipio_id, bairro_id, nome';
 const MAX_CODIGOS_ATIVOS = 5;
@@ -73,9 +67,7 @@ const modoDemo = () => process.env.MODO_DEMO !== 'false';
  * Autenticação do app e do painel.
  * - Conta ELO: e-mail + código de 6 dígitos enviado pelo Resend (sem senha). O painel da equipe
  *   continua por telefone, com SMS simulado. Com MODO_DEMO, o código também volta na resposta.
- * - Google: real. O app manda o ID token e a API confere com as chaves públicas do Google.
- * - Apple e Facebook: SIMULADOS no protótipo (só com MODO_DEMO). Exigem conta de desenvolvedor
- *   (Apple: programa pago e URL HTTPS pública de retorno) que o protótipo não tem.
+ * - Google: o app manda o ID token e a API confere com as chaves públicas do Google.
  */
 @Controller('auth')
 export class AuthController {
@@ -114,7 +106,7 @@ export class AuthController {
   }
 
   /**
-   * Login social. Conta já vinculada: entra. Google com e-mail de uma conta existente: vincula e entra
+   * Login com Google. Conta já vinculada: entra. E-mail de uma conta existente: vincula e entra
    * (o Google confirmou o e-mail). Sem conta: devolve `cadastro_necessario` com nome e e-mail para o
    * app abrir a criação de conta.
    */
@@ -128,24 +120,22 @@ export class AuthController {
        WHERE cs.provedor = $1 AND cs.sujeito = $2`,
       [id.provedor, id.sujeito],
     );
-    if (vinculada.rows[0]) return this.sessaoPara(this.pool, vinculada.rows[0], `login_${id.provedor}`);
+    if (vinculada.rows[0]) return this.sessaoPara(this.pool, vinculada.rows[0], 'login_google');
 
-    if (id.provedor === 'google' && id.email) {
-      const porEmail = await this.pool.query<LinhaUsuario>(`SELECT ${COLUNAS} FROM usuario WHERE lower(email) = $1`, [id.email]);
-      const u = porEmail.rows[0];
-      if (u) {
-        await this.pool.query(
-          'INSERT INTO conta_social (usuario_id, provedor, sujeito, email) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING',
-          [u.id, id.provedor, id.sujeito, id.email],
-        );
-        return this.sessaoPara(this.pool, u, `login_${id.provedor}`);
-      }
+    const porEmail = await this.pool.query<LinhaUsuario>(`SELECT ${COLUNAS} FROM usuario WHERE lower(email) = $1`, [id.email]);
+    const u = porEmail.rows[0];
+    if (u) {
+      await this.pool.query(
+        'INSERT INTO conta_social (usuario_id, provedor, sujeito, email) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING',
+        [u.id, id.provedor, id.sujeito, id.email],
+      );
+      return this.sessaoPara(this.pool, u, 'login_google');
     }
     return { cadastro_necessario: true, nome: id.nome, email: id.email };
   }
 
   /**
-   * Cria a conta de cidadão ou voluntário. Com conta social, já entra; sem ela, envia o código
+   * Cria a conta de cidadão ou voluntário. Com conta Google, já entra; sem ela, envia o código
    * para o e-mail (o app segue para a etapa do código).
    */
   @Post('cadastro')
@@ -153,8 +143,8 @@ export class AuthController {
   async cadastrar(@Body() corpo: unknown) {
     const dados = validar(Cadastro, corpo);
     const id = dados.social ? await this.conferirSocial(dados.social) : null;
-    // No Google, vale o e-mail confirmado pelo Google
-    const emailConta = id?.provedor === 'google' && id.email ? id.email : dados.email;
+    // Com Google, vale o e-mail confirmado pelo Google
+    const emailConta = id?.email ?? dados.email;
     const tel = normalizarTelefone(dados.telefone);
 
     const c = await this.pool.connect();
@@ -178,12 +168,12 @@ export class AuthController {
         [bairro.rows[0].municipio_id, dados.bairro_id, dados.perfil, dados.nome, tel, emailConta],
       );
       const u = rows[0];
-      await auditar(c, { usuarioId: u.id, acao: 'cadastro', entidade: 'usuario', entidadeId: u.id, detalhe: { via: id?.provedor ?? 'email' } });
+      await auditar(c, { usuarioId: u.id, acao: 'cadastro', entidade: 'usuario', entidadeId: u.id, detalhe: { via: id ? 'google' : 'email' } });
 
       let resposta: Record<string, unknown>;
       if (id) {
         await c.query('INSERT INTO conta_social (usuario_id, provedor, sujeito, email) VALUES ($1,$2,$3,$4)', [u.id, id.provedor, id.sujeito, id.email]);
-        resposta = await this.sessaoPara(c, u, `login_${id.provedor}`);
+        resposta = await this.sessaoPara(c, u, 'login_google');
       } else {
         resposta = { confirmar_email: true, ...(await this.gerarCodigo(c, u.id, { email: emailConta })) };
       }
@@ -221,22 +211,14 @@ export class AuthController {
     return rows[0];
   }
 
-  private async conferirSocial(s: Social): Promise<SocialConferida> {
-    if (s.provedor === 'google') {
-      let g: IdentidadeGoogle;
-      try {
-        g = await verificarTokenGoogle(s.id_token);
-      } catch (erro) {
-        if (erro instanceof GoogleNaoConfigurado) throw new NotImplementedException('Login com Google não configurado na API (GOOGLE_CLIENT_IDS).');
-        this.log.warn(`Token do Google recusado: ${(erro as Error).message}`);
-        throw new UnauthorizedException('Não foi possível confirmar a sua conta Google. Tente de novo.');
-      }
-      return { provedor: 'google', sujeito: g.sujeito, email: g.email, nome: g.nome };
+  private async conferirSocial(s: z.infer<typeof social>): Promise<IdentidadeGoogle & { provedor: 'google' }> {
+    try {
+      return { provedor: 'google', ...(await verificarTokenGoogle(s.id_token)) };
+    } catch (erro) {
+      if (erro instanceof GoogleNaoConfigurado) throw new NotImplementedException('Login com Google não configurado na API (GOOGLE_CLIENT_IDS).');
+      this.log.warn(`Token do Google recusado: ${(erro as Error).message}`);
+      throw new UnauthorizedException('Não foi possível confirmar a sua conta Google. Tente de novo.');
     }
-    if (!modoDemo()) {
-      throw new NotImplementedException(`Login com ${s.provedor === 'apple' ? 'Apple' : 'Facebook'} ainda não está disponível.`);
-    }
-    return { provedor: s.provedor, sujeito: s.sujeito, email: s.email ?? null, nome: null };
   }
 
   private async gerarCodigo(db: Pool | PoolClient, usuarioId: string, destino: { email: string } | { telefone: string }) {

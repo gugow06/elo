@@ -1,13 +1,12 @@
 import 'package:material_ui/material_ui.dart';
 
-import '../api.dart';
 import '../tema.dart';
 import '../widgets/login.dart';
-import 'conta_social.dart';
+import '../google.dart';
 import 'criar_conta.dart';
 import 'entrar.dart';
 
-/// Tela 1 do mockup: entrar, criar conta ou continuar com Google, Apple ou Facebook.
+/// Tela 1 do mockup: entrar, criar conta ou continuar com Google.
 class BoasVindas extends StatelessWidget {
   const BoasVindas({super.key});
 
@@ -69,15 +68,7 @@ class BoasVindas extends StatelessWidget {
               const SizedBox(height: 20),
               const DivisorTexto('Ou continue com'),
               const SizedBox(height: 16),
-              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                for (final (i, p) in Provedor.values.indexed) ...[
-                  if (i > 0) const SizedBox(width: 20),
-                  BotaoProvedor(
-                    provedor: p,
-                    onPressed: () => p == Provedor.google ? continuarComGoogle(context) : _abrir(context, ContaSocial(provedor: p)),
-                  ),
-                ],
-              ]),
+              BotaoGoogle(onPressed: () => continuarComGoogle(context)),
             ]),
           ),
         ),

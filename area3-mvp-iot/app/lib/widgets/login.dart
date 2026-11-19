@@ -1,52 +1,29 @@
 import 'package:material_ui/material_ui.dart';
 
-import '../api.dart';
 import '../tema.dart';
 
 /// Validação simples de e-mail (a API confere de novo).
 bool emailValido(String e) => RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(e.trim());
 
-/// Logo do provedor. Google usa o arquivo oficial (assets/google-g.png);
-/// Apple e Facebook usam os ícones de marca do Material Icons.
-class LogoProvedor extends StatelessWidget {
-  const LogoProvedor(this.provedor, {super.key, this.tamanho = 26});
-  final Provedor provedor;
+/// Logo oficial do Google (arquivo estático assets/google-g.png).
+class LogoGoogle extends StatelessWidget {
+  const LogoGoogle({super.key, this.tamanho = 22});
   final double tamanho;
-
   @override
-  Widget build(BuildContext context) => ExcludeSemantics(
-        child: switch (provedor) {
-          Provedor.google => Image.asset('assets/google-g.png', width: tamanho, height: tamanho),
-          Provedor.apple => Icon(Icons.apple, size: tamanho + 4, color: Colors.black),
-          Provedor.facebook => Icon(Icons.facebook, size: tamanho + 2, color: const Color(0xFF1877F2)),
-        },
-      );
+  Widget build(BuildContext context) =>
+      ExcludeSemantics(child: Image.asset('assets/google-g.png', width: tamanho, height: tamanho));
 }
 
-/// Botão quadrado de login social ("Ou continue com").
-class BotaoProvedor extends StatelessWidget {
-  const BotaoProvedor({super.key, required this.provedor, required this.onPressed});
-  final Provedor provedor;
+/// Botão "Continuar com Google" (abaixo de "Ou continue com").
+class BotaoGoogle extends StatelessWidget {
+  const BotaoGoogle({super.key, required this.onPressed});
   final VoidCallback onPressed;
 
   @override
-  Widget build(BuildContext context) => Semantics(
-        button: true,
-        label: 'Continuar com ${provedor.nome}',
-        excludeSemantics: true,
-        child: Material(
-          color: EloCores.superficie,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(EloRaio.md),
-            side: const BorderSide(color: EloCores.borda, width: 1.5),
-          ),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(EloRaio.md),
-            onTap: onPressed,
-            child: SizedBox(width: 64, height: 56, child: Center(child: LogoProvedor(provedor))),
-          ),
-        ),
+  Widget build(BuildContext context) => OutlinedButton.icon(
+        onPressed: onPressed,
+        icon: const LogoGoogle(),
+        label: const Text('Continuar com Google'),
       );
 }
 

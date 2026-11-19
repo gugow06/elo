@@ -36,8 +36,8 @@ Contraprova: um relato com indício de violência vai direto para a fila do téc
 | Método | Rota | Perfil | Função |
 | --- | --- | --- | --- |
 | POST | `/auth/codigo`, `/auth/entrar` | público | Login sem senha: código por e-mail (Resend) no app; por telefone (SMS simulado) no painel |
-| POST | `/auth/cadastro` | público | Cria conta de cidadão ou voluntário (com ou sem conta social); confirma o e-mail por código |
-| POST | `/auth/social` | público | Google: confere o ID token (`GOOGLE_CLIENT_IDS`). Apple e Facebook: simulados, só com `MODO_DEMO` |
+| POST | `/auth/cadastro` | público | Cria conta de cidadão ou voluntário (com ou sem Google); sem Google, confirma o e-mail por código |
+| POST | `/auth/social` | público | Login com Google: confere o ID token (`GOOGLE_CLIENT_IDS`) |
 | GET | `/auth/bairros` | público | Bairros para a tela de criar conta |
 | POST | `/solicitacoes` | cidadão | Pedir ajuda (com triagem) |
 | GET | `/solicitacoes/minhas` | cidadão | Acompanhar |

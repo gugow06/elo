@@ -4,7 +4,7 @@ O app segue o mockup oficial ([`images/representacao das telas elo.png`](../../i
 
 | # | Tela | Mockup | Ajuste do PRD |
 | --- | --- | --- | --- |
-| 1 | Boas-vindas e login | Tela 1 | "Entrar na minha conta" (e-mail + código enviado pelo Resend, sem senha), "Criar uma conta" e "Ou continue com": **Google real**; Apple e Facebook simulados com contas fictícias |
+| 1 | Boas-vindas e login | Tela 1 | "Entrar na minha conta" (e-mail + código enviado pelo Resend, sem senha), "Criar uma conta" e "Ou continue com" Google |
 | 2 | Início: saudação, busca, 4 atalhos, pedidos próximos | Tela 2 | Atalho "Oportunidades" marcado como "em breve" (fase 3) |
 | 3 | Mapa da rede com alternativa em lista | Tela 3 | Pedidos **agregados por bairro**, nunca pino na casa. Lista com distância e direção por extenso; lista é o padrão com leitor de tela |
 | 4 | Pedido de ajuda + "Quero ajudar" | Tela 4 | Sem compartilhar e sem foto de voluntários. Mostra o protocolo para digitar no ponto de coleta |
@@ -51,7 +51,7 @@ Copie o APK para o celular e instale (é preciso permitir "instalar apps de font
 
 ## Login: Google e código por e-mail
 
-### Google (real)
+### Google
 
 O app usa o "Fazer login com o Google" do Android (`google_sign_in`) e a API confere o ID token com as chaves públicas do Google. Configuração no [Google Cloud Console](https://console.cloud.google.com/), uma vez:
 
@@ -66,10 +66,6 @@ O app usa o "Fazer login com o Google" do Android (`google_sign_in`) e a API con
    APK compilado em outra máquina (ou no CI) tem outro SHA-1: cadastre cada um, ou o Google cancela o login.
 
 Sem `GOOGLE_SERVER_CLIENT_ID`, o botão do Google avisa que o login não foi configurado. No navegador (`flutter run -d chrome`) o Google não funciona: use o Android.
-
-### Apple e Facebook (simulados)
-
-Login real com Apple exige o Apple Developer Program (pago) e, no Android, uma URL HTTPS pública de retorno; o Facebook exige um app no Meta for Developers. No protótipo os dois abrem uma escolha de conta **simulada**, com contas fictícias, e só funcionam com `MODO_DEMO` ligado na API.
 
 ### Código por e-mail (Resend)
 

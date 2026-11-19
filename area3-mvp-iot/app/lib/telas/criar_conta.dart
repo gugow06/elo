@@ -6,18 +6,18 @@ import '../widgets/login.dart';
 import 'entrar.dart';
 import 'shell.dart';
 
-/// Criação de conta de cidadão ou voluntário. Vinda do login social, já traz nome e e-mail
-/// e vincula a conta do provedor; sem ele, o e-mail é confirmado por código.
+/// Criação de conta de cidadão ou voluntário. Vinda do Google, já traz nome e e-mail
+/// e vincula a conta Google; sem ela, o e-mail é confirmado por código.
 class CriarConta extends StatefulWidget {
-  const CriarConta({super.key, this.social});
-  final IdentidadeSocial? social;
+  const CriarConta({super.key, this.google});
+  final IdentidadeGoogle? google;
   @override
   State<CriarConta> createState() => _CriarContaState();
 }
 
 class _CriarContaState extends State<CriarConta> {
-  late final _nome = TextEditingController(text: widget.social?.nome);
-  late final _email = TextEditingController(text: widget.social?.email);
+  late final _nome = TextEditingController(text: widget.google?.nome);
+  late final _email = TextEditingController(text: widget.google?.email);
   final _telefone = TextEditingController();
   List<dynamic>? _bairros;
   String? _bairroId;
@@ -58,7 +58,7 @@ class _CriarContaState extends State<CriarConta> {
         telefone: _telefone.text,
         bairroId: _bairroId!,
         perfil: _perfil,
-        social: widget.social,
+        google: widget.google,
         aoPedirCodigo: (c) => codigoDemo = c,
       );
       if (!mounted) return;
@@ -78,16 +78,16 @@ class _CriarContaState extends State<CriarConta> {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    final social = widget.social;
+    final google = widget.google;
     return Scaffold(
       appBar: AppBar(title: const Text('Criar uma conta')),
       body: SafeArea(
         child: ListView(padding: const EdgeInsets.all(24), children: [
-          if (social != null) ...[
+          if (google != null) ...[
             Row(children: [
-              LogoProvedor(social.provedor, tamanho: 22),
+              const LogoGoogle(),
               const SizedBox(width: 10),
-              Expanded(child: Text('Conta ${social.provedor.nome}: ${social.email ?? social.nome ?? ''}', style: t.bodyMedium)),
+              Expanded(child: Text('Conta Google: ${google.email ?? google.nome ?? ''}', style: t.bodyMedium)),
             ]),
             const SizedBox(height: 8),
             Text('Falta pouco: complete o seu cadastro no ELO.', style: t.titleMedium),
@@ -114,8 +114,8 @@ class _CriarContaState extends State<CriarConta> {
           const SizedBox(height: 16),
           TextField(
             controller: _email,
-            // No Google, vale o e-mail confirmado pelo Google
-            readOnly: social?.provedor == Provedor.google,
+            // Com Google, vale o e-mail confirmado pelo Google
+            readOnly: google != null,
             keyboardType: TextInputType.emailAddress,
             autofillHints: const [AutofillHints.email],
             autocorrect: false,
@@ -144,7 +144,7 @@ class _CriarContaState extends State<CriarConta> {
             ),
           const SizedBox(height: 24),
           FilledButton(onPressed: _enviando ? null : _criar, child: Text(_enviando ? 'Criando…' : 'Criar conta')),
-          if (social == null) ...[
+          if (google == null) ...[
             const SizedBox(height: 12),
             Text('Vamos enviar um código para confirmar o seu e-mail. Não precisa de senha.', textAlign: TextAlign.center, style: t.bodyMedium),
           ],
