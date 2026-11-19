@@ -87,7 +87,11 @@ export class AuthController {
     const u = await this.buscarPorIdentificador(id);
     const via = id.email ? 'e-mail' : 'telefone';
     const resposta = { mensagem: `Se o ${via} estiver cadastrado, você receberá um código.` };
-    if (!u) return resposta; // não revela se a conta existe
+    if (!u) {
+      // Não revela a quem pediu se a conta existe; o log (mascarado) ajuda a entender "o código não chegou"
+      this.log.log(`Código pedido para ${id.email ? mascararEmail(id.email) : 'telefone'} sem conta no ELO: nada foi enviado`);
+      return resposta;
+    }
     return { ...resposta, ...(await gerarCodigo(this.pool, u.id, id.email ? { email: id.email } : { telefone: normalizarTelefone(id.telefone!) })) };
   }
 
