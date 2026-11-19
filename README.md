@@ -117,7 +117,7 @@ flowchart TB
 | Camada | Tecnologia |
 | --- | --- |
 | API | Node.js 22 · NestJS 12 sobre Fastify · Zod · `pg` · JWT (jose) |
-| Triagem | TypeScript puro · regras em JSON versionado · cliente LLM agnóstico de provedor |
+| Triagem | TypeScript puro · regras em JSON versionado · LLM Gemini (qualquer endpoint `/v1/chat/completions`) · classificador offline |
 | Banco | PostgreSQL 16 · migrações SQL versionadas · camadas bronze/prata/ouro |
 | Dados | Python · pandas · SQLAlchemy · Faker |
 | Painel web | Next.js · Tailwind · Apache ECharts |
@@ -144,12 +144,13 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-```bash
-curl http://localhost:3333/saude
-# {"status":"ok","banco":"ok","latencia_ms":12}
-```
+| Serviço | Endereço |
+| --- | --- |
+| 🖥️ Painel (técnico e gestão) | http://localhost:3000 |
+| ⚙️ API | http://localhost:3333/saude |
+| 📱 App (navegador) | `cd area3-mvp-iot/app && flutter run -d chrome --dart-define=API_URL=http://localhost:3333` |
 
-Na primeira subida, a API aplica as migrações e carrega os dados fictícios de demonstração.
+Na primeira subida, a API aplica as migrações e carrega os dados fictícios, e o pipeline gera 6 meses de histórico para o dashboard. Para usar a triagem com LLM, preencha `LLM_URL`, `LLM_API_KEY` e `LLM_MODELO` no `.env`. Sem isso, a triagem usa as regras + o classificador offline.
 
 ### Contas de demonstração
 
@@ -209,7 +210,8 @@ pnpm --filter @elo/api dev     # http://localhost:3333
 | --- | --- | --- | --- |
 | Treino (60 relatos, léxico v1) | 95,0% | 86,7% | 2 |
 | Treino (60 relatos, léxico v2) | 100,0% | **100,0%** | **0** |
-| **Validação** (20 relatos nunca usados nos ajustes) | **90,0%** | **100,0%** | **0** |
+| Validação, classificador offline | 90,0% | 100,0% | 0 |
+| **Validação, Gemini 3.5 Flash-Lite + prompt v2** (20 relatos nunca usados nos ajustes) | **100,0%** | **100,0%** | **0** |
 
 Detalhes, matriz de confusão e limitações em [`area1-ia/README.md`](area1-ia/README.md).
 
@@ -227,14 +229,14 @@ Detalhes, matriz de confusão e limitações em [`area1-ia/README.md`](area1-ia/
 - 📟 Dispositivos IoT autenticados por chave do ponto (hash + comparação em tempo constante).
 - 🏙️ Isolamento entre municípios coberto por teste automatizado.
 
-**Testes e CI**
+**Testes e CI**: 49 testes automatizados (triagem, API, pipeline e app).
 
 ```bash
-pnpm -r test                                   # API + triagem (Vitest)
-pnpm --filter @elo/triagem avaliar validacao   # avaliação da IA
+docker compose up -d db
+bash scripts/testar-tudo.sh      # todos os testes, com as saídas salvas em area4-devops/evidencias/
 ```
 
-A cada push, o GitHub Actions executa: build → typecheck → testes com PostgreSQL → avaliação da triagem → build das imagens Docker → subida da stack com verificação de saúde.
+A cada push, o GitHub Actions roda os testes da API, da triagem e do pipeline com PostgreSQL, a avaliação da IA, a análise e os testes de acessibilidade do app, gera o APK, faz o build das 4 imagens Docker e sobe a stack verificando a saúde. Detalhes em [`area4-devops/README.md`](area4-devops/README.md).
 
 ---
 
@@ -254,13 +256,14 @@ A cada push, o GitHub Actions executa: build → typecheck → testes com Postgr
 - [x] Triagem por risco com avaliação
 - [x] Rede cidadã: mural, ofertas, devolutiva e escalonamento por SLA
 - [x] Ponto de Coleta Inteligente: API, sketch Tinkercad e simulador
-- [ ] Pipeline de dados e funções analíticas
-- [ ] Painel web: fila do técnico e dashboard de gestão
-- [ ] App Flutter: cidadão e voluntário
+- [x] Pipeline de dados bronze → prata → ouro e funções analíticas
+- [x] Painel web: fila do técnico e dashboard de gestão
+- [x] App Flutter: cidadão e voluntário (Android, iOS e web)
+- [x] Triagem com LLM (Gemini) e avaliação em conjunto de validação
 - [ ] Canais WhatsApp e URA 0800, web leve sem JavaScript
 - [ ] Credenciamento de voluntários e faixa amarela com visita
 
-A visão completa de produto está em [`docs/PLANO-IMPLEMENTACAO.md`](docs/PLANO-IMPLEMENTACAO.md).
+A visão completa de produto está em [`docs/PLANO-IMPLEMENTACAO.md`](docs/PLANO-IMPLEMENTACAO.md). Arquitetura detalhada: [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md).
 
 ---
 
@@ -275,8 +278,9 @@ elo/
 │  ├─ painel/           Next.js: fila do técnico e gestão
 │  ├─ app/              Flutter: cidadão e voluntário
 │  └─ iot/              Sketch Arduino, simulador e ponte serial
-├─ area4-devops/        🛠️ Plano de testes e evidências
-├─ docs/                Plano de implementação e arquitetura
+├─ area4-devops/        🛠️ Segurança, plano de testes e evidências
+├─ docs/                Plano, arquitetura, roteiro do pitch e do PDF
+├─ scripts/             testar-tudo.sh (roda todos os testes e salva evidências)
 ├─ images/              Identidade visual
 ├─ docker-compose.yml
 └─ .github/workflows/   CI
