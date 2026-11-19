@@ -1,0 +1,37 @@
+# Dependências
+node_modules/
+.pnpm-store/
+
+# Builds
+dist/
+.next/
+out/
+build/
+coverage/
+*.tsbuildinfo
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+
+# Flutter
+area3-mvp-iot/app/.dart_tool/
+area3-mvp-iot/app/build/
+area3-mvp-iot/app/.flutter-plugins*
+area3-mvp-iot/app/.packages
+
+# Segredos e ambiente
+.env
+.env.*
+!.env.example
+
+# Dados gerados pelo pipeline
+area2-dados/saida/
+
+# IDE / SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

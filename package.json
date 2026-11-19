@@ -1,0 +1,17 @@
+{
+  "name": "elo",
+  "private": true,
+  "description": "ELO: plataforma municipal de mobilização solidária e triagem da demanda socioassistencial",
+  "packageManager": "pnpm@9.15.4",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "db:migrate": "pnpm --filter @elo/api db:migrate",
+    "db:seed": "pnpm --filter @elo/api db:seed"
+  }
+}
