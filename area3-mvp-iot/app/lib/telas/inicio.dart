@@ -92,7 +92,7 @@ class _InicioState extends State<Inicio> {
             childAspectRatio: 1.35,
             children: [
               _Atalho(rotulo: 'Pedir ajuda', icone: Icons.favorite, cor: EloCores.pedido, fundo: EloCores.pedidoClaro,
-                  onTap: u.voluntario ? () => avisar(context, 'Entre com uma conta de cidadão para pedir ajuda.') : widget.aoPedirAjuda),
+                  onTap: widget.aoPedirAjuda),
               _Atalho(rotulo: 'Oferecer ajuda', icone: Icons.handshake, cor: EloCores.voluntario, fundo: EloCores.voluntarioClaro, onTap: widget.aoAbrirMapa),
               _Atalho(rotulo: 'Serviços públicos', icone: Icons.account_balance, cor: EloCores.servico, fundo: EloCores.servicoClaro, onTap: widget.aoAbrirMapa),
               _Atalho(rotulo: 'Oportunidades de emprego e cursos', icone: Icons.work, cor: EloCores.oportunidade, fundo: EloCores.oportunidadeClaro,

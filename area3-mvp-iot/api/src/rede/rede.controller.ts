@@ -34,8 +34,9 @@ export class RedeController {
        LEFT JOIN ponto_coleta p ON p.id = s.ponto_coleta_id
        WHERE s.municipio_id = $1 AND s.status = 'no_mural' AND s.faixa = 'verde'
          AND ($2::text IS NULL OR b.slug = $2)
+         AND s.cidadao_id <> $4
        ORDER BY (s.bairro_id = $3) DESC, s.criado_em`,
-      [sessao.municipioId, bairroSlug ?? null, sessao.bairroId],
+      [sessao.municipioId, bairroSlug ?? null, sessao.bairroId, sessao.usuarioId],
     );
     return rows;
   }
@@ -55,9 +56,9 @@ export class RedeController {
     return rows;
   }
 
-  /** Voluntário assume o pedido (RF-403). Verde: pareamento automático (RF-404). */
+  /** Qualquer usuário do app assume o pedido (RF-403), menos o próprio. Verde: pareamento automático (RF-404). */
   @Post('mural/:id/ofertas')
-  @Perfis('voluntario')
+  @Perfis('voluntario', 'cidadao')
   async oferecer(@SessaoAtual() sessao: Sessao, @Param('id') id: string) {
     const cliente = await this.pool.connect();
     try {
@@ -71,6 +72,7 @@ export class RedeController {
       );
       const s = rows[0];
       if (!s) throw new NotFoundException('Este pedido não está mais disponível no mural.');
+      if (s.cidadao_id === sessao.usuarioId) throw new BadRequestException('Este pedido é seu. Outra pessoa do bairro vai ajudar.');
 
       try {
         await cliente.query('INSERT INTO oferta (solicitacao_id, voluntario_id) VALUES ($1, $2)', [id, sessao.usuarioId]);
@@ -107,7 +109,7 @@ export class RedeController {
 
   /** Pedidos assumidos pelo voluntário, com desfecho (P6: quem ajuda recebe o desfecho). */
   @Get('voluntario/ofertas')
-  @Perfis('voluntario')
+  @Perfis('voluntario', 'cidadao')
   async minhasOfertas(@SessaoAtual() sessao: Sessao) {
     const { rows } = await this.pool.query(
       `SELECT o.id AS oferta_id, s.id AS solicitacao_id, s.protocolo, s.titulo, s.status, s.criado_em, o.criado_em AS assumido_em,
@@ -136,7 +138,7 @@ export class RedeController {
   /** Cidadão confirma que retirou a doação (RF-407). Fecha o pedido e avisa o voluntário. */
   @Post('solicitacoes/:id/confirmar-recebimento')
   @HttpCode(200)
-  @Perfis('cidadao')
+  @Perfis('cidadao', 'voluntario')
   async confirmarRecebimento(@SessaoAtual() sessao: Sessao, @Param('id') id: string) {
     const r = await this.pool.query<{ protocolo: string }>(
       `UPDATE solicitacao SET status = 'concluida', desfecho = 'resolvida_rede', fechado_em = now()

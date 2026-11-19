@@ -9,8 +9,8 @@ O app segue o mockup oficial ([`images/representacao das telas elo.png`](../../i
 | 3 | Mapa da rede com alternativa em lista | Tela 3 | Pedidos **agregados por bairro**, nunca pino na casa. Lista com distância e direção por extenso; lista é o padrão com leitor de tela |
 | 4 | Pedido de ajuda + "Quero ajudar" | Tela 4 | Sem compartilhar e sem foto de voluntários. Mostra o protocolo para digitar no ponto de coleta |
 | 5 | Pedir ajuda + confirmação com protocolo | — | O cidadão nunca vê a faixa de risco |
-| 6 | Meus pedidos / Minhas ajudas | — | Etapas do pedido, "Já retirei a doação" e a devolutiva "Sua ajuda chegou" |
-| 7 | Mensagens (notificações) | — | — |
+| 6 | Meus pedidos / Minhas ajudas (no Perfil) | — | Etapas do pedido, "Já retirei a doação" e a devolutiva "Sua ajuda chegou". Qualquer usuário pede e oferece ajuda (não assume o próprio pedido) |
+| 7 | Mensagens (aba da barra inferior) | — | — |
 | 8 | Perfil | — | Explica o uso dos dados (LGPD) |
 
 ## Acessibilidade

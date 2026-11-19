@@ -1,6 +1,5 @@
 import 'package:material_ui/material_ui.dart';
 
-import '../api.dart';
 import '../tema.dart';
 import 'acompanhar.dart';
 import 'inicio.dart';
@@ -21,14 +20,11 @@ class _ShellState extends State<Shell> {
 
   void _irPara(int aba) => setState(() => _aba = aba);
 
+  /// Qualquer usuário publica um pedido de ajuda; depois acompanha em Perfil > Meus pedidos.
   Future<void> _publicar() async {
-    final u = Api.i.usuario!;
-    if (u.voluntario) {
-      _irPara(1); // voluntário "publica" ajudando: abre o mapa/mural
-      return;
-    }
-    final criado = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => const PedirAjuda()));
-    if (criado == true) _irPara(3);
+    final nav = Navigator.of(context);
+    final criado = await nav.push<bool>(MaterialPageRoute(builder: (_) => const PedirAjuda()));
+    if (criado == true && mounted) nav.push(MaterialPageRoute(builder: (_) => const Acompanhar(ajudas: false)));
   }
 
   @override
@@ -37,7 +33,7 @@ class _ShellState extends State<Shell> {
       Inicio(aoPedirAjuda: _publicar, aoAbrirMapa: () => _irPara(1)),
       const MapaRede(),
       const SizedBox.shrink(),
-      const Acompanhar(),
+      const Notificacoes(),
       const Perfil(),
     ];
     return Scaffold(
@@ -45,7 +41,7 @@ class _ShellState extends State<Shell> {
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       floatingActionButton: Semantics(
         button: true,
-        label: Api.i.usuario!.voluntario ? 'Oferecer ajuda' : 'Pedir ajuda',
+        label: 'Publicar pedido de ajuda',
         excludeSemantics: true,
         child: FloatingActionButton(
           onPressed: _publicar,
@@ -58,16 +54,12 @@ class _ShellState extends State<Shell> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _aba,
         onDestinationSelected: (i) => i == 2 ? _publicar() : _irPara(i),
-        destinations: [
-          const NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Início'),
-          const NavigationDestination(icon: Icon(Icons.place_outlined), selectedIcon: Icon(Icons.place), label: 'Mapa'),
-          const NavigationDestination(icon: SizedBox(width: 24), label: 'Publicar'),
-          NavigationDestination(
-            icon: const Icon(Icons.assignment_outlined),
-            selectedIcon: const Icon(Icons.assignment),
-            label: Api.i.usuario!.voluntario ? 'Minhas ajudas' : 'Meus pedidos',
-          ),
-          const NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Perfil'),
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Início'),
+          NavigationDestination(icon: Icon(Icons.place_outlined), selectedIcon: Icon(Icons.place), label: 'Mapa'),
+          NavigationDestination(icon: SizedBox(width: 24), label: 'Publicar'),
+          NavigationDestination(icon: Icon(Icons.chat_bubble_outline), selectedIcon: Icon(Icons.chat_bubble), label: 'Mensagens'),
+          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Perfil'),
         ],
       ),
     );
