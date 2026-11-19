@@ -76,7 +76,7 @@ class _ShellState extends State<Shell> {
   @override
   Widget build(BuildContext context) {
     final telas = [
-      Inicio(aoPedirAjuda: _publicar, aoAbrirMapa: () => _irPara(1)),
+      Inicio(aoPedirAjuda: _publicar, aoAbrirMapa: () => _irPara(1), aoAbrirPerfil: () => _irPara(4)),
       const MapaRede(),
       const SizedBox.shrink(),
       Mensagens(key: _mensagens, aoMudarNaoLidas: _contar),
