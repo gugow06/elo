@@ -16,7 +16,13 @@ import { ClassificadorModelo } from './tipos';
 /** Monta o classificador a partir das variáveis de ambiente (LLM_URL, LLM_API_KEY, LLM_MODELO). */
 export function classificadorDoAmbiente(env: NodeJS.ProcessEnv = process.env): ClassificadorModelo {
   if (env.LLM_URL && env.LLM_MODELO) {
-    return new ClassificadorLlm({ url: env.LLM_URL, apiKey: env.LLM_API_KEY || undefined, modelo: env.LLM_MODELO });
+    return new ClassificadorLlm({
+      url: env.LLM_URL,
+      apiKey: env.LLM_API_KEY || undefined,
+      modelo: env.LLM_MODELO,
+      timeoutMs: env.LLM_TIMEOUT_MS ? Number(env.LLM_TIMEOUT_MS) : undefined,
+      esforcoRaciocinio: env.LLM_ESFORCO_RACIOCINIO || undefined,
+    });
   }
   return new ClassificadorOffline();
 }
