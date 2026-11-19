@@ -76,6 +76,6 @@
 	<key>NSCameraUsageDescription</key>
 	<string>O ELO usa a câmera só se você quiser tirar uma foto de perfil.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>O ELO usa a sua localização só no celular, para abrir o mapa perto de você e mostrar a distância até os locais. Ela não é enviada nem guardada.</string>
+	<string>O ELO usa a sua localização para abrir o mapa perto de você, mostrar a distância até os locais, achar a sua cidade e o seu bairro ao criar a conta e mostrar primeiro os pedidos mais perto. Onde você mora não é guardado.</string>
 </dict>
 </plist>

@@ -168,7 +168,8 @@ class _PerfilState extends State<Perfil> {
               const SizedBox(height: 6),
               Text(
                 'O ELO usa os seus dados só para organizar a ajuda (LGPD). Seu endereço nunca é mostrado no bairro, '
-                'e o relato do pedido só é lido pela equipe técnica do CRAS.',
+                'e o relato do pedido só é lido pela equipe técnica do CRAS. A localização do aparelho, se você permitir, '
+                'serve para achar sua cidade e mostrar o que está perto; não guardamos onde você mora.',
                 style: t.bodyMedium,
               ),
             ]),

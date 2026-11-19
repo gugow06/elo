@@ -8,9 +8,17 @@ import { POOL } from '../infra/banco.module';
 import { EventosService } from '../infra/eventos.service';
 import { notificar } from '../infra/notificacoes';
 import { validar } from '../infra/validacao';
+import { conferirCodigo, registrarRetirada } from '../rede/retirada';
 import { STATUS_PARA_CIDADAO } from '../solicitacoes/textos';
 
 const Protocolo = z.string().trim().regex(/^\d{6}$/, 'O protocolo tem 6 números');
+const Retirada = z.object({
+  ponto_coleta_id: z.string().uuid('Escolha o ponto de coleta'),
+  codigo: z.string().trim().regex(/^\d{4}$/, 'O código de retirada tem 4 números'),
+  // Sem lista: tudo o que chegou ao ponto e ainda não foi retirado
+  itens: z.array(z.string().uuid()).max(50).optional(),
+});
+
 const Entrega = z.object({
   ponto_coleta_id: z.string().uuid('Escolha o ponto de coleta'),
   // Quem trouxe, entre as pessoas que estão ajudando no app (opcional: pode ser alguém sem o app)
@@ -68,8 +76,8 @@ export class AgenteController {
     const c = await this.pool.connect();
     try {
       await c.query('BEGIN');
-      const s = (await c.query<{ id: string; status: string; cidadao_id: string; municipio_id: string }>(
-        `SELECT id, status, cidadao_id, municipio_id FROM solicitacao WHERE municipio_id = $1 AND protocolo = $2 FOR UPDATE`,
+      const s = (await c.query<{ id: string; status: string; cidadao_id: string; municipio_id: string; codigo_retirada: string }>(
+        `SELECT id, status, cidadao_id, municipio_id, codigo_retirada FROM solicitacao WHERE municipio_id = $1 AND protocolo = $2 FOR UPDATE`,
         [sessao.municipioId, protocolo],
       )).rows[0];
       if (!s) throw new NotFoundException('Protocolo não encontrado neste município. Confira os 6 números com a pessoa.');
@@ -128,7 +136,7 @@ export class AgenteController {
         usuarioId: s.cidadao_id,
         solicitacaoId: s.id,
         tipo: 'doacao_disponivel',
-        texto: `Chegou ao ${ponto.nome}: ${lista}. Leve o protocolo ${protocolo} para retirar.`,
+        texto: `Chegou ao ${ponto.nome}: ${lista}. Para retirar, informe o protocolo ${protocolo} e o código de retirada ${s.codigo_retirada}.`,
       });
       // Avisa quem trouxe; sem saber quem, quem tinha combinado levar esses itens
       const ajudantes = voluntarioId
@@ -158,7 +166,58 @@ export class AgenteController {
     }
   }
 
-  /** O pedido do jeito que o agente precisa ver. */
+  /**
+   * Quem pediu retira a doação no ponto: informa o protocolo e o código de retirada (4 números que
+   * só ela tem; quem ajudou conhece o protocolo, não o código). Funciona sem o app de quem pediu.
+   */
+  @Post('pedidos/:protocolo/retiradas')
+  async retirar(@SessaoAtual() sessao: Sessao, @Param('protocolo') protocoloBruto: string, @Body() corpo: unknown) {
+    const protocolo = validar(Protocolo, protocoloBruto);
+    const d = validar(Retirada, corpo);
+    const s = (await this.pool.query<{ id: string; status: string; cidadao_id: string; municipio_id: string; codigo_retirada: string }>(
+      'SELECT id, status, cidadao_id, municipio_id, codigo_retirada FROM solicitacao WHERE municipio_id = $1 AND protocolo = $2',
+      [sessao.municipioId, protocolo],
+    )).rows[0];
+    if (!s) throw new NotFoundException('Protocolo não encontrado neste município. Confira os 6 números com a pessoa.');
+    if (!RECEBE.includes(s.status)) throw new BadRequestException(`Este pedido já foi encerrado: ${STATUS_PARA_CIDADAO[s.status].toLowerCase()}.`);
+    // Fora da transação: a tentativa errada fica registrada e conta para o limite
+    if (!(await conferirCodigo(this.pool, s, d.codigo, sessao.usuarioId))) {
+      throw new BadRequestException('Código de retirada errado. Ele está no app de quem pediu, em "Meus pedidos", ou na mensagem que a pessoa recebeu.');
+    }
+    const c = await this.pool.connect();
+    try {
+      await c.query('BEGIN');
+      await c.query('SELECT 1 FROM solicitacao WHERE id = $1 FOR UPDATE', [s.id]);
+      const prontos = (await c.query<{ id: string }>(
+        'SELECT id FROM item_solicitacao WHERE solicitacao_id = $1 AND entregue_em IS NOT NULL AND obtido_em IS NULL', [s.id],
+      )).rows.map((r) => r.id);
+      const escolhidos = d.itens ?? prontos;
+      if (!escolhidos.length) throw new BadRequestException('Nada deste pedido chegou ao ponto ainda.');
+      if (escolhidos.some((i) => !prontos.includes(i))) throw new BadRequestException('Só dá para retirar o que já chegou ao ponto. Atualize a tela.');
+      const r = await registrarRetirada(c, { solicitacaoId: s.id, protocolo, origem: 'painel', pontoId: d.ponto_coleta_id, registradoPor: sessao.usuarioId, itens: escolhidos });
+      await notificar(c, {
+        usuarioId: s.cidadao_id,
+        solicitacaoId: s.id,
+        tipo: 'retirada_registrada',
+        texto: `Retirada registrada no ponto de coleta: ${r.itens.join(', ')}.${r.concluido ? ' Seu pedido foi concluído. Obrigado por usar o ELO!' : ''}`,
+      });
+      await c.query('COMMIT');
+      this.eventos.emitir({ tipo: 'solicitacao_atualizada', municipioId: s.municipio_id, solicitacaoId: s.id, protocolo });
+      return {
+        ok: true,
+        concluido: r.concluido,
+        mensagem: `Retirada registrada: ${r.itens.join(', ')}.${r.concluido ? ' Pedido concluído; avisamos quem ajudou.' : ''}`,
+        pedido: await this.carregar(sessao.municipioId, protocolo),
+      };
+    } catch (erro) {
+      await c.query('ROLLBACK').catch(() => undefined);
+      throw erro;
+    } finally {
+      c.release();
+    }
+  }
+
+  /** O pedido do jeito que o agente precisa ver (nunca o código de retirada). */
   private async carregar(municipioId: string, protocolo: string) {
     const s = (await this.pool.query<{ id: string; protocolo: string; titulo: string; categoria: string; status: string; bairro: string; ponto_coleta: string | null; criado_em: Date }>(
       `SELECT s.id, s.protocolo, s.titulo, s.categoria, s.status, b.nome AS bairro, p.nome AS ponto_coleta, s.criado_em
@@ -194,10 +253,21 @@ export class AgenteController {
        WHERE e.solicitacao_id = $1 ORDER BY e.criado_em DESC`,
       [s.id],
     )).rows;
+    const retiradas = (await this.pool.query(
+      `SELECT r.criado_em, r.origem, p.nome AS ponto_coleta,
+              coalesce((SELECT json_agg(i.descricao ORDER BY i.ordem) FROM retirada_item ri JOIN item_solicitacao i ON i.id = ri.item_id
+                        WHERE ri.retirada_id = r.id), '[]'::json) AS itens
+       FROM retirada r LEFT JOIN ponto_coleta p ON p.id = r.ponto_coleta_id
+       WHERE r.solicitacao_id = $1 ORDER BY r.criado_em DESC`,
+      [s.id],
+    )).rows;
     return {
       ...s,
       status_texto: STATUS_PARA_CIDADAO[s.status],
       recebe_doacao: RECEBE.includes(s.status),
+      // Chegou ao ponto e ainda não foi retirado: o agente pode registrar a retirada (com o código)
+      pode_retirar: RECEBE.includes(s.status) && itens.some((i) => i.status === 'entregue'),
+      retiradas,
       itens,
       ajudantes,
       entregas,

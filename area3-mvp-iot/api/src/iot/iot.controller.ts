@@ -22,6 +22,7 @@ import { EventosService } from '../infra/eventos.service';
 import { sha256 } from '../infra/hash';
 import { notificar } from '../infra/notificacoes';
 import { validar } from '../infra/validacao';
+import { conferirCodigo, registrarRetirada } from '../rede/retirada';
 
 /** Limiares do Ponto de Coleta Inteligente. */
 export const LIMIARES = {
@@ -53,6 +54,8 @@ const Evento = z.discriminatedUnion('tipo', [
   z.object({
     tipo: z.literal('retirada'),
     protocolo,
+    // Código de retirada (4 números que só quem pediu tem), digitado no teclado do ponto
+    codigo: z.string().regex(/^\d{4}$/, 'O código de retirada tem 4 números'),
     delta_peso_kg: kg,
     peso_kg: kg.min(0),
   }),
@@ -204,9 +207,46 @@ export class IotController {
     }
   }
 
-  private async retirada(ponto: Ponto, e: { protocolo: string; peso_kg: number }) {
+  /**
+   * Retirada no ponto: quem pediu digita o protocolo e o código de retirada. Com o código certo,
+   * o que estava no ponto conta como recebido; com tudo recebido, o pedido conclui.
+   */
+  private async retirada(ponto: Ponto, e: { protocolo: string; codigo: string; peso_kg: number }) {
     this.eventos.emitir({ tipo: 'leitura_sensor', municipioId: ponto.municipio_id, pontoId: ponto.id, dados: { peso_kg: e.peso_kg } });
-    return { ok: true, lcd: lcd('Retirada', `Protocolo ${e.protocolo}`) };
+    const s = (await this.pool.query<{ id: string; cidadao_id: string; codigo_retirada: string }>(
+      `SELECT id, cidadao_id, codigo_retirada FROM solicitacao
+       WHERE municipio_id = $1 AND protocolo = $2 AND status IN ('no_mural', 'em_atendimento', 'entregue')`,
+      [ponto.municipio_id, e.protocolo],
+    )).rows[0];
+    if (!s) throw new NotFoundException({ erro: 'Protocolo não encontrado', lcd: lcd('Protocolo nao', 'encontrado') });
+    if (!(await conferirCodigo(this.pool, s, e.codigo, null))) {
+      throw new UnprocessableEntityException({ erro: 'Código de retirada errado', lcd: lcd('Codigo errado', 'Tente de novo') });
+    }
+    const c = await this.pool.connect();
+    try {
+      await c.query('BEGIN');
+      await c.query('SELECT 1 FROM solicitacao WHERE id = $1 FOR UPDATE', [s.id]);
+      // O sensor não sabe item por item: conta como retirado o que chegou ao ponto (ou tudo, se a
+      // entrega também foi pelo sensor, sem detalhar itens)
+      const noPonto = (await c.query<{ id: string }>(
+        'SELECT id FROM item_solicitacao WHERE solicitacao_id = $1 AND entregue_em IS NOT NULL AND obtido_em IS NULL', [s.id],
+      )).rows.map((r) => r.id);
+      const r = await registrarRetirada(c, { solicitacaoId: s.id, protocolo: e.protocolo, origem: 'sensor', pontoId: ponto.id, itens: noPonto.length ? noPonto : undefined });
+      await notificar(c, {
+        usuarioId: s.cidadao_id,
+        solicitacaoId: s.id,
+        tipo: 'retirada_registrada',
+        texto: `Retirada registrada no ${ponto.nome}.${r.concluido ? ' Seu pedido foi concluído. Obrigado por usar o ELO!' : ''}`,
+      });
+      await c.query('COMMIT');
+      this.eventos.emitir({ tipo: 'solicitacao_atualizada', municipioId: ponto.municipio_id, solicitacaoId: s.id, protocolo: e.protocolo });
+      return { ok: true, concluido: r.concluido, lcd: lcd('Retirada OK!', `Protocolo ${e.protocolo}`) };
+    } catch (erro) {
+      await c.query('ROLLBACK').catch(() => undefined);
+      throw erro;
+    } finally {
+      c.release();
+    }
   }
 }
 

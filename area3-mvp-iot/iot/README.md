@@ -45,7 +45,7 @@ Tinkercad (evidência)       Simulador Python (demo)        Hardware real
 | --- | --- | --- |
 | `GET` | `/iot/pontos/{id}/estado` | Estoque atual e limiares (o dispositivo sincroniza ao ligar) |
 | `GET` | `/iot/pontos/{id}/protocolos/{protocolo}` | Confere o protocolo antes do depósito e devolve o texto do LCD |
-| `POST` | `/iot/pontos/{id}/eventos` | Recebe `leitura_sensor`, `entrega_depositada` e `retirada` |
+| `POST` | `/iot/pontos/{id}/eventos` | Recebe `leitura_sensor`, `entrega_depositada` e `retirada`. A retirada exige o `codigo` de retirada (4 números que só quem pediu tem): com ele, o que estava no ponto conta como recebido e o pedido conclui |
 
 O dispositivo se autentica com a **chave do ponto** no cabeçalho `X-Device-Key`. A API guarda só o hash SHA-256 da chave e compara em tempo constante. Todo payload é validado (Zod).
 
@@ -70,3 +70,5 @@ python simulador.py --ponto vila-nova estado            # outro ponto
 O protocolo vem do app da voluntária, quando ela toca em "Quero ajudar". Variável `API_URL` (padrão `http://localhost:3333`).
 
 **Limitação assumida:** o peso prova que *algo* foi depositado, não *o quê*. O responsável pelo ponto valida o conteúdo na retirada.
+
+**Retirada com código:** o protocolo é compartilhado com quem ajuda (para entregar); para **retirar**, quem pediu digita também o código de retirada. Depois de 5 códigos errados, o pedido fica bloqueado por 1 hora. No simulador: `python simulador/simulador.py retirada --protocolo 123456 --codigo 0000`.

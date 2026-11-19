@@ -25,6 +25,8 @@ interface Pedido {
   status: string;
   status_texto: string;
   recebe_doacao: boolean;
+  pode_retirar: boolean;
+  retiradas: { criado_em: string; origem: string; ponto_coleta: string | null; itens: string[] }[];
   bairro: string;
   ponto_coleta: string | null;
   itens: Item[];
@@ -58,6 +60,8 @@ export default function ReceberDoacao() {
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
+  const [codigo, setCodigo] = useState("");
+  const [paraRetirar, setParaRetirar] = useState<string[] | null>(null); // null = tudo que está no ponto
   const entradaProtocolo = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -82,6 +86,8 @@ export default function ReceberDoacao() {
     setPedido(null);
     setMarcados({});
     setQuem("");
+    setCodigo("");
+    setParaRetirar(null);
     if (!/^\d{6}$/.test(protocolo)) {
       setErro("O protocolo tem 6 números. Peça para a pessoa mostrar no app ou na mensagem que recebeu.");
       return;
@@ -137,7 +143,32 @@ export default function ReceberDoacao() {
     }
   }
 
+  /** Quem pediu veio retirar: confere o código de retirada (4 números que só ela tem). */
+  async function retirar(e: FormEvent) {
+    e.preventDefault();
+    if (!pedido) return;
+    setErro(null);
+    setAviso(null);
+    setOcupado(true);
+    try {
+      const r = await api<{ mensagem: string; pedido: Pedido }>(`/agente/pedidos/${pedido.protocolo}/retiradas`, {
+        method: "POST",
+        body: JSON.stringify({ ponto_coleta_id: ponto, codigo, ...(paraRetirar ? { itens: paraRetirar } : {}) }),
+      });
+      setAviso(r.mensagem);
+      setPedido(r.pedido);
+      setCodigo("");
+      setParaRetirar(null);
+    } catch (err) {
+      setErro((err as Error).message);
+    } finally {
+      setOcupado(false);
+    }
+  }
+
   function proximo() {
+    setCodigo("");
+    setParaRetirar(null);
     setPedido(null);
     setProtocolo("");
     setAviso(null);
@@ -292,6 +323,72 @@ export default function ReceberDoacao() {
                 </Botao>
               </div>
             </>
+          )}
+
+          {pedido.pode_retirar && (
+            <form onSubmit={retirar} className="mt-8 rounded-md border-2 border-brand-700 p-4">
+              <h3 className="text-xl font-extrabold text-brand-900">Quem pediu veio retirar?</h3>
+              <p className="text-texto-2">
+                Peça o <strong>código de retirada</strong> (4 números). Ele está no app de quem pediu, em &quot;Meus pedidos&quot;, ou na mensagem que a
+                pessoa recebeu. Quem ajudou conhece o protocolo, mas não o código.
+              </p>
+              <fieldset className="mt-3">
+                <legend className="font-bold">O que a pessoa está levando</legend>
+                {pedido.itens.filter((i) => i.status === "entregue").map((i) => {
+                  const marcado = paraRetirar === null || paraRetirar.includes(i.id);
+                  const prontos = pedido.itens.filter((x) => x.status === "entregue").map((x) => x.id);
+                  return (
+                    <label key={i.id} className="mt-2 flex min-h-11 items-center gap-3">
+                      <input
+                        type="checkbox"
+                        className="h-6 w-6"
+                        checked={marcado}
+                        onChange={(e) => {
+                          const atual = paraRetirar ?? prontos;
+                          const novo = e.target.checked ? [...atual, i.id] : atual.filter((x) => x !== i.id);
+                          setParaRetirar(novo.length === prontos.length ? null : novo);
+                        }}
+                      />
+                      <span className="font-bold">{i.descricao}</span>
+                      {i.quantidade > 1 && <span className="text-texto-2">({i.quantidade})</span>}
+                    </label>
+                  );
+                })}
+              </fieldset>
+              <div className="mt-4 flex flex-wrap items-end gap-3">
+                <div>
+                  <label htmlFor="codigo" className="font-bold">Código de retirada</label>
+                  <input
+                    id="codigo"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    maxLength={4}
+                    className={`${campo} max-w-40 text-2xl font-extrabold tracking-[0.4em]`}
+                    value={codigo}
+                    onChange={(e) => setCodigo(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                    placeholder="0000"
+                  />
+                </div>
+                <Botao type="submit" disabled={ocupado || codigo.length !== 4 || (paraRetirar !== null && paraRetirar.length === 0)}>
+                  {ocupado ? "Registrando…" : "Registrar retirada"}
+                </Botao>
+              </div>
+            </form>
+          )}
+
+          {pedido.retiradas.length > 0 && (
+            <div className="mt-8">
+              <h3 className="font-extrabold text-brand-900">Retiradas deste pedido</h3>
+              <ul className="mt-2 space-y-2">
+                {pedido.retiradas.map((r, k) => (
+                  <li key={k} className="rounded-md bg-fundo p-3">
+                    <span className="font-bold">{new Date(r.criado_em).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}</span>
+                    {" · "}{r.ponto_coleta ?? "—"} · {r.origem === "painel" ? "Registrada no painel" : r.origem === "sensor" ? "Sensor do ponto" : "Confirmada no app"}
+                    <span className="block text-texto-2">{r.itens.length ? r.itens.join(", ") : "—"}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
 
           {pedido.entregas.length > 0 && (

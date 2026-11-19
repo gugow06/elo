@@ -5,6 +5,7 @@ O app segue o mockup oficial ([`images/representacao das telas elo.png`](../../i
 | # | Tela | Mockup | Ajuste do PRD |
 | --- | --- | --- | --- |
 | 1 | Boas-vindas e login | Tela 1 | "Entrar na minha conta" (e-mail + código enviado pelo Resend, sem senha), "Criar uma conta" e "Ou continue com" Google |
+| 1b | Criar uma conta | — | "Usar minha localização" (GPS ou rede, com a permissão do aparelho) preenche a cidade e o bairro; ou digite a cidade. Não guardamos onde a pessoa mora: o bairro novo recebe só uma posição arredondada a ~1 km |
 | 2 | Início: saudação, busca, 4 atalhos, pedidos próximos | Tela 2 | Atalho "Oportunidades" marcado como "em breve" (fase 3) |
 | 3 | Mapa da rede com alternativa em lista | Tela 3 | Mapa real (OpenStreetMap, `flutter_map`), aberto onde a pessoa está ou no bairro do cadastro; busca de cidade, estado ou endereço para ajudar em qualquer lugar. Locais da rede no endereço; pedidos **agregados por bairro**, nunca pino na casa. Lista com distância e direção por extenso; lista é o padrão com leitor de tela |
 | 4 | Pedido de ajuda + "Quero ajudar" | Tela 4 | Itens do pedido: cada pessoa escolhe o que vai levar; quem está ajudando em fotos sobrepostas com "+N" (primeiro nome e foto; sem foto, as iniciais). Mostra o protocolo para digitar no ponto de coleta |

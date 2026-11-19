@@ -5,6 +5,12 @@ import { AuthGuard } from '../auth/auth.guard';
 import { POOL } from '../infra/banco.module';
 import { validar } from '../infra/validacao';
 import { buscarEndereco } from './enderecos';
+import { ondeEstou } from './onde-estou';
+
+const Posicao = z.object({
+  lat: z.coerce.number().min(-34).max(6),
+  lon: z.coerce.number().min(-74).max(-34),
+});
 
 const Busca = z.object({ q: z.string().trim().min(2, 'Digite pelo menos 2 letras').max(120) });
 
@@ -41,6 +47,16 @@ export class GeoController {
       [n],
     );
     return [...ufs.rows, ...muns.rows];
+  }
+
+  /**
+   * Posição do aparelho → cidade do IBGE e bairro, para a criação de conta. Público (vem antes da
+   * sessão). A posição não é guardada.
+   */
+  @Get('geo/onde-estou')
+  async ondeEstou(@Query() query: unknown) {
+    const { lat, lon } = validar(Posicao, query);
+    return ondeEstou(this.pool, lat, lon);
   }
 
   /** Endereço, CEP ou nome de lugar → candidatos com coordenadas (só Brasil). Ver enderecos.ts. */

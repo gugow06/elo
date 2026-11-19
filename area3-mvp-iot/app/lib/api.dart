@@ -157,10 +157,12 @@ class Api {
     String? bairroId,
     String? municipioId,
     String? bairroNome,
+    ({double latitude, double longitude})? posicao,
     IdentidadeGoogle? google,
     void Function(String? codigoDemo)? aoPedirCodigo,
   }) async {
     final r = await _req('POST', '/auth/cadastro', {
+      if (posicao != null) 'posicao': {'latitude': posicao.latitude, 'longitude': posicao.longitude},
       'nome': nome,
       'email': email,
       'telefone': telefone,
@@ -205,11 +207,18 @@ class Api {
       Map<String, dynamic>.from(await _req('POST', '/solicitacoes/$id/encerrar'));
 
   // ---------- rede cidadã
-  Future<List<dynamic>> mural({String? bairro, String? uf, String? municipio, String? categoria, String? ordem, int? pagina, bool brasil = false}) async =>
-      await _req('GET', caminhoMural(bairro: bairro, uf: uf, municipio: municipio, categoria: categoria, ordem: ordem, pagina: pagina, brasil: brasil)) as List;
+  Future<List<dynamic>> mural({String? bairro, String? uf, String? municipio, String? categoria, String? ordem, int? pagina, bool brasil = false,
+          ({double latitude, double longitude})? perto}) async =>
+      await _req('GET', caminhoMural(bairro: bairro, uf: uf, municipio: municipio, categoria: categoria, ordem: ordem, pagina: pagina, brasil: brasil, perto: perto)) as List;
+
+  /// Posição do aparelho → cidade do IBGE e bairro (criação de conta). A API não guarda a posição.
+  Future<Map<String, dynamic>> ondeEstou(double latitude, double longitude) async => Map<String, dynamic>.from(
+      await _req('GET', Uri(path: '/geo/onde-estou', queryParameters: {'lat': '$latitude', 'lon': '$longitude'}).toString()));
 
   /// Monta /mural com os filtros (sem filtro: o município de quem consulta; [brasil]: todo o Brasil).
-  static String caminhoMural({String? bairro, String? uf, String? municipio, String? categoria, String? ordem, int? pagina, bool brasil = false}) {
+  /// [perto]: localização aproximada do aparelho, só para ordenar "mais perto de mim".
+  static String caminhoMural({String? bairro, String? uf, String? municipio, String? categoria, String? ordem, int? pagina, bool brasil = false,
+      ({double latitude, double longitude})? perto}) {
     final q = {
       if (brasil && uf == null && municipio == null) 'abrangencia': 'brasil',
       'bairro': ?bairro,
@@ -218,6 +227,8 @@ class Api {
       'categoria': ?categoria,
       'ordem': ?ordem,
       if (pagina != null && pagina > 0) 'pagina': '$pagina',
+      if (perto != null) 'lat': '${perto.latitude}',
+      if (perto != null) 'lon': '${perto.longitude}',
     };
     return q.isEmpty ? '/mural' : Uri(path: '/mural', queryParameters: q).toString();
   }

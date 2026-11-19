@@ -1,12 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter_map/flutter_map.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../api.dart';
 import '../geo.dart';
+import '../localizacao.dart';
 import '../tema.dart';
 import '../widgets/comum.dart';
 import 'todos_pedidos.dart';
@@ -119,18 +119,8 @@ class _MapaRedeState extends State<MapaRede> {
   }
 
   Future<LatLng?> _localizacao({required bool pedir}) async {
-    try {
-      if (!await Geolocator.isLocationServiceEnabled()) return null;
-      var perm = await Geolocator.checkPermission();
-      if (perm == LocationPermission.denied && pedir) perm = await Geolocator.requestPermission();
-      if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) return null;
-      final pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.medium, timeLimit: Duration(seconds: 10)),
-      );
-      return LatLng(pos.latitude, pos.longitude);
-    } catch (_) {
-      return null; // sem localização o app continua funcionando
-    }
+    final p = await Localizacao.i.obter(pedir: pedir);
+    return p == null ? null : LatLng(p.latitude, p.longitude);
   }
 
   Future<void> _minhaLocalizacao() async {

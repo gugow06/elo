@@ -10,6 +10,7 @@ import { EventosService } from '../infra/eventos.service';
 import { notificar } from '../infra/notificacoes';
 import { STATUS_PARA_CIDADAO } from '../solicitacoes/textos';
 import { CATEGORIAS_INTEIRAS, SQL_VISIVEL, sqlItens } from './itens';
+import { registrarRetirada } from './retirada';
 import { validar } from '../infra/validacao';
 
 const FiltroMural = z.object({
@@ -21,6 +22,9 @@ const FiltroMural = z.object({
   ordem: z.enum(['bairro', 'recentes', 'aguardando']).default('bairro'),
   // "brasil": todos os pedidos, de qualquer lugar ("Ver todos" sem estado ou cidade escolhidos)
   abrangencia: z.enum(['municipio', 'brasil']).default('municipio'),
+  // Localização do aparelho (aproximada), só para ordenar por distância; não é guardada
+  lat: z.coerce.number().min(-34).max(6).optional(),
+  lon: z.coerce.number().min(-74).max(-34).optional(),
   pagina: z.coerce.number().int().min(0).max(1000).default(0),
   limite: z.coerce.number().int().min(1).max(50).default(30),
 });
@@ -34,6 +38,10 @@ const ORDENS = {
   recentes: 's.criado_em DESC',
   aguardando: 's.criado_em ASC',
 } as const;
+
+/** Mais perto de onde o aparelho está: distância até o bairro (ou o centro da cidade) do pedido. */
+const ORDEM_DISTANCIA =
+  '(coalesce(b.latitude, m.latitude) - $10::float) ^ 2 + ((coalesce(b.longitude, m.longitude) - $11::float) * cos(radians($10::float))) ^ 2 NULLS LAST, s.criado_em';
 
 /**
  * Rede cidadã: mural do bairro, oferta de ajuda e devolutiva.
@@ -73,9 +81,11 @@ export class RedeController {
          AND ($2::text IS NULL OR b.slug = $2)
          AND ($6::categoria_pedido IS NULL OR s.categoria = $6)
          AND s.cidadao_id <> $4 AND ($3::uuid IS NULL OR true) AND ($9::uuid IS NULL OR true)
-       ORDER BY ${ORDENS[f.ordem]}
+         AND ($10::float IS NULL OR true) AND ($11::float IS NULL OR true)
+       ORDER BY ${f.ordem === 'bairro' && f.lat != null && f.lon != null ? ORDEM_DISTANCIA : ORDENS[f.ordem]}
        LIMIT $7 OFFSET $8`,
-      [municipio, f.bairro ?? null, sessao.bairroId, sessao.usuarioId, f.uf ?? null, f.categoria ?? null, f.limite, f.pagina * f.limite, sessao.municipioId],
+      [municipio, f.bairro ?? null, sessao.bairroId, sessao.usuarioId, f.uf ?? null, f.categoria ?? null, f.limite, f.pagina * f.limite, sessao.municipioId,
+        f.lat ?? null, f.lon ?? null],
     );
     return rows;
   }
@@ -226,15 +236,26 @@ export class RedeController {
   @HttpCode(200)
   @Perfis('cidadao', 'voluntario')
   async confirmarRecebimento(@SessaoAtual() sessao: Sessao, @Param('id') id: string) {
-    const r = await this.pool.query<{ protocolo: string }>(
-      `UPDATE solicitacao SET status = 'concluida', desfecho = 'resolvida_rede', fechado_em = now()
-       WHERE id = $1 AND cidadao_id = $2 AND status = 'entregue' RETURNING protocolo`,
-      [id, sessao.usuarioId],
-    );
-    if (!r.rowCount) throw new BadRequestException('Só é possível confirmar pedidos que já chegaram ao ponto de coleta.');
-    await this.pool.query('UPDATE item_solicitacao SET obtido_em = coalesce(obtido_em, now()) WHERE solicitacao_id = $1', [id]);
-    await this.avisarQuemAjudou(id, r.rows[0].protocolo);
-    this.eventos.emitir({ tipo: 'solicitacao_atualizada', municipioId: sessao.municipioId, solicitacaoId: id, protocolo: r.rows[0].protocolo });
+    if (!z.string().uuid().safeParse(id).success) throw new BadRequestException('Só é possível confirmar pedidos que já chegaram ao ponto de coleta.');
+    const c = await this.pool.connect();
+    let protocolo: string;
+    try {
+      await c.query('BEGIN');
+      const r = await c.query<{ protocolo: string; ponto_coleta_id: string | null }>(
+        `SELECT protocolo, ponto_coleta_id FROM solicitacao WHERE id = $1 AND cidadao_id = $2 AND status = 'entregue' FOR UPDATE`,
+        [id, sessao.usuarioId],
+      );
+      if (!r.rowCount) throw new BadRequestException('Só é possível confirmar pedidos que já chegaram ao ponto de coleta.');
+      protocolo = r.rows[0].protocolo;
+      await registrarRetirada(c, { solicitacaoId: id, protocolo, origem: 'app', pontoId: r.rows[0].ponto_coleta_id, registradoPor: sessao.usuarioId });
+      await c.query('COMMIT');
+    } catch (erro) {
+      await c.query('ROLLBACK').catch(() => undefined);
+      throw erro;
+    } finally {
+      c.release();
+    }
+    this.eventos.emitir({ tipo: 'solicitacao_atualizada', municipioId: sessao.municipioId, solicitacaoId: id, protocolo });
     return { ok: true, status: STATUS_PARA_CIDADAO.concluida };
   }
 

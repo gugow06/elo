@@ -1,5 +1,6 @@
 // Componentes do pedido com itens: escolher o que levar, checklist de quem pediu e contagem de ajudantes.
 import 'package:elo_app/tema.dart';
+import 'package:elo_app/telas/acompanhar.dart';
 import 'package:elo_app/widgets/avatares.dart';
 import 'package:elo_app/widgets/itens.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -81,5 +82,11 @@ void main() {
     )));
     expect(find.text('Chegou ao ponto de coleta (3): pode retirar'), findsOneWidget);
     expect(find.text('Alguém vai levar'), findsOneWidget);
+  });
+
+  testWidgets('código de retirada aparece para quem pediu, com leitura para leitor de tela', (tester) async {
+    await tester.pumpWidget(_app(const CodigoRetirada('4821')));
+    expect(find.text('4821'), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp('Código de retirada 4 8 2 1')), findsOneWidget);
   });
 }

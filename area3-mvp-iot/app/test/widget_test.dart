@@ -1,5 +1,6 @@
 // Testes de interface e acessibilidade do app ELO (guidelines nativas do Flutter).
 import 'package:elo_app/api.dart';
+import 'package:elo_app/localizacao.dart';
 import 'package:elo_app/tema.dart';
 import 'package:elo_app/telas/boas_vindas.dart';
 import 'package:elo_app/geo.dart';
@@ -112,6 +113,7 @@ void main() {
   test('lista de pedidos monta os filtros do mural', () {
     expect(Api.caminhoMural(), '/mural');
     expect(Api.caminhoMural(brasil: true), '/mural?abrangencia=brasil');
+    expect(Api.caminhoMural(brasil: true, perto: (latitude: -22.89, longitude: -47.05)), '/mural?abrangencia=brasil&lat=-22.89&lon=-47.05');
     expect(Api.caminhoMural(brasil: true, uf: 'BA'), '/mural?uf=BA'); // estado escolhido vale mais
     expect(Api.caminhoMural(uf: 'BA', ordem: 'aguardando'), '/mural?uf=BA&ordem=aguardando');
     expect(Api.caminhoMural(municipio: 'abc', categoria: 'roupa', pagina: 2), '/mural?municipio=abc&categoria=roupa&pagina=2');
@@ -138,5 +140,9 @@ void main() {
   test('área do mapa vai para a API limitada ao Brasil', () {
     expect(caixaApi(oeste: -46.7, sul: -23.6, leste: -46.6, norte: -23.5), '-46.70000,-23.60000,-46.60000,-23.50000');
     expect(caixaApi(oeste: -180, sul: -90, leste: 180, norte: 90), '-74.90000,-34.90000,-30.10000,5.90000');
+  });
+
+  test('localização para ordenar vai arredondada a ~1 km', () {
+    expect(Localizacao.aproximada((latitude: -22.87654, longitude: -47.12345)), (latitude: -22.88, longitude: -47.12));
   });
 }

@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../api.dart';
+import '../localizacao.dart';
 import '../tema.dart';
 import '../widgets/comum.dart';
 import 'pedido_detalhe.dart';
@@ -95,7 +96,10 @@ class _TodosPedidosState extends State<TodosPedidos> {
   Future<void> _carregarPagina() async {
     setState(() { _carregando = true; _erro = null; });
     try {
+      // "Mais perto de mim": a localização do aparelho, se a pessoa aceitar (aproximada, ~1 km)
+      final aqui = _ordem == 'bairro' ? (Localizacao.i.ultima ?? await Localizacao.i.obter(pedir: true)) : null;
       final r = await Api.i.mural(
+        perto: aqui == null ? null : Localizacao.aproximada(aqui),
         uf: _local?.tipo == 'uf' ? _local!.uf : null,
         municipio: _local?.tipo == 'municipio' ? _local!.id : null,
         // Sem estado ou cidade escolhidos: realmente todos os pedidos, de qualquer lugar

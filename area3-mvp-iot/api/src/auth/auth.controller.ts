@@ -19,7 +19,7 @@ import { auditar } from '../infra/auditoria';
 import { POOL } from '../infra/banco.module';
 import { validar } from '../infra/validacao';
 import { AuthGuard, SessaoAtual } from './auth.guard';
-import { completarBairro } from '../geo/bairros';
+import { completarBairro, posicaoAproximadaDoBairro } from '../geo/bairros';
 import { consumirCodigo, gerarCodigo, mascararEmail } from './codigos';
 import { GoogleNaoConfigurado, IdentidadeGoogle, verificarTokenGoogle } from './google';
 import { emitirDesafio, emitirToken, lerDesafio, Perfil, Sessao } from './sessao';
@@ -50,6 +50,9 @@ const Cadastro = z.object({
   bairro_id: z.string().uuid('Escolha o seu bairro').optional(),
   municipio_id: z.string().uuid('Escolha a sua cidade').optional(),
   bairro_nome: z.string().trim().min(2, 'Informe o seu bairro').max(80).optional(),
+  // Localização do aparelho, se a pessoa aceitou compartilhar: só para a posição aproximada do bairro
+  // (arredondada a ~1 km). Não é guardada na conta.
+  posicao: z.object({ latitude: z.number().min(-34).max(6), longitude: z.number().min(-74).max(-34) }).optional(),
   social: social.optional(),
 }).refine((d) => d.bairro_id || (d.municipio_id && d.bairro_nome), { message: 'Escolha a sua cidade e o seu bairro.', path: ['bairro_id'] });
 
@@ -200,8 +203,10 @@ export class AuthController {
         resposta = { confirmar_email: true, ...(await gerarCodigo(c, u.id, { email: emailConta })) };
       }
       await c.query('COMMIT');
-      // Bairro digitado chega sem posição: procura no OpenStreetMap em segundo plano
-      void completarBairro(this.pool, bairro.rows[0].id).catch((e) => this.log.warn(`Posição do bairro: ${(e as Error).message}`));
+      // Bairro sem posição: a do aparelho (aproximada) na hora; o OpenStreetMap em segundo plano, por cima
+      const bairroId = bairro.rows[0].id;
+      if (dados.posicao) await posicaoAproximadaDoBairro(this.pool, bairroId, dados.posicao).catch(() => false);
+      void completarBairro(this.pool, bairroId).catch((e) => this.log.warn(`Posição do bairro: ${(e as Error).message}`));
       return resposta;
     } catch (erro) {
       await c.query('ROLLBACK');

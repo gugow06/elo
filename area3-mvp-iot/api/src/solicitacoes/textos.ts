@@ -25,7 +25,9 @@ export const STATUS_PARA_CIDADAO: Record<string, string> = {
   cancelada: 'Pedido cancelado',
 };
 
-export function mensagemDeRecebimento(protocolo: string, pontoNome?: string | null): string {
+export function mensagemDeRecebimento(protocolo: string, pontoNome?: string | null, codigoRetirada?: string | null): string {
   const base = `Recebemos o seu pedido. Seu protocolo é ${protocolo.split('').join(' ')}. Guarde este número.`;
-  return pontoNome ? `${base} Quando a doação chegar, você poderá retirar no ${pontoNome}.` : `${base} A equipe entrará em contato.`;
+  // O código de retirada é só de quem pediu: o protocolo é compartilhado com quem ajuda
+  const codigo = codigoRetirada ? ` Para retirar a doação, informe também o código ${codigoRetirada.split('').join(' ')}. Não compartilhe este código.` : '';
+  return pontoNome ? `${base} Quando a doação chegar, você poderá retirar no ${pontoNome}.${codigo}` : `${base} A equipe entrará em contato.`;
 }

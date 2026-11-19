@@ -67,13 +67,15 @@ O ELO roda local, mas pronto para produção: tudo é configurado por variável 
 | POST | `/solicitacoes/{id}/confirmar-recebimento` | usuário do app | Retirada confirmada |
 | PATCH | `/solicitacoes/{id}/itens/{itemId}` | quem pediu | Marca o item como recebido; com tudo marcado, o pedido conclui |
 | POST | `/solicitacoes/{id}/encerrar` | quem pediu | "Já consegui o que precisava": encerra o pedido (sai do mural e do mapa) e avisa quem estava ajudando |
-| GET | `/mural?uf=&municipio=&categoria=&ordem=&pagina=` | usuário do app | Pedidos com itens, "N pessoas ajudando" e primeiro nome + foto de até 5 delas, em qualquer lugar do Brasil (sem dados pessoais, sem faixa de risco, sem os próprios pedidos) |
+| GET | `/mural?uf=&municipio=&categoria=&ordem=&pagina=&abrangencia=brasil&lat=&lon=` | usuário do app | Pedidos com itens, "N pessoas ajudando" e primeiro nome + foto de até 5 delas, em qualquer lugar do Brasil (sem dados pessoais, sem faixa de risco, sem os próprios pedidos) |
 | POST | `/mural/{id}/ofertas` | usuário do app | Quero ajudar com os itens escolhidos (nunca no próprio pedido; móvel: uma pessoa) |
 | GET | `/voluntario/ofertas` | usuário do app | Minhas ajudas: o que levar, endereço, horário e telefone do ponto, protocolo, instruções e desfecho |
 | GET | `/mapa/locais?bbox=`, `/mapa/pedidos?bbox=` | logado | Locais da rede na área do mapa; pedidos só agregados por bairro |
 | GET/POST/PATCH | `/gestao/locais` | gestor (técnico só lê) | Locais da rede: ponto de coleta, assistência, abrigo, distribuição, saúde |
 | GET/POST | `/gestao/equipe` | gestor | Equipe do painel: convida técnicos, gestores e agentes dos pontos de coleta |
 | GET | `/agente/pontos`, `/agente/pedidos/{protocolo}` | agente, técnico, gestor | Receber doação: pelo protocolo, o que o pedido precisa e quem combinou levar o quê (só primeiro nome) |
+| POST | `/agente/pedidos/{protocolo}/retiradas` | agente, técnico, gestor | Quem pediu retira no ponto: confere o código de retirada (4 números, só de quem pediu; 5 erros = 1 hora de bloqueio) e marca o que foi levado; com tudo retirado, conclui |
+| GET | `/geo/onde-estou?lat=&lon=` | público | Localização do aparelho (com permissão) → cidade do IBGE e bairro, para criar a conta; a posição não é guardada |
 | POST | `/agente/pedidos/{protocolo}/entregas` | agente, técnico, gestor | Registra o que chegou ao ponto, com quantidade (o mesmo item pode chegar de novo); avisa quem pediu e quem trouxe |
 | GET | `/tecnico/fila`, `/tecnico/solicitacoes/{id}` | técnico | Fila e ficha (leitura auditada) |
 | POST | `/tecnico/solicitacoes/{id}/reclassificar`, `/concluir` | técnico | Reclassificação e desfecho |

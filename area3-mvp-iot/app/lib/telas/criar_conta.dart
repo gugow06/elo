@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:material_ui/material_ui.dart';
 
 import '../api.dart';
+import '../localizacao.dart';
 import '../tema.dart';
 import '../widgets/comum.dart';
 import '../widgets/login.dart';
@@ -30,7 +31,10 @@ class _CriarContaState extends State<CriarConta> {
   List<dynamic>? _bairros;
   String? _bairroId; // _outro = digitar o bairro
   bool _enviando = false;
+  bool _localizando = false;
   String? _erro;
+  /// Posição do aparelho, se a pessoa aceitou compartilhar (só para a posição aproximada do bairro).
+  ({double latitude, double longitude})? _posicao;
 
   static const _outro = '_outro';
 
@@ -56,6 +60,43 @@ class _CriarContaState extends State<CriarConta> {
         // busca é só uma ajuda
       }
     });
+  }
+
+  /// GPS ou rede, com a permissão da pessoa: preenche a cidade e o bairro.
+  Future<void> _usarLocalizacao() async {
+    setState(() { _localizando = true; _erro = null; });
+    try {
+      final p = await Localizacao.i.obter(pedir: true);
+      if (!mounted) return;
+      if (p == null) {
+        setState(() => _erro = 'Não foi possível usar a sua localização. Confira se a localização do aparelho está ligada e permitida para o ELO, ou digite a cidade.');
+        return;
+      }
+      final r = await Api.i.ondeEstou(p.latitude, p.longitude);
+      if (!mounted) return;
+      final cidade = r['municipio'] == null ? null : Map<String, dynamic>.from(r['municipio']);
+      if (cidade == null) {
+        setState(() => _erro = 'Não achamos a sua cidade pela localização. Digite e escolha na lista.');
+        return;
+      }
+      _posicao = p;
+      await _escolherCidade(cidade);
+      final b = r['bairro'] == null ? null : Map<String, dynamic>.from(r['bairro']);
+      if (!mounted || b == null) return;
+      final daLista = (_bairros ?? []).cast<Map>().where((x) => x['id'] == b['id'] || (x['nome'] as String).toLowerCase() == (b['nome'] as String).toLowerCase());
+      setState(() {
+        if (daLista.isNotEmpty) {
+          _bairroId = daLista.first['id'] as String;
+        } else {
+          _bairroId = _outro;
+          _bairroNome.text = b['nome'] as String;
+        }
+      });
+    } on ErroApi catch (e) {
+      if (mounted) setState(() => _erro = e.mensagem);
+    } finally {
+      if (mounted) setState(() => _localizando = false);
+    }
   }
 
   Future<void> _escolherCidade(Map<String, dynamic> c) async {
@@ -94,6 +135,7 @@ class _CriarContaState extends State<CriarConta> {
         bairroId: digitado ? null : _bairroId,
         municipioId: digitado ? _cidade!['id'] as String : null,
         bairroNome: digitado ? _bairroNome.text.trim() : null,
+        posicao: _posicao,
         google: widget.google,
         aoPedirCodigo: (c) => codigoDemo = c,
       );
@@ -154,9 +196,25 @@ class _CriarContaState extends State<CriarConta> {
             decoration: const InputDecoration(labelText: 'Telefone com DDD', hintText: '+55 11 99000-0000'),
           ),
           const SizedBox(height: 16),
+          OutlinedButton.icon(
+            onPressed: _localizando ? null : _usarLocalizacao,
+            icon: _localizando
+                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.my_location),
+            label: Text(_localizando ? 'Procurando onde você está…' : 'Usar minha localização'),
+          ),
+          const Padding(
+            padding: EdgeInsets.only(top: 6, bottom: 12),
+            child: Text(
+              'O aparelho pergunta se você aceita compartilhar a localização (GPS ou rede). Usamos só para achar a sua cidade e o seu bairro; '
+              'não guardamos onde você mora.',
+              style: TextStyle(fontSize: 13, color: EloCores.texto2),
+            ),
+          ),
           TextField(
             controller: _buscaCidade,
             onChanged: (t) {
+              _posicao = null; // cidade digitada: a localização deixa de valer
               if (_cidade != null) setState(() { _cidade = null; _bairros = null; _bairroId = null; });
               _digitouCidade(t);
             },

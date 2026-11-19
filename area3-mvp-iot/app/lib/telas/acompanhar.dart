@@ -128,6 +128,10 @@ class _CartaoMeuPedido extends StatelessWidget {
         ]),
         const SizedBox(height: 8),
         Selo(p['status_texto']),
+        if (p['codigo_retirada'] is String && (status == 'no_mural' || status == 'em_atendimento' || status == 'entregue')) ...[
+          const SizedBox(height: 10),
+          CodigoRetirada(p['codigo_retirada'] as String),
+        ],
         const SizedBox(height: 12),
         Semantics(
           label: 'Etapa ${etapa + 1} de 5',
@@ -216,4 +220,32 @@ class _CartaoAjuda extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Código de retirada: só quem pediu tem. No ponto de coleta, junto com o protocolo, libera a doação
+/// (quem ajudou conhece o protocolo, mas não este código).
+class CodigoRetirada extends StatelessWidget {
+  const CodigoRetirada(this.codigo, {super.key});
+  final String codigo;
+  @override
+  Widget build(BuildContext context) => Semantics(
+        label: 'Código de retirada ${codigo.split('').join(' ')}. Só você tem este código. Informe no ponto de coleta junto com o protocolo.',
+        excludeSemantics: true,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(color: EloCores.brand100, borderRadius: BorderRadius.circular(EloRaio.md)),
+          child: Row(children: [
+            const Icon(Icons.key_outlined, color: EloCores.brand900),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('Código de retirada', style: TextStyle(fontWeight: FontWeight.w800, color: EloCores.brand900)),
+                const Text('Só você tem. Informe no ponto de coleta junto com o protocolo.', style: TextStyle(fontSize: 13)),
+              ]),
+            ),
+            Text(codigo, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: 6, color: EloCores.brand900)),
+          ]),
+        ),
+      );
 }

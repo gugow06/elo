@@ -44,19 +44,45 @@ export async function completarBairro(pool: Pool, bairroId: string): Promise<boo
   const { rows } = await pool.query<{ nome: string; municipio: string; uf: string; latitude: number | null; longitude: number | null }>(
     `SELECT b.nome, m.nome AS municipio, m.uf, m.latitude::float AS latitude, m.longitude::float AS longitude
      FROM bairro b JOIN municipio m ON m.id = b.municipio_id
-     WHERE b.id = $1 AND b.latitude IS NULL AND m.codigo_ibge IS NOT NULL`,
+     WHERE b.id = $1 AND (b.latitude IS NULL OR b.posicao_origem = 'dispositivo') AND m.codigo_ibge IS NOT NULL`,
     [bairroId],
   );
   const b = rows[0];
   if (!b) return false;
   const p = await posicaoDoBairro(b.nome, { nome: b.municipio, uf: b.uf, latitude: b.latitude, longitude: b.longitude });
-  // Marca a tentativa mesmo sem resultado, para não consultar o mesmo bairro a cada subida da API
+  // Marca a tentativa mesmo sem resultado, para não consultar o mesmo bairro a cada subida da API.
+  // Sem resultado, mantém a posição aproximada do dispositivo, se houver.
   await pool.query(
-    'UPDATE bairro SET latitude = $2, longitude = $3, posicao_buscada_em = now() WHERE id = $1',
+    `UPDATE bairro SET posicao_buscada_em = now(),
+            latitude = coalesce($2, latitude), longitude = coalesce($3, longitude),
+            posicao_origem = CASE WHEN $2::numeric IS NOT NULL THEN 'osm' ELSE posicao_origem END
+     WHERE id = $1`,
     [bairroId, p?.latitude ?? null, p?.longitude ?? null],
   );
   log.log(`Bairro "${b.nome}" (${b.municipio} - ${b.uf}): ${p ? 'posição encontrada' : 'sem posição confiável, mapa usa o centro da cidade'}`);
   return !!p;
+}
+
+/**
+ * Posição aproximada do bairro a partir da localização do aparelho de quem criou a conta.
+ * Arredondada a 2 casas (~1 km) para não revelar a casa; só se o bairro ainda não tem posição e o
+ * ponto está perto do município. Os pedidos aparecem no mapa só agregados por bairro.
+ */
+export async function posicaoAproximadaDoBairro(pool: Pool, bairroId: string, p: { latitude: number; longitude: number }): Promise<boolean> {
+  const lat = Math.round(p.latitude * 100) / 100;
+  const lon = Math.round(p.longitude * 100) / 100;
+  const m = (await pool.query<{ latitude: number | null; longitude: number | null }>(
+    `SELECT m.latitude::float AS latitude, m.longitude::float AS longitude FROM bairro b JOIN municipio m ON m.id = b.municipio_id
+     WHERE b.id = $1 AND b.latitude IS NULL`,
+    [bairroId],
+  )).rows[0];
+  if (!m) return false;
+  if (m.latitude != null && m.longitude != null && distanciaKm({ lat: m.latitude, lon: m.longitude }, { lat, lon }) > DISTANCIA_MAX_KM) return false;
+  const r = await pool.query(
+    `UPDATE bairro SET latitude = $2, longitude = $3, posicao_origem = 'dispositivo' WHERE id = $1 AND latitude IS NULL`,
+    [bairroId, lat, lon],
+  );
+  return (r.rowCount ?? 0) > 0;
 }
 
 /** Ao subir a API: completa os bairros de municípios reais que ainda não foram procurados. */
