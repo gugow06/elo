@@ -122,6 +122,7 @@ export class TecnicoController {
 
   /** Eventos em tempo real (alerta vermelho, novos pedidos) via Server-Sent Events. */
   @Sse('eventos')
+  @Perfis('tecnico', 'gestor')
   eventosAoVivo(@SessaoAtual() sessao: Sessao): Observable<MessageEvent> {
     const batida = interval(25000).pipe(map(() => ({ type: 'ping', data: {} }) as MessageEvent));
     const eventos = this.eventos.doMunicipio(sessao.municipioId).pipe(map((e) => ({ type: e.tipo, data: e }) as MessageEvent));

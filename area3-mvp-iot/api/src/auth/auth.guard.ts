@@ -27,11 +27,14 @@ export class AuthGuard implements CanActivate {
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
     const req = ctx.switchToHttp().getRequest();
     const cabecalho: string | undefined = req.headers?.authorization;
-    if (!cabecalho?.startsWith('Bearer ')) throw new UnauthorizedException('Faça login para continuar.');
+    // EventSource (SSE) não envia cabeçalho: só as rotas /eventos aceitam o token na query.
+    const tokenQuery = String(req.url ?? '').split('?')[0].endsWith('/eventos') ? req.query?.token : undefined;
+    const token = cabecalho?.startsWith('Bearer ') ? cabecalho.slice(7) : tokenQuery;
+    if (!token) throw new UnauthorizedException('Faça login para continuar.');
 
     let sessao: Sessao;
     try {
-      sessao = await lerToken(cabecalho.slice(7));
+      sessao = await lerToken(token);
     } catch {
       throw new UnauthorizedException('Sessão inválida ou expirada. Entre novamente.');
     }
