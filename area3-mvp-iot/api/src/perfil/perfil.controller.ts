@@ -20,6 +20,8 @@ type LinhaPerfil = {
   email_confirmado_em: Date | null;
   dois_fatores_em: Date | null;
   google: boolean;
+  latitude: number | null;
+  longitude: number | null;
 };
 
 /**
@@ -42,6 +44,9 @@ export class PerfilController {
       bairro: u.bairro,
       municipio: u.municipio,
       uf: u.uf,
+      // Onde o mapa abre quando o aparelho não informa a localização (bairro ou município do cadastro)
+      latitude: u.latitude,
+      longitude: u.longitude,
       google: u.google,
       email_confirmado: !!u.email_confirmado_em,
       dois_fatores: !!u.dois_fatores_em,
@@ -87,6 +92,7 @@ export class PerfilController {
   private async carregar(usuarioId: string): Promise<LinhaPerfil> {
     const { rows } = await this.pool.query<LinhaPerfil>(
       `SELECT u.nome, u.email, u.telefone, b.nome AS bairro, m.nome AS municipio, m.uf,
+              coalesce(b.latitude, m.latitude)::float AS latitude, coalesce(b.longitude, m.longitude)::float AS longitude,
               u.email_confirmado_em, u.dois_fatores_em,
               EXISTS (SELECT 1 FROM conta_social cs WHERE cs.usuario_id = u.id AND cs.provedor = 'google') AS google
        FROM usuario u

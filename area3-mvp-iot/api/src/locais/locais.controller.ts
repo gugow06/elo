@@ -137,6 +137,31 @@ export class LocaisController {
     return this.buscar(sessao, id);
   }
 
+  /**
+   * Pedidos do mural dentro da área do mapa, AGREGADOS (P3/RS-01): o ponto é o centro do bairro
+   * (ou do município, se o bairro não tiver posição), nunca o endereço de quem pediu.
+   */
+  @Get('mapa/pedidos')
+  async mapaPedidos(@Query() query: unknown) {
+    const { bbox: [oeste, sul, leste, norte] } = validar(Caixa, query);
+    const { rows } = await this.pool.query(
+      `SELECT b.id AS bairro_id, b.nome AS bairro, m.id AS municipio_id, m.nome AS municipio, m.uf,
+              coalesce(b.latitude, m.latitude)::float AS latitude, coalesce(b.longitude, m.longitude)::float AS longitude,
+              count(*)::int AS pedidos
+       FROM solicitacao s
+       JOIN bairro b ON b.id = s.bairro_id
+       JOIN municipio m ON m.id = s.municipio_id
+       WHERE s.status = 'no_mural' AND s.faixa = 'verde'
+         AND coalesce(b.latitude, m.latitude) BETWEEN $1 AND $2
+         AND coalesce(b.longitude, m.longitude) BETWEEN $3 AND $4
+       GROUP BY b.id, b.nome, m.id, m.nome, m.uf, b.latitude, b.longitude, m.latitude, m.longitude
+       ORDER BY pedidos DESC
+       LIMIT 300`,
+      [sul, norte, oeste, leste],
+    );
+    return rows;
+  }
+
   /** Locais ativos dentro da área do mapa, de qualquer município (dados públicos). */
   @Get('mapa/locais')
   async mapa(@Query() query: unknown) {
