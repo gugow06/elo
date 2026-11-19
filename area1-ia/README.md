@@ -92,7 +92,13 @@ Dois conjuntos rotulados à mão pelo grupo, com dados fictícios:
 | --- | --- | --- | --- | --- |
 | Léxico v1 | treino | 95,0% | 86,7% | **2** |
 | Léxico v2 | treino | 100,0% | 100,0% | 0 |
-| Léxico v2 | **validação** | **90,0%** | **100,0%** | **0** |
+| Léxico v2 + offline | **validação** | 90,0% | **100,0%** | **0** |
+| Léxico v2 + **Gemini 3.5 Flash-Lite** (prompt v2) | treino | 100,0% | 100,0% | 0 |
+| Léxico v2 + **Gemini 3.5 Flash-Lite** (prompt v2) | **validação** | **100,0%** | **100,0%** | **0** |
+
+**Prompt v1 × v2:** com o prompt v1 ("na dúvida, escolha a mais grave"), o modelo classificava pedidos comuns de cesta básica como vermelhos ("risco de fome aguda"). O prompt v2 explica o que é vermelho e traz 3 exemplos. Com ele, o LLM acertou os casos que o classificador offline errava na validação (ex.: "minha despensa está vazia e o salário só sai dia 10").
+
+**Cota do provedor:** o plano gratuito do Gemini 2.5 Flash permite só 20 requisições por dia. A avaliação esgotou a cota, e todas as chamadas seguintes caíram em falha segura (vermelha), sem expor nenhum pedido. Por isso, a avaliação final usa o Gemini 3.5 Flash-Lite, com pausa de 6 s entre as chamadas.
 
 **Antes × depois:** a v1 deixou passar 2 casos de risco ("companheiro não deixa eu sair de casa" e "menino vendendo no farol"). As duas regras foram ampliadas (v2). No conjunto de validação, os 2 erros que restam estão no lado seguro ou não envolvem risco: um verde que foi para o técnico por baixa confiança e um amarelo classificado como verde. Nenhum caso de risco ficou de fora.
 
@@ -101,8 +107,8 @@ Dois conjuntos rotulados à mão pelo grupo, com dados fictícios:
 | Processo | Tempo por relato |
 | --- | --- |
 | Triagem manual (cronometrada) | _preencher_ |
-| Triagem automática | < 1 ms (offline) · ~1–3 s (LLM) |
+| Triagem automática | < 1 ms (offline) · ~0,5–1,5 s (LLM) |
 
-Relatórios completos: [`resultado.md`](triagem/avaliacao/resultado.md), [`resultado-validacao.md`](triagem/avaliacao/resultado-validacao.md), [`resultado-v1.md`](triagem/avaliacao/resultado-v1.md).
+Relatórios completos: [`resultado.md`](triagem/avaliacao/resultado.md), [`resultado-validacao.md`](triagem/avaliacao/resultado-validacao.md), [`resultado-v1.md`](triagem/avaliacao/resultado-v1.md), [`resultado-llm.md`](triagem/avaliacao/resultado-llm.md), [`resultado-validacao-llm.md`](triagem/avaliacao/resultado-validacao-llm.md).
 
 **Limitações:** os conjuntos são pequenos e escritos pelo próprio grupo. Em produção, o conjunto de avaliação seria rotulado por assistentes sociais e revisado periodicamente (RF-306).
