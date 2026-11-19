@@ -7,17 +7,17 @@ import { Alerta, Botao } from "@/components/ui";
 import { api, salvarSessao, useModoDemo, type UsuarioSessao } from "@/lib/api";
 
 const CONTAS_DEMO = [
-  { rotulo: "Fernanda · Técnica do CRAS", telefone: "+5511990000006" },
-  { rotulo: "Secretaria · Gestão", telefone: "+5511990000007" },
+  { rotulo: "Fernanda · Técnica do CRAS", email: "fernanda.costa@example.com" },
+  { rotulo: "Secretaria · Gestão", email: "secretaria.social@example.com" },
 ];
 
-/** Login sem senha (RF-102): telefone + código de 6 dígitos. Operadores do painel. */
+/** Login sem senha (RF-102): e-mail + código de 6 dígitos enviado pelo Resend. Operadores do painel. */
 export default function Entrar() {
   const router = useRouter();
   const modoDemo = useModoDemo();
-  const [telefone, setTelefone] = useState("");
+  const [email, setEmail] = useState("");
   const [codigo, setCodigo] = useState("");
-  const [etapa, setEtapa] = useState<"telefone" | "codigo">("telefone");
+  const [etapa, setEtapa] = useState<"email" | "codigo">("email");
   const [codigoDemo, setCodigoDemo] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
@@ -27,7 +27,7 @@ export default function Entrar() {
     setErro(null);
     setEnviando(true);
     try {
-      const r = await api<{ codigo_demo?: string }>("/auth/codigo", { method: "POST", body: JSON.stringify({ telefone }) });
+      const r = await api<{ codigo_demo?: string }>("/auth/codigo", { method: "POST", body: JSON.stringify({ email }) });
       setCodigoDemo(r.codigo_demo ?? null);
       setEtapa("codigo");
     } catch (er) {
@@ -42,7 +42,7 @@ export default function Entrar() {
     setErro(null);
     setEnviando(true);
     try {
-      const r = await api<{ token: string; usuario: UsuarioSessao }>("/auth/entrar", { method: "POST", body: JSON.stringify({ telefone, codigo }) });
+      const r = await api<{ token: string; usuario: UsuarioSessao }>("/auth/entrar", { method: "POST", body: JSON.stringify({ email, codigo }) });
       if (r.usuario.perfil !== "tecnico" && r.usuario.perfil !== "gestor") {
         setErro("O painel é para a equipe do CRAS e a gestão. Cidadãos e voluntários usam o app do ELO.");
         return;
@@ -65,25 +65,25 @@ export default function Entrar() {
 
         {erro && <div className="mb-4"><Alerta tipo="erro">{erro}</Alerta></div>}
 
-        {etapa === "telefone" ? (
+        {etapa === "email" ? (
           <form onSubmit={pedirCodigo} className="flex flex-col gap-4">
-            <label htmlFor="telefone" className="font-bold">
-              Telefone
+            <label htmlFor="email" className="font-bold">
+              E-mail
             </label>
             <input
-              id="telefone"
-              type="tel"
-              inputMode="tel"
-              autoComplete="tel"
+              id="email"
+              type="email"
+              inputMode="email"
+              autoComplete="email"
               required
-              value={telefone}
-              onChange={(e) => setTelefone(e.target.value)}
-              aria-describedby="telefone-ajuda"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              aria-describedby="email-ajuda"
               className="min-h-12 rounded-md border-2 border-borda px-4 text-lg focus:border-brand-700"
-              placeholder="+55 11 99000-0006"
+              placeholder="voce@prefeitura.gov.br"
             />
-            <p id="telefone-ajuda" className="text-sm text-texto-2">
-              Vamos enviar um código de 6 dígitos. Não é preciso senha.
+            <p id="email-ajuda" className="text-sm text-texto-2">
+              Vamos enviar um código de 6 dígitos para o seu e-mail. Não é preciso senha.
             </p>
             <Botao type="submit" disabled={enviando}>
               {enviando ? "Enviando…" : "Receber código"}
@@ -94,8 +94,8 @@ export default function Entrar() {
                 <legend className="px-1 text-sm font-bold text-texto-2">Contas de demonstração (fictícias)</legend>
                 <div className="flex flex-col gap-2">
                   {CONTAS_DEMO.map((c) => (
-                    <button key={c.telefone} type="button" onClick={() => setTelefone(c.telefone)} className="min-h-11 rounded-md bg-fundo px-3 text-left font-semibold text-brand-900 hover:bg-brand-50">
-                      {c.rotulo} · {c.telefone}
+                    <button key={c.email} type="button" onClick={() => setEmail(c.email)} className="min-h-11 rounded-md bg-fundo px-3 text-left font-semibold text-brand-900 hover:bg-brand-50">
+                      {c.rotulo} · {c.email}
                     </button>
                   ))}
                 </div>
@@ -106,9 +106,10 @@ export default function Entrar() {
           <form onSubmit={entrar} className="flex flex-col gap-4">
             {codigoDemo && (
               <Alerta tipo="info">
-                Modo demonstração: o código enviado por SMS é <strong className="tracking-widest">{codigoDemo}</strong>
+                Modo demonstração: o código enviado por e-mail é <strong className="tracking-widest">{codigoDemo}</strong>
               </Alerta>
             )}
+            <p className="text-texto-2">Se {email} tiver acesso ao painel, o código chega em instantes. Confira também a caixa de spam.</p>
             <label htmlFor="codigo" className="font-bold">
               Código de 6 dígitos
             </label>
@@ -126,8 +127,8 @@ export default function Entrar() {
             <Botao type="submit" disabled={enviando || codigo.length !== 6}>
               {enviando ? "Entrando…" : "Entrar"}
             </Botao>
-            <Botao type="button" variante="texto" onClick={() => setEtapa("telefone")}>
-              Usar outro telefone
+            <Botao type="button" variante="texto" onClick={() => setEtapa("email")}>
+              Usar outro e-mail
             </Botao>
           </form>
         )}

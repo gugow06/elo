@@ -49,7 +49,7 @@ if (require.main === module) {
     telefone: argumento('telefone') ?? '',
     ibge: Number(argumento('ibge')),
   })
-    .then((r) => console.log(`[gestor] criado em ${r.municipio} - ${r.uf} (id ${r.id}). Ele entra no painel com o telefone informado.`))
+    .then((r) => console.log(`[gestor] criado em ${r.municipio} - ${r.uf} (id ${r.id}). Ele entra no painel com o e-mail informado (código pelo Resend).`))
     .catch((erro) => { console.error(`[gestor] ${(erro as Error).message}`); process.exitCode = 1; })
     .finally(() => pool.end());
 }
