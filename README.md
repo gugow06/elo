@@ -18,7 +18,7 @@
 
 </div>
 
-> 🎬 **Vídeo pitch:** _[link público do vídeo]_ · 📄 **Documentação (PDF):** [`docs/DOCUMENTACAO.md`](docs/DOCUMENTACAO.md) · 🔌 **Simulação do ponto de coleta (Wokwi):** _[link público]_
+> 🎬 **Vídeo pitch:** [https://youtu.be/MlCGgcn2TPs](https://youtu.be/MlCGgcn2TPs) · 📄 **Documentação (PDF):** [padrão ABNT](docs/ELO-documentacao.pdf) · [versão livre](docs/ELO-documentacao-livre.pdf) · 🔌 **Simulação do ponto de coleta (Wokwi):** _[link público]_
 
 ---
 

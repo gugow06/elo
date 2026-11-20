@@ -715,7 +715,7 @@ Comandos de `README.md`, seção "Começando": subir a stack, contas de demonstr
 ### Apêndice C: Repositório, vídeo e simulação
 
 - Repositório: https://github.com/gugow06/elo
-- Vídeo pitch: `[link público]`
+- Vídeo pitch: https://youtu.be/MlCGgcn2TPs
 - Simulação do ponto de coleta no Wokwi: `[link público]`
 
 ### Apêndice D: Mapa de imagens
