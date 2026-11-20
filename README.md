@@ -61,7 +61,7 @@ flowchart LR
     C --> F[Voluntária assume]
     F --> G[[Ponto de Coleta Inteligente<br/>protocolo + balança]]
     G --> H([Família retira com o<br/>código de 4 números])
-    G --> I([Voluntária recebe<br/>&quot;Sua ajuda chegou&quot;])
+    G --> I([Voluntária recebe<br/>“Sua ajuda chegou”])
     C -. sem voluntário no prazo .-> E
     H & I --> J[(Dashboard de gestão)]
 ```
