@@ -14,11 +14,21 @@
 ![Flutter](https://img.shields.io/badge/Flutter-Android%20%7C%20iOS-02569B?logo=flutter&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 
-[Sobre](#-sobre) · [Como funciona](#-como-funciona) · [Arquitetura](#-arquitetura) · [Começando](#-começando) · [Global Solution](#-as-4-áreas-da-global-solution) · [Qualidade](#-qualidade-e-segurança) · [Roadmap](#-roadmap)
+[Sobre](#-sobre) · [Como funciona](#-como-funciona) · [Arquitetura](#-arquitetura) · [Começando](#-começando) · [Global Solution](#-as-4-áreas-da-global-solution) · [Qualidade](#-qualidade-e-segurança) · [Roadmap](#-roadmap) · [Equipe](#-equipe)
 
 </div>
 
 > 🎬 **Vídeo pitch:** [https://youtu.be/MlCGgcn2TPs](https://youtu.be/MlCGgcn2TPs) · 📄 **Documentação (PDF):** [padrão ABNT](docs/ELO-documentacao.pdf) · [versão livre](docs/ELO-documentacao-livre.pdf) · 🔌 **Simulação do ponto de coleta (Wokwi):** _[link público]_
+
+## 👥 Equipe
+
+| Nome | RM |
+| --- | --- |
+| Gustavo Cristiano Pessoa de Souza | 551924 |
+| Ricardo Akira Kato Lopes | 551447 |
+| Kevin Richard Xavier | 551736 |
+| Vinicius do Carmo Fonseca Freitas | 97599 |
+| Gustavo Medeiros Miranda da Silva | 552093 |
 
 ---
 
@@ -307,16 +317,6 @@ elo/
 ```
 
 ---
-
-## 👥 Equipe
-
-| Nome | RM |
-| --- | --- |
-| Gustavo Cristiano Pessoa de Souza | 551924 |
-| Ricardo Akira Kato Lopes | 551447 |
-| Kevin Richard Xavier | 551736 |
-| Vinicius do Carmo Fonseca Freitas | 97599 |
-| Gustavo Medeiros Miranda da Silva | 552093 |
 
 ## 🤖 Uso de IA generativa
 
