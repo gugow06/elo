@@ -14,11 +14,21 @@
 ![Flutter](https://img.shields.io/badge/Flutter-Android%20%7C%20iOS-02569B?logo=flutter&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 
-[Sobre](#-sobre) · [Como funciona](#-como-funciona) · [Arquitetura](#-arquitetura) · [Começando](#-começando) · [Global Solution](#-as-4-áreas-da-global-solution) · [Qualidade](#-qualidade-e-segurança) · [Roadmap](#-roadmap)
+[Sobre](#-sobre) · [Como funciona](#-como-funciona) · [Arquitetura](#-arquitetura) · [Começando](#-começando) · [Global Solution](#-as-4-áreas-da-global-solution) · [Qualidade](#-qualidade-e-segurança) · [Roadmap](#-roadmap) · [Equipe](#-equipe)
 
 </div>
 
-> 🎬 **Vídeo pitch:** _[link público do vídeo]_ · 📄 **Documentação (PDF):** [`docs/DOCUMENTACAO.md`](docs/DOCUMENTACAO.md) · 🔌 **Simulação do ponto de coleta (Wokwi):** _[link público]_
+> 🎬 **Vídeo pitch:** [https://youtu.be/MlCGgcn2TPs](https://youtu.be/MlCGgcn2TPs) · 📄 **Documentação (PDF):** [padrão ABNT](docs/ELO-documentacao.pdf) · [versão livre](docs/ELO-documentacao-livre.pdf) · 🔌 **Simulação do ponto de coleta (Wokwi):** _[link público]_
+
+## 👥 Equipe
+
+| Nome | RM |
+| --- | --- |
+| Gustavo Cristiano Pessoa de Souza | 551924 |
+| Ricardo Akira Kato Lopes | 551447 |
+| Kevin Richard Xavier | 551736 |
+| Vinicius do Carmo Fonseca Freitas | 97599 |
+| Gustavo Medeiros Miranda da Silva | 552093 |
 
 ---
 
@@ -308,19 +318,15 @@ elo/
 
 ---
 
-## 👥 Equipe
-
-| Nome | RM |
-| --- | --- |
-| Gustavo Cristiano Pessoa de Souza | 551924 |
-| Ricardo Akira Kato Lopes | 551447 |
-| Kevin Richard Xavier | 551736 |
-| Vinicius do Carmo Fonseca Freitas | 97599 |
-| Gustavo Medeiros Miranda da Silva | 552093 |
-
 ## 🤖 Uso de IA generativa
 
-> **A preencher pelo grupo antes da entrega** (exigência da FIAP): ferramentas de IA generativa utilizadas e para quê.
+| Ferramenta | Para quê |
+| --- | --- |
+| Claude Code (Anthropic) | Assistente de desenvolvimento: geração e revisão de código (API, app, painel, testes e CI), documentação, roteiro e montagem do vídeo pitch e auditoria de segurança automatizada (skill [security-audit](https://github.com/cloudflare/security-audit-skill), da Cloudflare) |
+| Gemini 3.5 Flash-Lite (Google) | Parte do produto: modelo de linguagem da triagem por risco, avaliado nos conjuntos de treino e validação ([área 1](area1-ia/README.md)) |
+| Voz neural pt-BR da Microsoft (edge-tts) | Narração do vídeo pitch |
+
+Todo o conteúdo gerado foi revisado pelo grupo, e cada integrante entende e sabe explicar a solução, as decisões de arquitetura e o código da sua área. Os dados do projeto são fictícios, e nenhum dado pessoal real foi enviado a ferramentas de IA.
 
 ---
 
