@@ -18,7 +18,7 @@
 
 </div>
 
-> 🎬 **Vídeo pitch:** [https://youtu.be/MlCGgcn2TPs](https://youtu.be/MlCGgcn2TPs) · 📄 **Documentação (PDF):** [padrão ABNT](docs/ELO-documentacao.pdf) · [versão livre](docs/ELO-documentacao-livre.pdf)
+> 🎬 **Vídeo pitch:** [https://youtu.be/MlCGgcn2TPs](https://youtu.be/MlCGgcn2TPs) · 📄 **Documentação (PDF):** [padrão ABNT](docs/ELO-documentacao.pdf) · [versão estilizada](docs/ELO-documentacao-livre.pdf)
 ## 👥 Equipe
 
 | Nome | RM |
