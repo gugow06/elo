@@ -109,7 +109,7 @@ Ao mesmo tempo, existe muita solidariedade espalhada pelos bairros, mas ela é d
 
 ### 2.1 O problema
 
-`[Inserir aqui ao menos um dado oficial com fonte, por exemplo o número de famílias inscritas no CadÚnico no município escolhido, consultado no VIS Data/MDS, com citação no formato (BRASIL, ano) e entrada nas Referências.]`
+A dimensão da demanda é grande. Em maio de 2025, **13,8 milhões de pessoas** estavam inscritas no Cadastro Único no Estado de São Paulo, o que correspondia a 14,7% do total do Brasil (95 milhões). Desse total, **41,3%** pertenciam a famílias com renda de até R$ 218 por pessoa por mês, a faixa de pobreza (SEADE, 2025). É essa população que procura o CRAS. Campinas, cidade usada na demonstração, organiza o atendimento em uma rede de CRAS distribuída pelas regiões do município (CAMPINAS, 2026a).
 
 O problema tem três lados:
 
@@ -216,6 +216,8 @@ A solução é um monorepo organizado pelas quatro áreas da Global Solution. Um
 | Aplicativo | Flutter (Android, iOS e web) |
 | IoT | Arduino Uno no Wokwi e no Tinkercad, simulador e ponte serial em Python |
 | DevOps | Git, GitHub, Docker Compose, GitHub Actions, Vitest, pytest, flutter_test |
+
+As ferramentas foram usadas como descreve a documentação oficial de cada uma (NESTJS, 2026; NEXT.JS, 2026; FLUTTER, 2026; POSTGRESQL, 2026; DOCKER, 2026; GITHUB, 2026; GOOGLE, 2026; ARDUINO, 2026; WOKWI, 2026). Estados e municípios (5.570 cidades, com código do IBGE e coordenadas) vêm de uma compilação de dados públicos do IBGE (PRADO, 2026), e o mapa usa os dados abertos do OpenStreetMap (OPENSTREETMAP, 2026).
 
 ---
 
@@ -373,9 +375,13 @@ O aplicativo foi feito em Flutter e roda em Android, iOS e web, seguindo o desig
 
 > **[FIGURA 16]** Início: saudação, banners, atalhos e pedidos próximos pela localização · **Arquivo:** `docs/prints/app-02-inicio-cidada.png` · **Status:** **recapturar** (o Início foi refeito com os banners).
 
-> **[FIGURA 17]** Mapa da rede com "Você está aqui" e zoom na região · **Arquivo:** `docs/prints/app-04-mapa.png` · **Status:** **recapturar**.
+O mapa da demonstração mostra o centro de Campinas com locais reais da rede pública, cadastrados pelo painel (seção 7.2): escolas estaduais como pontos de coleta, centros de saúde, CRAS, o albergue municipal e o Refeitório da Cidadania. Os pedidos aparecem só agregados por bairro, nunca na casa de quem pediu.
 
-> **[FIGURA 18]** Mapa da rede em lista (visão acessível) · **Arquivo:** `docs/prints/app-05-lista.png` · **Status:** recapturar se o visual mudou.
+> **[FIGURA 17]** Mapa da rede no centro de Campinas, com "Você está aqui", pontos de coleta, saúde, distribuição e pedidos agregados · **Arquivo:** `docs/prints/app-04-mapa.png` · **Status:** pronta.
+
+> **[FIGURA 43]** Mapa filtrado em "Serviços": (a) no mapa e (b) em lista, com distância e direção · **Arquivo:** `docs/prints/app-05-lista.png` · **Status:** pronta.
+
+> **[FIGURA 44]** Detalhe de um local da rede no mapa: endereço, horário e distância · **Arquivo:** `docs/prints/app-16-local.png` · **Status:** pronta.
 
 > **[FIGURA 19]** Detalhe de um pedido ("Precisa de...", pessoas ajudando) · **Arquivo:** `docs/prints/app-06-pedido.png` · **Status:** **recapturar** (o card do pedido mudou).
 
@@ -412,6 +418,21 @@ O painel web, em Next.js, atende técnicos, gestores e agentes dos pontos de col
 - registro de movimentações.
 
 > **[FIGURA 29]** Entrada no painel · **Arquivo:** `docs/prints/painel-01-login.png` · **Status:** pronta.
+
+**Locais da rede.** O gestor cadastra cada local pelo nome do lugar, pelo endereço ou pelo CEP. A busca usa bases abertas (OpenStreetMap), e o local passa a aparecer no mapa do app (OPENSTREETMAP, 2026). Há cinco tipos: ponto de coleta (que pode ter sensor), assistência social (CRAS, CREAS, Centro POP), abrigo ou acolhimento, ponto de distribuição e saúde. Para a demonstração, a gestão de Campinas cadastrou 14 locais com endereços públicos, conferidos no portal da Prefeitura de Campinas e no OpenStreetMap (CAMPINAS, 2026a; CAMPINAS, 2026b). São eles:
+
+- quatro escolas estaduais do centro, usadas como pontos de coleta na simulação;
+- quatro centros de saúde;
+- três CRAS;
+- o albergue municipal (SAMIM);
+- o Refeitório da Cidadania;
+- a EMEF onde a agente do ponto atende.
+
+Nenhuma dessas instituições participa do projeto. Os nomes e endereços servem só para mostrar o funcionamento em uma cidade real.
+
+> **[FIGURA 45]** Locais da rede de Campinas no painel: tipo, endereço, bairro, capacidade do ponto de coleta, horário e categorias aceitas · **Arquivo:** `docs/prints/painel-13-locais.png` · **Status:** pronta.
+
+> **[FIGURA 46]** Cadastro de um novo local: escolha do tipo e busca pelo nome do lugar, que devolve o endereço oficial · **Arquivo:** `docs/prints/painel-14-novo-local.png` · **Status:** pronta.
 
 > **[FIGURA 30]** Receber doação pelo protocolo · **Arquivo:** `docs/prints/painel-10-receber.png` · **Status:** **capturar** (nova).
 
@@ -523,7 +544,7 @@ A cada push e pull request, o GitHub Actions faz, sem nenhum passo manual:
 | Direitos do titular | Termos e Política aceitos na criação da conta (com versão registrada); exclusão de conta com anonimização |
 | Segredos | `.env` fora do Git; só o `.env.example`, sem chaves, é versionado |
 
-**Auditoria de segurança.** Em 19/11/2026, o código passou por uma auditoria automatizada com a skill aberta *security-audit* da Cloudflare, no perfil rápido. A auditoria só leu o código e rodou checagens locais numa sandbox sem rede, com contas e dados fictícios. Ela confirmou:
+**Auditoria de segurança.** Em 19/11/2026, o código passou por uma auditoria automatizada com a skill aberta *security-audit* da Cloudflare, no perfil rápido (CLOUDFLARE, 2026). A auditoria só leu o código e rodou checagens locais numa sandbox sem rede, com contas e dados fictícios. Ela confirmou:
 
 - 2 achados de severidade alta: a ausência de limite de tentativas no código de login e o modo de demonstração ligado por padrão;
 - 1 achado de severidade média: oferta de voluntário que continua ativa depois que o pedido é reclassificado para uma faixa de risco;
@@ -608,7 +629,7 @@ Todos vieram com a correção indicada. `[Atualizar este parágrafo com as corre
 | 10: Redução das desigualdades | Mais de um canal de entrada, acessibilidade como requisito e métrica de equidade por canal |
 | 11: Cidades e comunidades sustentáveis | Rede de solidariedade por bairro, integrada à política pública |
 
-Fonte: ONU (2015).
+Fonte: Organização das Nações Unidas (2015).
 
 ### 10.3 Próximos passos
 
@@ -643,21 +664,43 @@ Todas estão no roadmap.
 
 ## Referências
 
-BRASIL. **Lei nº 8.742, de 7 de dezembro de 1993**. Dispõe sobre a organização da Assistência Social e dá outras providências. Brasília, DF: Presidência da República, 1993. Disponível em: https://www.planalto.gov.br/ccivil_03/leis/l8742.htm. Acesso em: 19 nov. 2026.
+ARDUINO. **Arduino Documentation**. [S. l.]: Arduino, 2026. Disponível em: https://docs.arduino.cc. Acesso em: 14 nov. 2026.
+
+BRASIL. **Lei nº 8.742, de 7 de dezembro de 1993**. Dispõe sobre a organização da Assistência Social e dá outras providências. Brasília, DF: Presidência da República, 1993. Disponível em: https://www.planalto.gov.br/ccivil_03/leis/l8742.htm. Acesso em: 14 nov. 2026.
 
 BRASIL. Conselho Nacional de Assistência Social. **Resolução nº 109, de 11 de novembro de 2009**. Aprova a Tipificação Nacional de Serviços Socioassistenciais. Brasília, DF: CNAS, 2009.
 
-BRASIL. **Lei nº 13.709, de 14 de agosto de 2018**. Lei Geral de Proteção de Dados Pessoais (LGPD). Brasília, DF: Presidência da República, 2018. Disponível em: https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm. Acesso em: 19 nov. 2026.
+BRASIL. **Lei nº 13.709, de 14 de agosto de 2018**. Lei Geral de Proteção de Dados Pessoais (LGPD). Brasília, DF: Presidência da República, 2018. Disponível em: https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm. Acesso em: 14 nov. 2026.
 
-BRASIL. Ministério do Desenvolvimento e Assistência Social, Família e Combate à Fome. **VIS Data**. `[completar com o dado e a data de acesso usados na seção 2.1]`.
+CAMPINAS. Prefeitura Municipal. **Centro de Referência de Assistência Social – CRAS**. Campinas: Prefeitura Municipal, 2026a. Disponível em: https://portal-adm.campinas.sp.gov.br/servico/centro-de-referencia-de-assistencia-social-cras. Acesso em: 14 nov. 2026.
 
-ORGANIZAÇÃO DAS NAÇÕES UNIDAS. **Transformando nosso mundo: a Agenda 2030 para o Desenvolvimento Sustentável**. Nova York: ONU, 2015.
+CAMPINAS. Prefeitura Municipal. **Acolhimento e atendimento à pessoas em situação de rua**. Campinas: Prefeitura Municipal, 2026b. Disponível em: https://portal-adm.campinas.sp.gov.br/servico/acolhimento-e-atendimento-pessoas-em-situacao-de-rua. Acesso em: 14 nov. 2026.
 
-CLOUDFLARE. **security-audit-skill**. GitHub, 2026. Disponível em: https://github.com/cloudflare/security-audit-skill. Acesso em: 19 nov. 2026.
+CLOUDFLARE. **security-audit-skill**. [S. l.]: GitHub, 2026. Disponível em: https://github.com/cloudflare/security-audit-skill. Acesso em: 14 nov. 2026.
 
-`[Opcional: documentação oficial de NestJS, Flutter, Next.js, PostgreSQL, Wokwi e OpenStreetMap, no mesmo formato, se forem citadas no texto.]`
+DOCKER. **Docker Compose documentation**. [S. l.]: Docker, 2026. Disponível em: https://docs.docker.com/compose/. Acesso em: 14 nov. 2026.
 
----
+FLUTTER. **Flutter documentation**. [S. l.]: Google, 2026. Disponível em: https://docs.flutter.dev. Acesso em: 14 nov. 2026.
+
+FUNDAÇÃO SISTEMA ESTADUAL DE ANÁLISE DE DADOS (SEADE). **Seade Informa Social**: redução de 890 mil pessoas inscritas no CadÚnico. São Paulo: Seade, jul. 2025. Disponível em: https://painel.seade.gov.br/wp-content/uploads/2025/08/seade-informa-social-reducao-pessoas-inscritas.pdf. Acesso em: 14 nov. 2026.
+
+GITHUB. **GitHub Actions documentation**. [S. l.]: GitHub, 2026. Disponível em: https://docs.github.com/actions. Acesso em: 14 nov. 2026.
+
+GOOGLE. **Gemini API documentation**. [S. l.]: Google, 2026. Disponível em: https://ai.google.dev/gemini-api/docs. Acesso em: 14 nov. 2026.
+
+NESTJS. **NestJS documentation**. [S. l.]: NestJS, 2026. Disponível em: https://docs.nestjs.com. Acesso em: 14 nov. 2026.
+
+NEXT.JS. **Next.js documentation**. [S. l.]: Vercel, 2026. Disponível em: https://nextjs.org/docs. Acesso em: 14 nov. 2026.
+
+OPENSTREETMAP. **OpenStreetMap**: dados abertos de mapas, licença ODbL. [S. l.]: OpenStreetMap Foundation, 2026. Disponível em: https://www.openstreetmap.org. Acesso em: 14 nov. 2026.
+
+ORGANIZAÇÃO DAS NAÇÕES UNIDAS. **Transforming our world**: the 2030 Agenda for Sustainable Development. Nova York: ONU, 2015. Disponível em: https://sdgs.un.org/2030agenda. Acesso em: 14 nov. 2026.
+
+POSTGRESQL. **PostgreSQL 16 documentation**. [S. l.]: The PostgreSQL Global Development Group, 2026. Disponível em: https://www.postgresql.org/docs/16/. Acesso em: 14 nov. 2026.
+
+PRADO, Kelvin S. do. **municipios-brasileiros**: municípios e estados do Brasil com código do IBGE e coordenadas. [S. l.]: GitHub, 2026. Disponível em: https://github.com/kelvins/municipios-brasileiros. Acesso em: 14 nov. 2026.
+
+WOKWI. **Wokwi documentation**: simulador de Arduino e ESP32. [S. l.]: Wokwi, 2026. Disponível em: https://docs.wokwi.com. Acesso em: 14 nov. 2026.
 
 ## Apêndices
 

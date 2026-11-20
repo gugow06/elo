@@ -312,7 +312,11 @@ elo/
 
 | Nome | RM |
 | --- | --- |
-| _a preencher_ | _a preencher_ |
+| Gustavo Cristiano Pessoa de Souza | 551924 |
+| Ricardo Akira Kato Lopes | 551447 |
+| Kevin Richard Xavier | 551736 |
+| Vinicius do Carmo Fonseca Freitas | 97599 |
+| Gustavo Medeiros Miranda da Silva | 552093 |
 
 ## 🤖 Uso de IA generativa
 
