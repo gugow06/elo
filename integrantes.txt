@@ -4,11 +4,11 @@ Turma: 4ESOA
 Nome do grupo: <preencher>
 
 Integrantes (RM - Nome):
-RM <preencher> - <preencher>
-RM <preencher> - <preencher>
-RM <preencher> - <preencher>
-RM <preencher> - <preencher>
-RM <preencher> - <preencher>
+RM 551924 - Gustavo Cristiano Pessoa de Souza
+RM 551447 - Ricardo Akira Kato Lopes
+RM 551736 - Kevin Richard Xavier
+RM 97599 - Vinicius do Carmo Fonseca Freitas
+RM 552093 - Gustavo Medeiros Miranda da Silva
 
 Vídeo pitch: <link público do vídeo>
 Repositório: https://github.com/gugow06/elo
