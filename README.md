@@ -320,7 +320,13 @@ elo/
 
 ## 🤖 Uso de IA generativa
 
-> **A preencher pelo grupo antes da entrega** (exigência da FIAP): ferramentas de IA generativa utilizadas e para quê.
+| Ferramenta | Para quê |
+| --- | --- |
+| Claude Code (Anthropic) | Assistente de desenvolvimento: geração e revisão de código (API, app, painel, testes e CI), documentação, roteiro e montagem do vídeo pitch e auditoria de segurança automatizada (skill [security-audit](https://github.com/cloudflare/security-audit-skill), da Cloudflare) |
+| Gemini 3.5 Flash-Lite (Google) | Parte do produto: modelo de linguagem da triagem por risco, avaliado nos conjuntos de treino e validação ([área 1](area1-ia/README.md)) |
+| Voz neural pt-BR da Microsoft (edge-tts) | Narração do vídeo pitch |
+
+Todo o conteúdo gerado foi revisado pelo grupo, e cada integrante entende e sabe explicar a solução, as decisões de arquitetura e o código da sua área. Os dados do projeto são fictícios, e nenhum dado pessoal real foi enviado a ferramentas de IA.
 
 ---
 
